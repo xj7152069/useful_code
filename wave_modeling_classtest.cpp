@@ -9,39 +9,51 @@
 using namespace std;
 
 #include "xj_c++.h"
-
-float zb(int k, float DT)
-{
-    float pi(3.1415926);
-	float f;
-    f=(pi)*(pi)*900*(k*DT-0.04)*\
-exp((-pi*pi*900*(k*DT-0.04)*(DT*k-0.04)))\
-*(3-2*pi*pi*900*(k*DT-0.04)*(DT*k-0.04));
-	return f;
-}
-
+#include "xj_c++_armadillo.h"
 
 int main ()
 {
-    int k;
+    int k,Z(301),X(301);
     float f;
+    ofstream outf1;
+    outf1.open("movie.bin");
 
-    wave_modeling_2D A(200,200);
-    A.dx=5.5;
-    A.dy=1.0;
-    A.dt=0.0005;
-    for(k=0;k<800;k++)
-    {
-    f=zb(k,A.dt);
-    A.s2[100][100]=A.s2[100][100]+f;
-    A.wave_modeling_2D_time_pice();
+    wave2D A(Z,X);
+    float **b;
+    b=new float*[Z];      
+    for(k=0;k<Z;k++)  
+        {  
+        b[k]=new float[X]; 
+        } 
+    matcopy(b,0.0,Z,X);
+/*
+    A.dx=4.0;
+    A.dy=5.0;
+    A.dt=0.0006;
+    A.PML_wide=20;
+    A.R=100000;
+*/
+    for(k=0;k<1000;k++)
+        {
+        f=wavelet01(k,A.dt,35,70);
+        A.s2[150][150]=A.s2[150][150]+f;
+        A.timeslice();
 
-    if(k%100==0)
-        cout<<k<<" && "<<A.s3[100][100]<<endl;
-    
-    if (k==450)
-        binary_data_write_2D(A.s3, 200, 200, "test_waveform.bin" );
-    }
- 
+        if(k%100==0)
+            cout<<k<<" && "<<A.s3[150][150]<<endl;
+        
+        A.s3[0][0]=1.0;
+        A.s3[0][1]=-1.0;
+        datawrite(A.s3, Z, X, outf1);
+
+        if (k==600)
+            {
+            matcopy(b,A.s3, Z, X);
+            datawrite(b, Z, X, "test_waveform.bin" );
+            }
+        }
+
     return 0;
 }
+
+
