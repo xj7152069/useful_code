@@ -17,6 +17,8 @@ using namespace std;
 ///////////////////////////////////////////////////////
 float wavelet01(int k, float DT, float hz=35.0, int delay=70);
 
+float wavelet02(int k, float DT, float hz=35.0, int delay=70);
+
 template <typename TT, typename T2>
 void matdec(T2 **mat1, TT **mat2, int nz, int nx);
 
@@ -482,7 +484,7 @@ void matdec(T2 **mat1, TT **mat2, int nz, int nx)
         }
 }
 
-float wavelet01(int k, float DT, float hz, int delay)
+float wavelet02(int k, float DT, float hz, int delay)
 {
     float pi(3.1415926);
 	float f,det;
@@ -494,6 +496,45 @@ exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
 
 	return f;
 }
+
+float wavelet01(int k, float DT, float hz, int delay)
+{
+    float pi(3.1415926);
+	float f,det;
+    det=delay*DT;
+
+    f=exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
+*(1.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
+
+	return f;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
