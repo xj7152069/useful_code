@@ -38,6 +38,9 @@ template <typename TT>
 void dataread(TT **data_mat, int nz, int nx, const char * filename);
 
 template <typename TT>
+void dataread(TT **data_mat, int nz, int nx, ifstream &inf);
+
+template <typename TT>
 void datawrite(TT **data_mat, int nz, int nx, const char *filename);
 
 template <typename TT>
@@ -379,6 +382,21 @@ void dataread(TT **data_mat, int nz, int nx, const char * filename)
 }
 
 template <typename TT>
+void dataread(TT **data_mat, int nz, int nx, ifstream &inf)
+{
+    int i,j;
+    TT read_data;
+
+    for(j=0;j<nx;j++)
+        {for(i=0;i<nz;i++)
+            {
+            infile.read((char *)&read_data, sizeof(read_data));  
+            data_mat[i][j]=read_data;
+            }
+        }
+}
+
+template <typename TT>
 void datawrite(TT **data_mat, int nz, int nx, char const *filename )
 {
     char str[99];
@@ -491,8 +509,8 @@ float wavelet02(int k, float DT, float hz, int delay)
     det=delay*DT;
 
     f=(pi)*(pi)*hz*hz*(k*DT-det)*\
-exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
-*(3.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
+    exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
+    *(3.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
 
 	return f;
 }
@@ -504,34 +522,10 @@ float wavelet01(int k, float DT, float hz, int delay)
     det=delay*DT;
 
     f=exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
-*(1.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
+    *(1.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
 
 	return f;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -13,7 +13,7 @@ using namespace std;
 
 int main ()
 {
-    int k,Z(301),X(301);
+    int k,Z(201),X(201);
     float f;
     ofstream outf1;
     outf1.open("movie.bin");
@@ -33,20 +33,24 @@ int main ()
     A.PML_wide=20;
     A.R=100000;
 */
-    for(k=0;k<1000;k++)
+    for(k=0;k<800;k++)
         {
-        f=wavelet01(k,A.dt,35,70);
-        A.s2[150][150]=A.s2[150][150]+f;
+        f=-wavelet02(k,A.dt,35,70);
+        A.s2[100][100]=A.s2[100][100]+f;
         A.timeslice();
 
         if(k%100==0)
-            cout<<k<<" && "<<A.s3[150][150]<<endl;
+            cout<<k<<" && "<<A.s3[100][100]<<endl;
         
-        A.s3[0][0]=1.0;
-        A.s3[0][1]=-1.0;
+/*        if(abs(A.s3[0][0])<1000*abs(f))
+            {
+            A.s3[0][1]=-1000*abs(f);
+            A.s3[0][0]=1000*abs(f);
+            }
+*/
         datawrite(A.s3, Z, X, outf1);
 
-        if (k==600)
+        if (k==400)
             {
             matcopy(b,A.s3, Z, X);
             datawrite(b, Z, X, "test_waveform.bin" );

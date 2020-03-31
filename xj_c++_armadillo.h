@@ -23,6 +23,8 @@ fmat matcopy(TT **mat, int nz, int nx);
 
 void dataread(fmat & data_mat, int nz, int nx, const char * filename);
 
+void dataread(fmat & data_mat, int nz, int nx, ifstream &inf);
+
 void datawrite(fmat & data_mat, int nz, int nx, char const *filename);
 
 void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf);
@@ -81,6 +83,19 @@ void dataread(fmat & data_mat, int nz, int nx, const char * filename)
       infile.close();
 }
 
+void dataread(fmat & data_mat, int nz, int nx, ifstream &inf)
+{
+    int i,j;
+    float read_data;
+
+    for(j=0;j<nx;j++)
+        {for(i=0;i<nz;i++)
+            {
+            infile.read((char *)&read_data, sizeof(read_data));  
+            data_mat(i,j)=read_data;
+            }
+        }
+}
 
 void datawrite(fmat & data_mat, int nz, int nx, char const *filename)
 {
