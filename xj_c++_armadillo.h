@@ -21,6 +21,11 @@ void matcopy(T2 **mat2, fmat &data_mat, int nz, int nx);
 template <typename TT>
 fmat matcopy(TT **mat, int nz, int nx);
 
+fmat matmul(fmat mat1, fmat mat2, int nz, int nx);
+
+template <typename T1>
+fmat matmul(fmat mat1, T1 n, int nz, int nx);
+
 void dataread(fmat & data_mat, int nz, int nx, const char * filename);
 
 void dataread(fmat & data_mat, int nz, int nx, ifstream &inf);
@@ -62,6 +67,39 @@ fmat matcopy(TT **mat, int nz, int nx)
     return a;
 }
 
+fmat matmul(fmat mat1, fmat mat2, int nz, int nx)
+{
+    fmat a(nz,nx);
+    int i,j;
+
+    for(i=0;i<nz;i++)
+    {
+        for(j=0;j<nx;j++)
+            {
+            a(i,j)=mat1(i,j)*mat2(i,j);
+            }
+    }
+
+    return a;
+}
+
+template <typename T1>
+fmat matmul(fmat mat1, T1 n, int nz, int nx)
+{
+    fmat a(nz,nx);
+    int i,j;
+
+    for(i=0;i<nz;i++)
+    {
+        for(j=0;j<nx;j++)
+            {
+            a(i,j)=mat1(i,j)*n;
+            }
+    }
+
+    return a;
+}
+
 void dataread(fmat & data_mat, int nz, int nx, const char * filename)
 {
    char str[99];
@@ -91,7 +129,7 @@ void dataread(fmat & data_mat, int nz, int nx, ifstream &inf)
     for(j=0;j<nx;j++)
         {for(i=0;i<nz;i++)
             {
-            infile.read((char *)&read_data, sizeof(read_data));  
+            inf.read((char *)&read_data, sizeof(read_data));  
             data_mat(i,j)=read_data;
             }
         }
