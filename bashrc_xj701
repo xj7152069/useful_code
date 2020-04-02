@@ -1,0 +1,16 @@
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+        . /etc/bashrc
+fi
+
+export PATH=/home/xj/.xj_soft/gcc/bin/:$PATH  
+export LD_LIBRARY_PATH="/home/xj/.xj_soft/gcc/lib:/home/xj/.xj_soft/gcc/lib64:$LD_LIBRARY_PATH"  
+
+export CPLUS_INCLUDE_PATH=/home/xj/.xj_soft/arma/include/ 
+export LIBRARY_PATH="/home/xj/.xj_soft/arma/lib:$LIBRARY_PATH"
+export LD_LIBRARY_PATH="/home/xj/.xj_soft/arma/lib:/home/xj/.xj_soft/arma/lib64:$LD_LIBRARY_PATH"
+
+# User specific aliases and functions
+
