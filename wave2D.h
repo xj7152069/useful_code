@@ -11,10 +11,35 @@ xj_c++.h
 #include <fstream>
 #include <iomanip>
 #include <math.h>
-#include <armadillo>
+
 using namespace std;
 
 ///////////////////////////////////////////////////////
+//建议还是在指针数组所在的语句块中释放内存;
+//若要调用以下函数释放空间，应在原语句块中再次将指针空置。
+template<typename T1>
+void matdelete(T1 **mat, int x1);
+
+template<typename T1>
+void matdelete(T1 ***mat, int x1, int x2);
+
+//数组定义原则：越有可能作为整体被调用的越往后；
+//因为对于如三维指针***p而言，*p和**p都是地址数组。
+float** newfmat(int x1, int x2);
+
+float*** newfmat(int x1, int x2, int x3);
+
+void wave2Dtest(int Z, int X);
+
+template<typename T1>
+void matprint(T1 *mat1, int n);
+
+template<typename T1>
+void matprint(T1 **mat1, int nz, int nx);
+
+template<typename T1>
+void matprint(T1 ***mat1, int n1, int n2, int n3);
+
 template<typename T1>
 char* numtostr(T1 n, int s);
 
@@ -33,6 +58,9 @@ void matadd(T1 **mat1, T2 **mat2, int nz, int nx);
 
 template <typename T1, typename T2>
 void matcopy(T1 **mat1, T2 n, int nz, int nx);
+
+template <typename T1, typename T2>
+void matcopy(T1 ***mat1, T2 n, int n1, int n2, int n3);
 
 template <typename T1, typename T2>
 void matcopy(T1 **mat1, T2 **mat2, int nz, int nx);
@@ -77,7 +105,8 @@ public:
 
     template<typename T1>
     void setvelocity(T1 v=3000);
-    void timeslice();
+    void timeslicecal();
+    void timeslicecopy();
     void cleardata();
 
 };
@@ -88,7 +117,7 @@ wave2D::wave2D()
 {
     nx=0;
     ny=0;
-    dx=5.0;dy=5.0;dt=0.0005;PML_wide=20;suface=1;R=100000;
+    dx=5.0;dy=5.0;dt=0.0005;PML_wide=25;suface=1;R=10000000;
     cout<<"Warning: Creat a Empty object-wave_modeling_2D"<<endl;
 }
 
@@ -239,7 +268,7 @@ void wave2D::cleardata()
     cout<<"All Matrix data has been clear!"<<endl;
 }
 
-void wave2D::timeslice()
+void wave2D::timeslicecal()
 {
     float DX,DY,DT,xshd;
     int X,Y,suface_PML;
@@ -297,7 +326,7 @@ void wave2D::timeslice()
                     sny1=j-(Y-xshd-5);
                 if(j<=xshd+5 && j<t5*i && j<-t5*i+Y)		
                     sny2=xshd+5-j;		
-                }  //瑙掕惤澶勭悊
+                }  //处理角落
             else if(suface_PML==0)
                 {
                 if(i>=X-xshd-5 && j<=t5*i)	
@@ -381,21 +410,44 @@ void wave2D::timeslice()
             // if(snx1!=0 || snx2!=0 || sny1!=0 || sny2!=0)
             s3[j][i]=sx11[j][i]+sx21[j][i]+sx31[j][i];
             u1=0,u2=0,u=0,ux=0,uy=0;
-
             }
         }
+}
 
-    for(j1=0;j1<Y;j1++)
+void wave2D::timeslicecopy()
+{
+    int j1,i1;
+    for(j1=0;j1<ny;j1++)
+    {
+    for(i1=0;i1<nx;i1++)
         {
-        for(i1=0;i1<X;i1++)
-            {
-            s1[j1][i1]=s2[j1][i1];s2[j1][i1]=s3[j1][i1];
-            sx13[j1][i1]=sx12[j1][i1],sx12[j1][i1]=sx11[j1][i1];
-            sx33[j1][i1]=sx32[j1][i1],sx32[j1][i1]=sx31[j1][i1];
-            sx24[j1][i1]=sx23[j1][i1],sx23[j1][i1]=sx22[j1][i1];
-            sx22[j1][i1]=sx21[j1][i1];
-            }
+        s1[j1][i1]=s2[j1][i1];s2[j1][i1]=s3[j1][i1];
+        sx13[j1][i1]=sx12[j1][i1],sx12[j1][i1]=sx11[j1][i1];
+        sx33[j1][i1]=sx32[j1][i1],sx32[j1][i1]=sx31[j1][i1];
+        sx24[j1][i1]=sx23[j1][i1],sx23[j1][i1]=sx22[j1][i1];
+        sx22[j1][i1]=sx21[j1][i1];
         }
+    }
+}
+
+void wave2Dtest(int Z, int X, int T)
+{
+    wave2D A(Z,X);
+    ofstream outf1;
+    outf1.open("testmovie.bin");
+
+    int k;
+    float f;
+    for(k=0;k<T;k++)
+    {
+        f=wavelet01(k,A.dt);
+        A.s2[Z/2][X/2]=A.s2[Z/2][X/2]+f;
+        A.timeslicecal();
+        A.timeslicecopy();
+        datawrite(A.s3, Z, X, outf1);
+    }
+    outf1.close();
+    cout<<"Have output test movie."<<endl;
 }
 
 ///////////////////////////////////////////////////////////
@@ -519,6 +571,22 @@ void matcopy(T1 **mat1, T2 n, int nz, int nx)
 }
 
 template <typename T1, typename T2>
+void matcopy(T1 ***mat1, T2 n, int n1, int n2, int n3)
+{
+    int i,j,k;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            for(k=0;k<n3;k++)
+            {
+                mat1[i][j][k]=n;
+            }
+        }
+    }
+}
+
+template <typename T1, typename T2>
 void matadd(T1 **mat1, T2 **mat2, int nz, int nx)
 {
     
@@ -585,6 +653,49 @@ void matmul(T1 **mat1, T2 **mat2, int nz, int nx)
         }
 }
 
+template<typename T1>
+void matprint(T1 *mat1, int n)
+{
+    int i;
+    for(i=0;i<n;i++)
+    {
+        cout<<" ("<<mat1[i]<<") ";
+    }
+    cout<<endl;
+}
+
+template<typename T1>
+void matprint(T1 **mat1, int nz, int nx)
+{
+    int i,j;
+    for(i=0;i<nz;i++)
+        {
+        for(j=0;j<nx;j++)
+            {
+            cout<<" ("<<mat1[i][j]<<") ";
+            }
+        cout<<endl;
+        }
+}
+
+template<typename T1>
+void matprint(T1 ***mat1, int n1, int n2, int n3)
+{
+    int i,j,k;
+    for(k=0;k<n1;k++)
+    {
+        for(i=0;i<n2;i++)
+            {
+            for(j=0;j<n3;j++)
+                {
+                cout<<" ("<<mat1[k][i][j]<<") ";
+                }
+            cout<<endl;
+            }
+        cout<<endl;
+    }
+}
+
 float wavelet02(int k, float DT, float hz, int delay)
 {
     float pi(3.1415926);
@@ -610,10 +721,71 @@ float wavelet01(int k, float DT, float hz, int delay)
 	return f;
 }
 
+//数组定义原则：越有可能作为整体被调用的越往后；
+//因为对于如三维指针***p而言，*p和**p都是地址数组。
+float** newfmat(int x1, int x2)
+{
+    float **p,**p2;
+    int j;
+    p=new float*[x1];      
+    for(j=0;j<x1;j++)  
+        {  
+        p[j]=new float[x2];
+        }
+    p2=p;
+    p=NULL;
+    return p2;
+}
 
+float*** newfmat(int x1, int x2, int x3)
+{
+    float ***p,***p2;
+    int i,j;
+    p=new float**[x1];      
+    for(j=0;j<x1;j++)  
+        {  
+        p[j]=new float*[x2];
+        for(i=0;i<x2;i++)
+            {
+                p[j][i]=new float[x3];
+            }
+        }
+    p2=p;
+    p=NULL;
+    return p2;
+}
 
+//可以释放内存，但无法将原语句块中的指针空置？
+template<typename T1>
+void matdelete(T1 **mat, int x1)
+{
+    int i;
+    for(i=0;i<x1;i++)
+    {
+        delete []mat[i];
+        mat[i]=NULL;
+    }
+    delete []mat;
+    mat=NULL;
+}
 
-
+template<typename T1>
+void matdelete(T1 ***mat, int x1, int x2)
+{
+    int i,j;
+    for(i=0;i<x1;i++)
+    {
+        for(j=0;j<x2;j++)
+        {
+            delete []mat[i][j];
+            mat[i][j]=NULL;
+        }
+        delete []mat[i];
+        mat[i]=NULL;
+    }    
+    delete []mat;
+    mat=NULL;
+}
 
 
 

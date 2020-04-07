@@ -12,6 +12,7 @@ xj_c++_armadillo.h
 #include <iomanip>
 #include <math.h>
 #include <armadillo>
+
 using namespace std;
 using namespace arma;
 
