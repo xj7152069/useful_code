@@ -1,9 +1,11 @@
 /*********(version 1.0)***********/
 /*
-xj_c++_armadillo.h
+my_armadillo.h
     c++ head file: some useful function
 */
 /********************************/
+#ifndef MY_ARMADILLO_H_H
+#define MY_ARMADILLO_H_H
 
 #include <iostream>
 #include <stdio.h>
@@ -175,5 +177,5 @@ void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf)
 
 
 
-
+#endif
 

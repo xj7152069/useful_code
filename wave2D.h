@@ -1,9 +1,11 @@
 /*********(version 1.0)***********/
 /*
-xj_c++.h
-    c++ head file: some useful function
+wave2D.h
+    c++ head file: 
 */
 /********************************/
+#ifndef WAVE2D_H_H
+#define WAVE2D_H_H
 
 #include <iostream>
 #include <stdio.h>
@@ -108,17 +110,15 @@ public:
     void timeslicecal();
     void timeslicecopy();
     void cleardata();
-
 };
 
 ///////////////////////////////////////////////////////
-
 wave2D::wave2D()
 {
     nx=0;
     ny=0;
     dx=5.0;dy=5.0;dt=0.0005;PML_wide=25;suface=1;R=10000000;
-    cout<<"Warning: Creat a Empty object-wave_modeling_2D"<<endl;
+    cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
 wave2D::wave2D(int z, int x)
@@ -181,7 +181,6 @@ wave2D::wave2D(int z, int x)
             p2[j][i]=3000;
             }
         }
-
 }
 
 wave2D::~wave2D()
@@ -233,7 +232,7 @@ wave2D::~wave2D()
     sx31=NULL;
     sx32=NULL;
     sx33=NULL;
-    cout<<"Delete a object-wave_modeling_2D"<<endl;
+    cout<<"Delete an object-wave_modeling_2D"<<endl;
 }
 
 template<typename T1>
@@ -788,4 +787,7 @@ void matdelete(T1 ***mat, int x1, int x2)
 }
 
 
+
+
+#endif
 
