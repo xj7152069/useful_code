@@ -19,6 +19,7 @@ using namespace std;
 using namespace arma;
 
 #include "wave2D.h"
+#include "my_armadillo.h"
 extern float** newfmat(int x1, int x2);
 extern float*** newfmat(int x1, int x2, int x3);
 template<typename T1> extern void matdelete(T1 **mat, int x1);
@@ -27,11 +28,30 @@ template <typename T1, typename T2> extern void matcopy(T1 **mat1, T2 n, int nz,
 template <typename T1, typename T2> extern void matcopy(T1 ***mat1, T2 n, int n1, int n2, int n3);
 template <typename T1, typename T2> extern void matcopy(T1 **mat1, T2 **mat2, int nz, int nx);
 
+template<typename T1, typename T2>
+float anglecal_z1_x0(T1 z, T2 x)
+{
+    float z0(1.0), x0(0.0), pi(3.1415926), xs, theta, c, l;
+    xs=180/pi;
+    l=sqrt(z*z+x*x);
+    if(l>0.000000001)
+    {
+        c=(z0*z+x0*x)/l;
+        theta=acos(c)*xs;
+    }
+    else
+    {
+        theta=0.0;
+    }
+    return theta;
+}
+
+////////////////////////////////////////////////////////
 class angle_gather2D
 {
 public:
     float ***DA, ***FA, da, fa;
-    float **svx, **svz, **rvx, **rvz, **ps, **pr, **cig;
+    float **ps, **pr;
     int x1, x2, x3;
 
     angle_gather2D()
@@ -40,51 +60,81 @@ public:
         da=0;fa=0;
         cout<<"Warning: Create an Empty object!"<<endl;
     }
-    angle_gather2D(int ncig, int nz, int na)
+    angle_gather2D(int na, int nz, int nx)
     {
-        x1=ncig;x2=nz;x3=na;
-        svx=newfmat(x2,x3);
-        svz=newfmat(x2,x3);
-        rvx=newfmat(x2,x3);
-        rvz=newfmat(x2,x3);
+        x1=na;x2=nz;x3=nx;
         ps=newfmat(x2,x3);
         pr=newfmat(x2,x3);
-        cig=newfmat(x2,x3);
         da=0;fa=0;
     }
     ~angle_gather2D()
     {
-        matdelete(svx,x2);
-        matdelete(svz,x2);
-        matdelete(rvx,x2);
-        matdelete(rvz,x2);
         matdelete(ps,x2);
         matdelete(pr,x2);
-        matdelete(cig,x2);
+        /*
         if(da!=0)
         {
-            matdelete(DA,x1,x2);
+            matdelete(DA,x3,x2);
         }
         if(fa!=0)
         {
-            matdelete(FA,x1,x2);
+            matdelete(FA,x3,x2);
+        }
+        */
+    }
+
+    template<typename T1, typename T2>
+    void theatcal_S(T1 **svz, T2 **svx)
+    {
+        int i,j;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                ps[i][j]=anglecal_z1_x0(svz[i][j],svx[i][j]);
+            }
         }
     }
 
-    void FlareAangleSetRoom()
+    template<typename T1, typename T2>
+    void theatcal_R(T1 **rvz, T2 **rvx)
     {
-        fa=1;
-        FA=newfmat(x1,x2,x3);
-        matcopy(FA,0.0,x1,x2,x3);
+        int i,j;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                pr[i][j]=anglecal_z1_x0(rvz[i][j],rvx[i][j]);
+            }
+        }
     }
-    void FlareAangleGetCig(int site, int kcig)
+
+    template<typename T1, typename T2>
+    void addFA(T1 **swave, T2 **rwave)
     {
-        matcopy(cig,0.0,x2,x3);
-        
+        if(fa==0)
+        {
+            FA=newfmat(x3,x2,x1);
+            fa=1;
+            matcopy(FA, 0.0, x3, x2, x1);
+        }
+        int i,j,k,ang;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                ang=int(abs(ps[i][j]-pr[i][j]));
+                if(ang<x1)
+                {
+                    FA[j][i][ang]+=swave[i][j]*rwave[i][j];
+                }
+            }
+        }
 
     }
 
 };
+//////////////////////////////////////////////////
 
 class OF_2D
 {

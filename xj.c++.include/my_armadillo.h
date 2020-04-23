@@ -14,30 +14,19 @@ my_armadillo.h
 #include <iomanip>
 #include <math.h>
 #include <armadillo>
-
 using namespace std;
 using namespace arma;
 
-template <typename T2>
-void matcopy(T2 **mat2, fmat &data_mat, int nz, int nx);
-
-template <typename TT>
-fmat matcopy(TT **mat, int nz, int nx);
-
+///////////////////////////////////////////////////////////////////////////////////
+template <typename T2> void matcopy(T2 **mat2, fmat &data_mat, int nz, int nx);
+template <typename TT> fmat matcopy(TT **mat, int nz, int nx);
 fmat matmul(fmat mat1, fmat mat2, int nz, int nx);
-
-template <typename T1>
-fmat matmul(fmat mat1, T1 n, int nz, int nx);
-
+template <typename T1> fmat matmul(fmat mat1, T1 n, int nz, int nx);
 void dataread(fmat & data_mat, int nz, int nx, const char * filename);
-
 void dataread(fmat & data_mat, int nz, int nx, ifstream &inf);
-
 void datawrite(fmat & data_mat, int nz, int nx, char const *filename);
-
 void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf);
-
-//////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
 
 template <typename T2>
 void matcopy(T2 **mat2, fmat &data_mat, int nz, int nx)
