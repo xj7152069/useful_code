@@ -15,37 +15,13 @@ wave2D.h
 #include <math.h>
 using namespace std;
 
+#include "mat.h"
 /////////////////////////////////////////////////////////////////////////////////////////////
-//建议还是在指针数组所在的语句块中释放内存;
-//若要调用以下函数释放空间，应在原语句块中再次将指针空置。
-template<typename T1> void matdelete(T1 **mat, int x1);
-template<typename T1> void matdelete(T1 ***mat, int x1, int x2);
-//数组定义原则：越有可能作为整体被调用的越往后；
-//因为对于如三维指针***p而言，*p和**p都是地址数组。
-float** newfmat(int x1, int x2);
-float*** newfmat(int x1, int x2, int x3);
 void wave2Dtest(int Z, int X);
-template <typename T1> void matprint(T1 *mat1, int n);
-template <typename T1> void matprint(T1 **mat1, int nz, int nx);
-template <typename T1> void matprint(T1 ***mat1, int n1, int n2, int n3);
-template <typename T1> char* numtostr(T1 n, int s);
 float wavelet01(int k, float DT, float hz=35.0, int delay=100);
 template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=35.0, int delay=100);
 float wavelet02(int k, float DT, float hz=35.0, int delay=100);
 template <typename T1> void wavelet02(T1 *w, int N, float DT, float hz=35.0, int delay=100);
-template <typename T1, typename T2> void matdec(T1 **mat1, T2 **mat2, int nz, int nx);
-template <typename T1, typename T2> void matadd(T1 **mat1, T2 n, int nz, int nx);
-template <typename T1, typename T2> void matadd(T1 **mat1, T2 **mat2, int nz, int nx);
-template <typename T1, typename T2> void matcopy(T1 **mat1, T2 n, int nz, int nx);
-template <typename T1, typename T2> void matcopy(T1 ***mat1, T2 n, int n1, int n2, int n3);
-template <typename T1, typename T2> void matcopy(T1 **mat1, T2 **mat2, int nz, int nx);
-template <typename T1, typename T2> void matmul(T1 **mat1, T2 n, int nz, int nx);
-template <typename T1, typename T2> void matmul(T1 **mat1, T2 **mat2, int nz, int nx);
-template <typename TT> void dataread(TT **data_mat, int nz, int nx, const char * filename);
-template <typename TT> void dataread(TT **data_mat, int nz, int nx, ifstream &inf);
-template <typename TT> void datawrite(TT **data_mat, int nz, int nx, const char *filename);
-template <typename TT> void datawrite(TT **data_mat, int nz, int nx, ofstream &outf);
-void matsmooth(float **mat1, float **mat2, int x1, int x2);
 template <typename T1> float* hilbert1D(T1 *s, int n, float dt);
 
 class wave2D
@@ -66,8 +42,7 @@ public:
     wave2D(int x, int y);
     ~wave2D();
 
-    template<typename T1>
-    void setvelocity(T1 v=3000);
+    void setvelocity(float v=3000.0);
     void timeslicecal();
     void timeslicecopy();
     void cleardata();
@@ -86,7 +61,7 @@ wave2D::wave2D(int z, int x)
 {
     nx=x;
     ny=z;
-    dx=5.0;dy=5.0;dt=0.0005;PML_wide=20;suface=1;R=100000;
+    dx=5.0;dy=5.0;dt=0.0005;PML_wide=25;suface=1;R=10000000;
     int i,j;
     s1=new float*[ny];  
     s2=new float*[ny];   
@@ -196,8 +171,7 @@ wave2D::~wave2D()
     cout<<"Delete an object-wave_modeling_2D"<<endl;
 }
 
-template<typename T1>
-void wave2D::setvelocity(T1 v)
+void wave2D::setvelocity(float v)
 {
     int i,j;
     for(i=0;i<ny;i++)
@@ -211,20 +185,18 @@ void wave2D::setvelocity(T1 v)
 
 void wave2D::cleardata()
 {
-    this->setvelocity(0.0);
-    matcopy(s1,0.0,ny,nx);
-    matcopy(s2,0.0,ny,nx);
-    matcopy(s3,0.0,ny,nx);
-    matcopy(sx11,0.0,ny,nx);
-    matcopy(sx12,0.0,ny,nx);
-    matcopy(sx13,0.0,ny,nx);
-    matcopy(sx21,0.0,ny,nx);
-    matcopy(sx22,0.0,ny,nx);
-    matcopy(sx23,0.0,ny,nx);
-    matcopy(sx24,0.0,ny,nx);
-    matcopy(sx31,0.0,ny,nx);
-    matcopy(sx32,0.0,ny,nx);
-    matcopy(sx33,0.0,ny,nx);
+    //this->setvelocity(0.0);
+    int i,j;
+    for(j=0;j<ny;j++)
+        {
+        for(i=0;i<nx;i++)
+            {
+            s1[j][i]=0.0;s2[j][i]=0.0;s3[j][i]=0.0;
+            sx11[j][i]=0.0;sx12[j][i]=0.0;sx13[j][i]=0.0;
+            sx21[j][i]=0.0;sx22[j][i]=0.0;sx23[j][i]=0.0;sx24[j][i]=0.0;
+            sx31[j][i]=0.0;sx32[j][i]=0.0;sx33[j][i]=0.0;
+            }
+        }
     cout<<"All Matrix data has been clear!"<<endl;
 }
 
@@ -412,250 +384,6 @@ void wave2Dtest(int Z, int X, int T)
 
 ///////////////////////////////////////////////////////////
 
-template<typename T1>
-char* numtostr(T1 n, int s)
-{
-    static char *str=NULL;
-    if(s>99)
-    {
-        cout<<"too long for string!"<<endl;
-    }
-    else
-    {
-        double num;
-        num=n;
-        str=new char[199];
-        sprintf(str, "%.99f", num);
-        str[s]='\0';
-    }
-    return str;
-}
-
-template <typename TT>
-void dataread(TT **data_mat, int nz, int nx, const char * filename)
-{
-   char str[99];
-   strcpy(str, filename);
-
-   int i,j;
-   TT read_data;
-   ifstream infile; 
-
-   infile.open(str,ios::binary);
-   if(!infile) cout<<"file open error: "<<str<<endl;
-      for(j=0;j<nx;j++)
-         {for(i=0;i<nz;i++)
-            {
-            infile.read((char *)&read_data, sizeof(read_data));  
-            data_mat[i][j]=read_data;
-            }
-         }
-      infile.close();
-}
-
-template <typename TT>
-void dataread(TT **data_mat, int nz, int nx, ifstream &inf)
-{
-    int i,j;
-    TT read_data;
-
-    for(j=0;j<nx;j++)
-        {for(i=0;i<nz;i++)
-            {
-            inf.read((char *)&read_data, sizeof(read_data));  
-            data_mat[i][j]=read_data;
-            }
-        }
-}
-
-template <typename TT>
-void datawrite(TT **data_mat, int nz, int nx, char const *filename )
-{
-    char str[99];
-    strcpy(str, filename);
-
-    int i,j;
-    TT outdata;
-
-    ofstream outf;
-    outf.open(str);
-    for(j=0;j<nx;j++)
-      {for(i=0;i<nz;i++)
-         {
-         outdata=data_mat[i][j];
-         outf.write((char*)&outdata,sizeof(outdata));
-         }
-      }
-    outf.close(); 
-}
-
-template <typename TT>
-void datawrite(TT **data_mat, int nz, int nx, ofstream &outf)
-{
-    int i,j;
-    TT outdata;
-
-    for(j=0;j<nx;j++)
-      {for(i=0;i<nz;i++)
-         {
-         outdata=data_mat[i][j];
-         outf.write((char*)&outdata,sizeof(outdata));
-         }
-      }
-}
-
-template <typename T1, typename T2>
-void matcopy(T1 **mat1, T2 **mat2, int nz, int nx)
-{
-    int i,j;
-    for(i=0;i<nz;i++)
-        {
-        for(j=0;j<nx;j++)
-            {
-            mat1[i][j]=mat2[i][j];
-            }
-        }
-}
-
-template <typename T1, typename T2>
-void matcopy(T1 **mat1, T2 n, int nz, int nx)
-{
-    int i,j;
-    for(i=0;i<nz;i++)
-        {
-        for(j=0;j<nx;j++)
-            {
-            mat1[i][j]=n;
-            }
-        }
-}
-
-template <typename T1, typename T2>
-void matcopy(T1 ***mat1, T2 n, int n1, int n2, int n3)
-{
-    int i,j,k;
-    for(i=0;i<n1;i++)
-    {
-        for(j=0;j<n2;j++)
-        {
-            for(k=0;k<n3;k++)
-            {
-                mat1[i][j][k]=n;
-            }
-        }
-    }
-}
-
-template <typename T1, typename T2>
-void matadd(T1 **mat1, T2 **mat2, int nz, int nx)
-{
-    
-    int i,j;
-    for(i=0;i<nz;i++)
-        {
-        for(j=0;j<nx;j++)
-            {
-            mat1[i][j]=mat1[i][j]+mat2[i][j];
-            }
-        }
-}
-
-template <typename T1, typename T2>
-void matadd(T1 **mat1, T2 n, int nz, int nx)
-{
-    
-    int i,j;
-    for(i=0;i<nz;i++)
-        {
-        for(j=0;j<nx;j++)
-            {
-            mat1[i][j]=mat1[i][j]+n;
-            }
-        }
-}
-
-template <typename T1, typename T2>
-void matdec(T1 **mat1, T2 **mat2, int nz, int nx)
-{ 
-    int i,j;
-    for(i=0;i<nz;i++)
-        {
-        for(j=0;j<nx;j++)
-            {
-            mat1[i][j]=mat1[i][j]-mat2[i][j];
-            }
-        }
-}
-
-template <typename T1, typename T2>
-void matmul(T1 **mat1, T2 n, int nz, int nx)
-{
-    int i,j;
-    for(i=0;i<nz;i++)
-        {
-        for(j=0;j<nx;j++)
-            {
-            mat1[i][j]=mat1[i][j]*n;
-            }
-        }
-}
-
-template <typename T1, typename T2>
-void matmul(T1 **mat1, T2 **mat2, int nz, int nx)
-{
-    int i,j;
-    for(i=0;i<nz;i++)
-        {
-        for(j=0;j<nx;j++)
-            {
-            mat1[i][j]=mat1[i][j]*mat2[i][j];
-            }
-        }
-}
-
-template<typename T1>
-void matprint(T1 *mat1, int n)
-{
-    int i;
-    for(i=0;i<n;i++)
-    {
-        cout<<" ("<<mat1[i]<<") ";
-    }
-    cout<<endl;
-}
-
-template<typename T1>
-void matprint(T1 **mat1, int nz, int nx)
-{
-    int i,j;
-    for(i=0;i<nz;i++)
-        {
-        for(j=0;j<nx;j++)
-            {
-            cout<<" ("<<mat1[i][j]<<") ";
-            }
-        cout<<endl;
-        }
-}
-
-template<typename T1>
-void matprint(T1 ***mat1, int n1, int n2, int n3)
-{
-    int i,j,k;
-    for(k=0;k<n1;k++)
-    {
-        for(i=0;i<n2;i++)
-            {
-            for(j=0;j<n3;j++)
-                {
-                cout<<" ("<<mat1[k][i][j]<<") ";
-                }
-            cout<<endl;
-            }
-        cout<<endl;
-    }
-}
-
 float wavelet02(int k, float DT, float hz, int delay)
 {
     float pi(3.1415926);
@@ -711,86 +439,6 @@ void wavelet01(T1 *w, int N, float DT, float hz, int delay)
         f=exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
         *(1.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
         w[k]=f;
-    }
-}
-
-//数组定义原则：越有可能作为整体被调用的越往后；
-//因为对于如三维指针***p而言，*p和**p都是地址数组。
-float** newfmat(int x1, int x2)
-{
-    float **p,**p2;
-    int j;
-    p=new float*[x1];      
-    for(j=0;j<x1;j++)  
-        {  
-        p[j]=new float[x2];
-        }
-    p2=p;
-    p=NULL;
-    return p2;
-}
-
-float*** newfmat(int x1, int x2, int x3)
-{
-    float ***p,***p2;
-    int i,j;
-    p=new float**[x1];      
-    for(j=0;j<x1;j++)  
-        {  
-        p[j]=new float*[x2];
-        for(i=0;i<x2;i++)
-            {
-                p[j][i]=new float[x3];
-            }
-        }
-    p2=p;
-    p=NULL;
-    return p2;
-}
-
-//可以释放内存，但无法将原语句块中的指针空置？
-template<typename T1>
-void matdelete(T1 **mat, int x1)
-{
-    int i;
-    for(i=0;i<x1;i++)
-    {
-        delete []mat[i];
-        mat[i]=NULL;
-    }
-    delete []mat;
-    mat=NULL;
-}
-
-template<typename T1>
-void matdelete(T1 ***mat, int x1, int x2)
-{
-    int i,j;
-    for(i=0;i<x1;i++)
-    {
-        for(j=0;j<x2;j++)
-        {
-            delete []mat[i][j];
-            mat[i][j]=NULL;
-        }
-        delete []mat[i];
-        mat[i]=NULL;
-    }    
-    delete []mat;
-    mat=NULL;
-}
-
-void matsmooth(float **mat1, float **mat2, int x1, int x2)
-{
-    int i,j;
-    for(i=1;i<x1-1;i++)
-    {
-        for(j=1;j<x2-1;j++)
-        {
-            mat1[i][j]=(mat2[i-1][j-1]*1.0/12+mat2[i-1][j]*1.0/6+mat2[i-1][j+1]*1.0/12\
-                    +mat2[i][j-1]*1.0/6+mat2[i][j+1]*1.0/6+mat2[i+1][j-1]*1.0/12\
-                    +mat2[i+1][j]*1.0/6+mat2[i+1][j+1]*1.0/12+mat2[i][j]*1.0/3);
-        }
     }
 }
 

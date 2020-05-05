@@ -29,15 +29,17 @@ template <typename T1, typename T2> extern void matcopy(T1 ***mat1, T2 n, int n1
 template <typename T1, typename T2> extern void matcopy(T1 **mat1, T2 **mat2, int nz, int nx);
 
 template<typename T1, typename T2>
-float anglecal_z1_x0(T1 z, T2 x)
+float anglecal_z1_x0(T1 z, T2 x, float err=0.000000001)
 {
     float z0(1.0), x0(0.0), pi(3.1415926), xs, theta, c, l;
     xs=180/pi;
     l=sqrt(z*z+x*x);
-    if(l>0.000000001)
+    if(l>err)
     {
         c=(z0*z+x0*x)/l;
         theta=acos(c)*xs;
+        if(x<0.0)
+            {theta=-theta;}
     }
     else
     {
@@ -50,7 +52,7 @@ float anglecal_z1_x0(T1 z, T2 x)
 class angle_gather2D
 {
 public:
-    float ***DA, ***FA, da, fa;
+    float ***DA, ***FA, da, fa, a_beg, a_gep;
     float **ps, **pr;
     int x1, x2, x3;
 
@@ -60,12 +62,14 @@ public:
         da=0;fa=0;
         cout<<"Warning: Create an Empty object!"<<endl;
     }
-    angle_gather2D(int na, int nz, int nx)
+    angle_gather2D(int na, int nz, int nx, float A_BEG=-180, float A_GEP=1.0)
     {
         x1=na;x2=nz;x3=nx;
         ps=newfmat(x2,x3);
         pr=newfmat(x2,x3);
         da=0;fa=0;
+        a_beg=A_BEG;
+        a_gep=A_GEP;
     }
     ~angle_gather2D()
     {
@@ -123,10 +127,33 @@ public:
         {
             for(j=0;j<x3;j++)
             {
-                ang=int(abs(ps[i][j]-pr[i][j]));
-                if(ang<x1)
+                ang=int((ps[i][j]-pr[i][j]-a_beg)/a_gep);
+                if(ang<x1 && ang>0)
                 {
                     FA[j][i][ang]+=swave[i][j]*rwave[i][j];
+                }
+            }
+        }
+    }
+
+    template<typename T1, typename T2>
+    void addDA(T1 **swave, T2 **rwave)
+    {
+        if(da==0)
+        {
+            DA=newfmat(x3,x2,x1);
+            da=1;
+            matcopy(DA, 0.0, x3, x2, x1);
+        }
+        int i,j,k,ang;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                ang=int(((ps[i][j]+pr[i][j])/2.0-a_beg)/a_gep);
+                if(ang<x1 && ang>0)
+                {
+                    DA[j][i][ang]+=swave[i][j]*rwave[i][j];
                 }
             }
         }

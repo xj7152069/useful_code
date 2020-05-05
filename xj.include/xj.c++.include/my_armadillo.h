@@ -22,8 +22,8 @@ template <typename T2> void matcopy(T2 **mat2, fmat &data_mat, int nz, int nx);
 template <typename TT> fmat matcopy(TT **mat, int nz, int nx);
 fmat matmul(fmat mat1, fmat mat2, int nz, int nx);
 template <typename T1> fmat matmul(fmat mat1, T1 n, int nz, int nx);
-void dataread(fmat & data_mat, int nz, int nx, const char * filename);
-void dataread(fmat & data_mat, int nz, int nx, ifstream &inf);
+fmat dataread(int nz, int nx, const char * filename);
+fmat dataread(int nz, int nx, ifstream &inf);
 void datawrite(fmat & data_mat, int nz, int nx, char const *filename);
 void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf);
 ///////////////////////////////////////////////////////////////////////////////////
@@ -92,10 +92,11 @@ fmat matmul(fmat mat1, T1 n, int nz, int nx)
     return a;
 }
 
-void dataread(fmat & data_mat, int nz, int nx, const char * filename)
+fmat dataread(int nz, int nx, const char * filename)
 {
    char str[99];
    strcpy(str, filename);
+   fmat data_mat(nz,nx);
 
    int i,j;
    float read_data;
@@ -110,13 +111,15 @@ void dataread(fmat & data_mat, int nz, int nx, const char * filename)
             data_mat(i,j)=read_data;
             }
          }
-      infile.close();
+    infile.close();
+    return data_mat;
 }
 
-void dataread(fmat & data_mat, int nz, int nx, ifstream &inf)
+fmat dataread(int nz, int nx, ifstream &inf)
 {
     int i,j;
     float read_data;
+    fmat data_mat(nz,nx);
 
     for(j=0;j<nx;j++)
         {for(i=0;i<nz;i++)
@@ -125,23 +128,21 @@ void dataread(fmat & data_mat, int nz, int nx, ifstream &inf)
             data_mat(i,j)=read_data;
             }
         }
+    return data_mat;
 }
 
 void datawrite(fmat & data_mat, int nz, int nx, char const *filename)
 {
     char str[99];
     strcpy(str, filename);
-
     int i,j;
-    float outdata(0.0);
-
     ofstream outf;
     outf.open(str);
     for(j=0;j<nx;j++)
       {for(i=0;i<nz;i++)
          {
-         outdata=data_mat(i,j);
-         outf.write((char*)&outdata,sizeof(outdata));
+         //outdata=float(data_mat(i,j));
+         outf.write((char*)&data_mat(i,j),sizeof(float));
          }
       }
     outf.close(); 
@@ -150,13 +151,10 @@ void datawrite(fmat & data_mat, int nz, int nx, char const *filename)
 void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf)
 {
     int i,j;
-    float outdata(0.0);
-
     for(j=0;j<nx;j++)
       {for(i=0;i<nz;i++)
          {
-         outdata=data_mat(i,j);
-         outf.write((char*)&outdata,sizeof(outdata));
+         outf.write((char*)&data_mat(i,j),sizeof(float));
          }
       }
 }
