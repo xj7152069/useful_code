@@ -23,6 +23,7 @@ template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=35.0, int
 float wavelet02(int k, float DT, float hz=35.0, int delay=100);
 template <typename T1> void wavelet02(T1 *w, int N, float DT, float hz=35.0, int delay=100);
 template <typename T1> float* hilbert1D(T1 *s, int n, float dt);
+float Blackman(float n, float N);
 
 class wave2D
 {
@@ -495,6 +496,13 @@ float* hilbert1D(T1 *s, int n, float dt)
         }
     }
     return sh2;
+}
+
+float Blackman(float n, float N)
+{
+    float xs, pi(3.1415926);
+    xs=0.42-0.5*cos(2*pi*n/N/2)+0.08*cos(4*pi*n/N/2);
+    return xs;
 }
 
 #endif

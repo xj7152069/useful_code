@@ -18,8 +18,10 @@
 using namespace std;
 using namespace arma;
 
+#include "mat.h"
 #include "wave2D.h"
 #include "my_armadillo.h"
+template<typename T1, typename T2> float anglecal_z1_x0(T1 z, T2 x, float err=0.000000001);
 extern float** newfmat(int x1, int x2);
 extern float*** newfmat(int x1, int x2, int x3);
 template<typename T1> extern void matdelete(T1 **mat, int x1);
@@ -27,9 +29,14 @@ template<typename T1> extern void matdelete(T1 ***mat, int x1, int x2);
 template <typename T1, typename T2> extern void matcopy(T1 **mat1, T2 n, int nz, int nx);
 template <typename T1, typename T2> extern void matcopy(T1 ***mat1, T2 n, int n1, int n2, int n3);
 template <typename T1, typename T2> extern void matcopy(T1 **mat1, T2 **mat2, int nz, int nx);
+fmat windowsZ(int Z, int X, float thetaN);
+void fft2dwindows(float **ang, float **win, int x1, int x2, float theta, float thetaN);
+fmat fft2dwintransform(float **win, int Z, int X);
+float angletransform(float a);
+void getangle1(float **angle1, int Z, int X);
 
 template<typename T1, typename T2>
-float anglecal_z1_x0(T1 z, T2 x, float err=0.000000001)
+float anglecal_z1_x0(T1 z, T2 x, float err)
 {
     float z0(1.0), x0(0.0), pi(3.1415926), xs, theta, c, l;
     xs=180/pi;
@@ -52,7 +59,7 @@ float anglecal_z1_x0(T1 z, T2 x, float err=0.000000001)
 class angle_gather2D
 {
 public:
-    float ***DA, ***FA, da, fa, a_beg, a_gep;
+    float ***DA, ***FA, ***mutiDA, ***mutiFA, da, fa, a_beg, a_gep;
     float **ps, **pr;
     int x1, x2, x3;
 
@@ -160,9 +167,141 @@ public:
 
     }
 
-};
-//////////////////////////////////////////////////
+    void createmutiangle()
+    {
+        //mutipr=newfmat(x1,x2,x3);
+        //mutips=newfmat(x1,x2,x3);
+        //matcopy(mutips,0.0,x1,x2,x3);
+        //matcopy(mutipr,0.0,x1,x2,x3);
+        mutiDA=newfmat(x3,x2,x1);
+        matcopy(mutiDA, 0.0, x3, x2, x1);
+        mutiFA=newfmat(x3,x2,x1);
+        matcopy(mutiFA, 0.0, x3, x2, x1);
+    }
 
+};
+
+//////////////////////////////////////////////////
+/*
+class fft2D_mutianglegather
+{
+public:
+    float ***DA, ***FA, da, fa, a_beg, a_gep;
+    float **ps, **wr, **wrfft, **wrifft, **angle1, **angle2, ***angle3;
+    int x1, x2, x3, x2fft, x3fft;
+
+    angle_gather2D()
+    {
+        x1=0;x2=0;x3=0;
+        da=0;fa=0;
+        cout<<"Warning: Create an Empty object!"<<endl;
+    }
+    angle_gather2D(int na, int nz, int nx, int nzfft, int nxfft, float A_BEG=-180, float A_GEP=1.0)
+    {
+        x1=na;x2=nz;x3=nx;
+        x2fft=nzfft;x3fft=nxfft;
+        ps=fmat(x2,x3);
+        wr=fmat(x2,x3);
+        wrfft=cx_fmat(x2fft,x3fft);
+        wrifft=cx_fmat(x2fft,x3fft);
+        da=0;fa=0;
+        a_beg=A_BEG;
+        a_gep=A_GEP;
+    }
+    ~angle_gather2D()
+    {
+        matdelete(ps,x2);
+        matdelete(pr,x2);
+    }
+
+    template<typename T1, typename T2>
+    void theatcal_S(T1 **svz, T2 **svx)
+    {
+        int i,j;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                ps[i][j]=anglecal_z1_x0(svz[i][j],svx[i][j]);
+            }
+        }
+    }
+
+    template<typename T1, typename T2>
+    void theatcal_R(T1 **rvz, T2 **rvx)
+    {
+        int i,j;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                pr[i][j]=anglecal_z1_x0(rvz[i][j],rvx[i][j]);
+            }
+        }
+    }
+
+    template<typename T1, typename T2>
+    void addFA(T1 **swave, T2 **rwave)
+    {
+        if(fa==0)
+        {
+            FA=newfmat(x3,x2,x1);
+            fa=1;
+            matcopy(FA, 0.0, x3, x2, x1);
+        }
+        int i,j,k,ang;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                ang=int((ps[i][j]-pr[i][j]-a_beg)/a_gep);
+                if(ang<x1 && ang>0)
+                {
+                    FA[j][i][ang]+=swave[i][j]*rwave[i][j];
+                }
+            }
+        }
+    }
+
+    template<typename T1, typename T2>
+    void addDA(T1 **swave, T2 **rwave)
+    {
+        if(da==0)
+        {
+            DA=newfmat(x3,x2,x1);
+            da=1;
+            matcopy(DA, 0.0, x3, x2, x1);
+        }
+        int i,j,k,ang;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                ang=int(((ps[i][j]+pr[i][j])/2.0-a_beg)/a_gep);
+                if(ang<x1 && ang>0)
+                {
+                    DA[j][i][ang]+=swave[i][j]*rwave[i][j];
+                }
+            }
+        }
+
+    }
+
+    void createmutiangle()
+    {
+        //mutipr=newfmat(x1,x2,x3);
+        //mutips=newfmat(x1,x2,x3);
+        //matcopy(mutips,0.0,x1,x2,x3);
+        //matcopy(mutipr,0.0,x1,x2,x3);
+        mutiDA=newfmat(x3,x2,x1);
+        matcopy(mutiDA, 0.0, x3, x2, x1);
+        mutiFA=newfmat(x3,x2,x1);
+        matcopy(mutiFA, 0.0, x3, x2, x1);
+    }
+
+};
+*/
+//////////////////////////////////////////////////
 class OF_2D
 {
 public:
@@ -354,7 +493,137 @@ public:
 
 };
 
+///////////////////////////////////////////////////
+fmat windowsZ(int Z, int X, float thetaN)
+{
+    int i, j;
+    float xs, theta;
+    fmat w(Z,X);
+    w.fill(1.0);
+    thetaN=(thetaN/360.0)*2.0*3.1415926;
+    for(i=0;i<Z;i++)
+    {
+        for(j=0;j<X;j++)
+        {
+            if(i<Z/2 && j<X/2)
+            {
+                theta=abs(atan(float(j)/i));
+                if(theta<=thetaN)
+                {
+                    xs=Blackman(theta,thetaN);
+                    w(i,j)=w(i,j)*xs;
+                }
+            }
+            else if(i<Z/2 && j>=X/2)
+            {
+                theta=abs(atan(float(X-1-j)/i));
+                if(theta<=thetaN)
+                {
+                    xs=Blackman(theta,thetaN);
+                    w(i,j)=w(i,j)*xs;
+                }
+            }
+            else if(i>=Z/2 && j<X/2)
+            {
+                theta=abs(atan(float(j)/(Z-1-i)));
+                if(theta<=thetaN)
+                {
+                    xs=Blackman(theta,thetaN);
+                    w(i,j)=w(i,j)*xs;
+                }
+            }
+            else if(i>=Z/2 && j>=X/2)
+            {
+                theta=abs(atan(float(X-1-j)/(Z-1-i)));
+                if(theta<=thetaN)
+                {
+                    xs=Blackman(theta,thetaN);
+                    w(i,j)=w(i,j)*xs;
+                }
+            }
+        }
+    }
+    return w;
+}
 
+void getangle1(float **angle1, int Z, int X)
+{
+   int z0,x0,i,j;
+   float pz,px;
+   z0=Z/2;x0=X/2;
+   for(i=0;i<Z;i++)
+   {
+      for(j=0;j<X;j++)
+      {
+         pz=i-z0;
+         px=j-x0;
+         angle1[i][j]=anglecal_z1_x0(px,pz);
+      }
+   }
+}
 
+void fft2dwindows(float **ang, float **win, int x1, int x2, float theta, float thetaN)
+{
+   int i,j;
+   float xs,dtheta;
+   for(i=0;i<x1;i++)
+   {
+      for(j=0;j<x2;j++)
+      {
+         dtheta=abs(ang[i][j]-theta);
+         if(dtheta<=thetaN)
+         {
+            dtheta=thetaN-dtheta;
+            xs=Blackman(dtheta,thetaN);
+            win[i][j]=xs;
+         }
+      }
+   }
+
+}
+
+float angletransform(float a)
+{
+   float a2;
+   if(a<=90 && a>=-180)
+   {
+      a2=-a-90.0;
+   }
+   else if(a>90 && a<=180)
+   {
+      a2=-a+270.0;
+   }
+   return a2;
+}
+
+fmat fft2dwintransform(float **win, int Z, int X)
+{
+   int i,j,x0,z0;
+   fmat wintrans(Z,X);
+   z0=Z/2;x0=X/2;
+   for(i=0;i<Z;i++)
+   {
+      for(j=0;j<X;j++)
+      {
+         if(i<z0 && j<x0)
+         {
+            wintrans(i,j)=win[i+z0][j+x0];
+         }
+         if(i<z0 && j>=x0)
+         {
+            wintrans(i,j)=win[i+z0][j-x0];
+         }
+         if(i>=z0 && j<x0)
+         {
+            wintrans(i,j)=win[i-z0][j+x0];
+         }
+         if(i>=z0 && j>=x0)
+         {
+            wintrans(i,j)=win[i-z0][j-x0];
+         }
+      }
+   }
+   return wintrans;
+}
 
 #endif

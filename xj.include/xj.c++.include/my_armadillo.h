@@ -18,6 +18,7 @@ using namespace std;
 using namespace arma;
 
 ///////////////////////////////////////////////////////////////////////////////////
+fmat matdiv(fmat mat1, fmat mat2, int nz, int nx, float min=0.000000000001);
 template <typename T2> void matcopy(T2 **mat2, fmat &data_mat, int nz, int nx);
 template <typename TT> fmat matcopy(TT **mat, int nz, int nx);
 fmat matmul(fmat mat1, fmat mat2, int nz, int nx);
@@ -26,6 +27,7 @@ fmat dataread(int nz, int nx, const char * filename);
 fmat dataread(int nz, int nx, ifstream &inf);
 void datawrite(fmat & data_mat, int nz, int nx, char const *filename);
 void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf);
+fmat fmatsmooth(fmat mat2, int x1, int x2, int k);
 ///////////////////////////////////////////////////////////////////////////////////
 
 template <typename T2>
@@ -69,6 +71,25 @@ fmat matmul(fmat mat1, fmat mat2, int nz, int nx)
         for(j=0;j<nx;j++)
             {
             a(i,j)=mat1(i,j)*mat2(i,j);
+            }
+    }
+
+    return a;
+}
+
+fmat matdiv(fmat mat1, fmat mat2, int nz, int nx, float min)
+{
+    fmat a(nz,nx);
+    int i,j;
+
+    for(i=0;i<nz;i++)
+    {
+        for(j=0;j<nx;j++)
+            {
+            a(i,j)=mat1(i,j);
+            if(abs(mat2(i,j)>=abs(min)))
+                {a(i,j)=mat1(i,j)/mat2(i,j);}
+            
             }
     }
 
@@ -159,7 +180,38 @@ void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf)
       }
 }
 
+fmat fmatsmooth(fmat mat2, int x1, int x2, int k)
+{
+    int i,j,n;
+    fmat mat1(x1,x2);
+    mat1=mat2;
 
+    for(n=0;n<k;n++)
+    {
+        for(i=0;i<x1;i++)
+        {
+            for(j=0;j<x2;j++)
+            {
+                if(i>=1 && i<x1-1 && j>=1 && j<x2-1)
+                {
+                    mat1(i,j)=((mat2(i-1,j-1)*1.0/12+mat2(i-1,j)*1.0/6+mat2(i-1,j+1)*1.0/12\
+                        +mat2(i,j-1)*1.0/6+mat2(i,j+1)*1.0/6+mat2(i+1,j-1)*1.0/12\
+                        +mat2(i+1,j)*1.0/6+mat2(i+1,j+1)*1.0/12+mat2(i,j)*1.0/3))*(3.0/4.0);
+                }
+                if(i==0)
+                {mat1(i,j)=mat1(i+1,j);}
+                if(j==0)
+                {mat1(i,j)=mat1(i,j+1);}
+                if(i==x1-1)
+                {mat1(i,j)=mat1(i-1,j);}
+                if(j==x2-1)
+                {mat1(i,j)=mat1(i,j-1);}
+            }
+        }
+        mat2=mat1;
+    }
+    return mat1;
+}
 
 
 
