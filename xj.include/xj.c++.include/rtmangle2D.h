@@ -34,7 +34,9 @@ void fft2dwindows(float **ang, float **win, int x1, int x2, float theta, float t
 fmat fft2dwintransform(float **win, int Z, int X);
 float angletransform(float a);
 void getangle1(float **angle1, int Z, int X);
+void getangle2(float **angle1, int Z, int X);
 
+////////////////////////////////////////////////////////////////////////////
 template<typename T1, typename T2>
 float anglecal_z1_x0(T1 z, T2 x, float err)
 {
@@ -182,36 +184,54 @@ public:
 };
 
 //////////////////////////////////////////////////
-/*
-class fft2D_mutianglegather
+
+class fft2d_anglegather2d
 {
 public:
-    float ***DA, ***FA, da, fa, a_beg, a_gep;
-    float **ps, **wr, **wrfft, **wrifft, **angle1, **angle2, ***angle3;
-    int x1, x2, x3, x2fft, x3fft;
+    float ***DA, ***FA, da, fa, a_beg, a_gep, a2_err;
+    float ***win, *winangle, **ps, **angle1;
+    int x1, x2, x3, x2fft, x3fft, nwin;
 
-    angle_gather2D()
+    fft2d_anglegather2d()
     {
-        x1=0;x2=0;x3=0;
-        da=0;fa=0;
         cout<<"Warning: Create an Empty object!"<<endl;
     }
-    angle_gather2D(int na, int nz, int nx, int nzfft, int nxfft, float A_BEG=-180, float A_GEP=1.0)
+    fft2d_anglegather2d(int na, int nz, int nx, int nzfft, int nxfft, float A_BEG=-180, float A_GEP=1.0)
     {
         x1=na;x2=nz;x3=nx;
         x2fft=nzfft;x3fft=nxfft;
-        ps=fmat(x2,x3);
-        wr=fmat(x2,x3);
-        wrfft=cx_fmat(x2fft,x3fft);
-        wrifft=cx_fmat(x2fft,x3fft);
-        da=0;fa=0;
         a_beg=A_BEG;
         a_gep=A_GEP;
+        da=0;fa=0;
+        win=newfmat(x1,x2fft,x3fft);
+        //anglewave=newfmat(x1,x2fft,x3fft);
+        ps=newfmat(x2,x3);
     }
-    ~angle_gather2D()
+    ~fft2d_anglegather2d()
     {
-        matdelete(ps,x2);
-        matdelete(pr,x2);
+        cout<<"you delete an object-fft2d_anglegather2d"<<endl;
+    }
+
+    void createanglewin(int Nwin, float A_err ,float *Winangle)
+    {
+        nwin=Nwin;
+        winangle=Winangle;
+        a2_err=A_err;
+        win=newfmat(nwin,x2fft,x3fft);
+        angle1=newfmat(x2fft,x3fft);
+        getangle2(angle1,x2fft,x3fft);
+        float a2;
+        int k;
+        ofstream outf;
+        outf.open("win.bin");
+        for(k=0;k<nwin;k++)
+        {
+            matcopy(win[k],0.0,x2fft,x3fft);
+            //a2=angletransform(winangle[k]);
+            fft2dwindows(angle1,win[k],x2fft,x3fft,winangle[k],a2_err);
+            datawrite(win[k],x2fft,x3fft,outf);
+        }
+        outf.close();
     }
 
     template<typename T1, typename T2>
@@ -227,21 +247,8 @@ public:
         }
     }
 
-    template<typename T1, typename T2>
-    void theatcal_R(T1 **rvz, T2 **rvx)
-    {
-        int i,j;
-        for(i=0;i<x2;i++)
-        {
-            for(j=0;j<x3;j++)
-            {
-                pr[i][j]=anglecal_z1_x0(rvz[i][j],rvx[i][j]);
-            }
-        }
-    }
-
-    template<typename T1, typename T2>
-    void addFA(T1 **swave, T2 **rwave)
+    template<typename T1>
+    void addFA_DA(T1 **swave, cx_fmat rwave)  //S-wave:pyt ; R-wave:fft2d
     {
         if(fa==0)
         {
@@ -249,23 +256,6 @@ public:
             fa=1;
             matcopy(FA, 0.0, x3, x2, x1);
         }
-        int i,j,k,ang;
-        for(i=0;i<x2;i++)
-        {
-            for(j=0;j<x3;j++)
-            {
-                ang=int((ps[i][j]-pr[i][j]-a_beg)/a_gep);
-                if(ang<x1 && ang>0)
-                {
-                    FA[j][i][ang]+=swave[i][j]*rwave[i][j];
-                }
-            }
-        }
-    }
-
-    template<typename T1, typename T2>
-    void addDA(T1 **swave, T2 **rwave)
-    {
         if(da==0)
         {
             DA=newfmat(x3,x2,x1);
@@ -273,40 +263,51 @@ public:
             matcopy(DA, 0.0, x3, x2, x1);
         }
         int i,j,k,ang;
-        for(i=0;i<x2;i++)
-        {
-            for(j=0;j<x3;j++)
+        cx_fmat wfft(x2fft,x3fft),wfftwin(x2fft,x3fft),wifft(x2fft,x3fft);
+        fmat copyreal(x2fft,x3fft),copyimag(x2fft,x3fft),wintrans(x2fft,x3fft),copy(x2fft,x3fft);
+        wfft=fft2(rwave,x2fft,x3fft);
+        copyreal=real(wfft);
+        copyimag=imag(wfft);
+        ofstream outf;
+        //outf.open("fft2danglewin.bin");
+        for(k=0;k<nwin;k++)
+        {   
+            wintrans=fft2dwintransform(win[k],x2fft,x3fft);
+            copy=matmul(copyreal,wintrans,x2fft,x3fft);
+            wfftwin.set_real(copy);
+            copy=matmul(copyimag,wintrans,x2fft,x3fft);
+            wfftwin.set_imag(copy);
+            wifft=ifft2(wfftwin,x2fft,x3fft);
+            copy=real(wifft);
+            //datawrite(copy,x2fft,x3fft,outf);
+            for(i=0;i<x2;i++)
             {
-                ang=int(((ps[i][j]+pr[i][j])/2.0-a_beg)/a_gep);
-                if(ang<x1 && ang>0)
+                for(j=0;j<x3;j++)
                 {
-                    DA[j][i][ang]+=swave[i][j]*rwave[i][j];
+                    ang=int((ps[i][j]-winangle[k]-a_beg)/a_gep);
+                    if(ang<x1 && ang>0)
+                    {
+                        FA[j][i][ang]+=swave[i][j]*copy(i,j);
+                    }
+                    ang=int(((ps[i][j]+winangle[k])/2.0-a_beg)/a_gep);
+                    if(ang<x1 && ang>0)
+                    {
+                    DA[j][i][ang]+=swave[i][j]*copy(i,j);
+                    }
                 }
             }
         }
-
-    }
-
-    void createmutiangle()
-    {
-        //mutipr=newfmat(x1,x2,x3);
-        //mutips=newfmat(x1,x2,x3);
-        //matcopy(mutips,0.0,x1,x2,x3);
-        //matcopy(mutipr,0.0,x1,x2,x3);
-        mutiDA=newfmat(x3,x2,x1);
-        matcopy(mutiDA, 0.0, x3, x2, x1);
-        mutiFA=newfmat(x3,x2,x1);
-        matcopy(mutiFA, 0.0, x3, x2, x1);
+        //outf.close();
     }
 
 };
-*/
+
 //////////////////////////////////////////////////
 class OF_2D
 {
 public:
     float **vx1=NULL, **vx2=NULL, **vz1=NULL, **vz2=NULL, ***wave=NULL;
-    float **v_x=NULL, **v_z=NULL; 
+    float **v_x=NULL, **v_z=NULL, **zz2d; 
     float a,dx,dz,dt;
     float xs[5]={0.083333333,-0.666666667,0.0,0.666666667,-0.083333333};
     int x1,x2,x3;
@@ -350,11 +351,14 @@ public:
     void addtimeslicecal(T1 **p)
     {
         int k;
+        matcopy(wave[0],p,x2,x3);
+        zz2d=wave[0];
         for(k=0;k<x1-1;k++)
         {
-            matcopy(wave[k],wave[k+1],x2,x3);
+            //matcopy(wave[k],wave[k+1],x2,x3);
+            wave[k]=wave[k+1];
         }
-        matcopy(wave[x1-1],p,x2,x3);
+        wave[x1-1]=zz2d;
     }
 
     void velocityAverage(float **mat1, float **mat2)
@@ -424,7 +428,7 @@ public:
 class Poynting_2D
 {
 public:
-    float **vx=NULL, **vz=NULL, ***wave=NULL;
+    float **vx=NULL, **vz=NULL, ***wave=NULL, **zz2d;
     float dx,dz,dt;
     float xs[5]={0.083333333,-0.666666667,0.0,0.666666667,-0.083333333};
     int x1,x2,x3;
@@ -465,11 +469,14 @@ public:
     void addtimeslicecal(T1 **p)
     {
         int k;
+        matcopy(wave[0],p,x2,x3);
+        zz2d=wave[0];
         for(k=0;k<x1-1;k++)
         {
-            matcopy(wave[k],wave[k+1],x2,x3);
+            wave[k]=wave[k+1];
+            //matcopy(wave[k],wave[k+1],x2,x3);
         }
-        matcopy(wave[x1-1],p,x2,x3);
+        wave[x1-1]=zz2d;
     }
 
     void velocityCalculate()
@@ -560,6 +567,24 @@ void getangle1(float **angle1, int Z, int X)
          angle1[i][j]=anglecal_z1_x0(px,pz);
       }
    }
+   datawrite(angle1,Z,X,"getangle1.bin");
+}
+
+void getangle2(float **angle1, int Z, int X)
+{
+   int z0,x0,i,j;
+   float pz,px;
+   z0=Z/2;x0=X/2;
+   for(i=0;i<Z;i++)
+   {
+      for(j=0;j<X;j++)
+      {
+         pz=i-z0;
+         px=j-x0;
+         angle1[i][j]=anglecal_z1_x0(pz,px);
+      }
+   }
+   datawrite(angle1,Z,X,"getangle2.bin");
 }
 
 void fft2dwindows(float **ang, float **win, int x1, int x2, float theta, float thetaN)
