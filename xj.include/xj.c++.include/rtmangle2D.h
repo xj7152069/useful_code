@@ -206,6 +206,10 @@ public:
         win=newfmat(x1,x2fft,x3fft);
         //anglewave=newfmat(x1,x2fft,x3fft);
         ps=newfmat(x2,x3);
+        FA=newfmat(x3,x2,x1);
+        matcopy(FA, 0.0, x3, x2, x1);
+        DA=newfmat(x3,x2,x1);
+        matcopy(DA, 0.0, x3, x2, x1);
     }
     ~fft2d_anglegather2d()
     {
@@ -250,18 +254,6 @@ public:
     template<typename T1>
     void addFA_DA(T1 **swave, cx_fmat rwave)  //S-wave:pyt ; R-wave:fft2d
     {
-        if(fa==0)
-        {
-            FA=newfmat(x3,x2,x1);
-            fa=1;
-            matcopy(FA, 0.0, x3, x2, x1);
-        }
-        if(da==0)
-        {
-            DA=newfmat(x3,x2,x1);
-            da=1;
-            matcopy(DA, 0.0, x3, x2, x1);
-        }
         int i,j,k,ang;
         cx_fmat wfft(x2fft,x3fft),wfftwin(x2fft,x3fft),wifft(x2fft,x3fft);
         fmat copyreal(x2fft,x3fft),copyimag(x2fft,x3fft),wintrans(x2fft,x3fft),copy(x2fft,x3fft);
@@ -292,14 +284,18 @@ public:
                     ang=int(((ps[i][j]+winangle[k])/2.0-a_beg)/a_gep);
                     if(ang<x1 && ang>0)
                     {
-                    DA[j][i][ang]+=swave[i][j]*copy(i,j);
+                        DA[j][i][ang]+=swave[i][j]*copy(i,j);
                     }
                 }
             }
         }
         //outf.close();
     }
-
+    void cleardata()
+    {
+        matcopy(FA, 0.0, x3, x2, x1);
+        matcopy(DA, 0.0, x3, x2, x1);
+    }
 };
 
 //////////////////////////////////////////////////
@@ -458,13 +454,6 @@ public:
         vx=NULL;vz=NULL;wave=NULL;
     }
 
-    void dataClear()
-    {
-        matcopy(vx,0.0,x2,x3);
-        matcopy(vz,0.0,x2,x3);
-        matcopy(wave,0.0,x1,x2,x3);
-    }
-
     template<typename T1>
     void addtimeslicecal(T1 **p)
     {
@@ -496,6 +485,12 @@ public:
                 vz[i][j]=pz*pt;
             }
         }
+    }
+    void dataClear()
+    {
+        matcopy(vx,0.0,x2,x3);
+        matcopy(vz,0.0,x2,x3);
+        matcopy(wave,0.0,x1,x2,x3);
     }
 
 };
