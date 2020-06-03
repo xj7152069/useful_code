@@ -27,18 +27,20 @@ float Blackman(float n, float N);
 
 class wave2D
 {
-public:
-    float **p2=NULL; //velocity model
-    float **s1=NULL, **s2=NULL, **s3=NULL; //time slices, add source to "s2"
-    float **sx11=NULL, **sx12=NULL, **sx13=NULL; //PML boundary
-    float **sx21=NULL, **sx22=NULL, **sx23=NULL, **sx24=NULL; //PML boundary
-    float **sx31=NULL,  **sx32=NULL, **sx33=NULL; //PML boundary
+private:
     float xs2[5]={1.666667,-0.238095,0.039683,-0.004960,0.000317};
     float xs1[10]={-0.0007926,0.00991800,-0.0595200,0.238080,-0.833333,\
 0.833333,-0.238080,0.0595200,-0.00991800,0.0007926};
+    float **sx11=NULL, **sx12=NULL, **sx13=NULL; //PML boundary
+    float **sx21=NULL, **sx22=NULL, **sx23=NULL, **sx24=NULL; //PML boundary
+    float **sx31=NULL,  **sx32=NULL, **sx33=NULL; //PML boundary
+
+public:
+    float **p2=NULL; //velocity model
+    float **s1=NULL, **s2=NULL, **s3=NULL; //time slices, add source to "s2"
     float dx,dy,dt,PML_wide,R;
     int nx,ny,suface;
-
+    
     wave2D();
     wave2D(int x, int y);
     ~wave2D();
@@ -260,7 +262,7 @@ void wave2D::timeslicecal()
                 if(j<=xshd+5 && j<t5*i && j<-t5*i+Y)		
                     sny2=xshd+5-j;		
                 }  //´¦Àí½ÇÂä
-            else if(suface_PML==0)
+            else
                 {
                 if(i>=X-xshd-5 && j<=t5*i)	
                     snx1=i-(X-xshd-5);

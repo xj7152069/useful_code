@@ -383,6 +383,7 @@ void matsmooth(T1 **mat1, T2 **mat0, int x1, int x2, int k)
     float **mat2;
     mat2=newfmat(x1, x2);
     matcopy(mat2,mat0,x1,x2);
+    matcopy(mat1,mat0,x1,x2);
     
     for(n=0;n<k;n++)
     {

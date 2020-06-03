@@ -11,7 +11,8 @@
 #include "./xj.c++.include/wave2D.h"
 #include "./xj.c++.include/my_armadillo.h"
 #include "./xj.c++.include/rtmangle2D.h"
-
+#include "./xj.c++.include/hankel.h"
+#include "./xj.c++.include/radonbeamforming.h"
 
 #endif
 
