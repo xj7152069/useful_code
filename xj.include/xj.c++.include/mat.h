@@ -43,6 +43,7 @@ template <typename TT> void dataread(TT **data_mat, int nz, int nx, ifstream &in
 template <typename TT> void datawrite(TT **data_mat, int nz, int nx, const char *filename);
 template <typename TT> void datawrite(TT **data_mat, int nz, int nx, ofstream &outf);
 template <typename T1, typename T2> void matsmooth(T1 **mat1, T2 **mat0, int x1, int x2, int k=1);
+template <typename T1, typename T2> void Laplace(T1 **mat1, T2 **mat0, int x1, int x2);
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 template<typename T1>
@@ -400,6 +401,25 @@ void matsmooth(T1 **mat1, T2 **mat0, int x1, int x2, int k)
     }
     matdelete(mat2, x1);
 }
+
+template <typename T1, typename T2>
+void Laplace(T1 **mat1, T2 **mat0, int x1, int x2)
+    {
+        int i,j,n;
+        float **mat2;
+        mat2=newfmat(x1, x2);
+        matcopy(mat2,mat0,x1,x2);
+        matcopy(mat1,mat0,x1,x2);
+        for(i=1;i<x1-1;i++)
+        {
+            for(j=1;j<x2-1;j++)
+            {
+                mat1[i][j]=mat2[i-1][j-1]*1.0/12+mat2[i-1][j]*1.0/6+mat2[i-1][j+1]*1.0/12\
+                    +mat2[i][j-1]*1.0/6+mat2[i][j+1]*1.0/6+mat2[i+1][j-1]*1.0/12\
+                    +mat2[i+1][j]*1.0/6+mat2[i+1][j+1]*1.0/12-mat2[i][j];
+            }
+        }
+    }
 
 #endif
 

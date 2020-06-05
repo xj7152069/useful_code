@@ -188,13 +188,14 @@ public:
 class fft2d_anglegather2d
 {
 public:
-    float ***DA, ***FA, da, fa, a_beg, a_gep, a2_err;
-    float ***win, *winangle, **ps, **angle1;
-    int x1, x2, x3, x2fft, x3fft, nwin;
+    float ***DA, ***FA, da, fa, a_beg, recva_beg, a_gep, recva_gep, a2_err, ***recvA;
+    float ***win, *winangle, **ps, **angle1, recvid;
+    int x1, x2, x3, x2fft, x3fft, nwin, recva_num;
 
     fft2d_anglegather2d()
     {
         cout<<"Warning: Create an Empty object!"<<endl;
+        recvid=0;
     }
     fft2d_anglegather2d(int na, int nz, int nx, int nzfft, int nxfft, float A_BEG=-180, float A_GEP=1.0)
     {
@@ -210,6 +211,7 @@ public:
         matcopy(FA, 0.0, x3, x2, x1);
         DA=newfmat(x3,x2,x1);
         matcopy(DA, 0.0, x3, x2, x1);
+        recvid=0;
     }
     ~fft2d_anglegather2d()
     {
@@ -226,16 +228,27 @@ public:
         getangle2(angle1,x2fft,x3fft);
         float a2;
         int k;
-        ofstream outf;
-        outf.open("win.bin");
+        //ofstream outf;
+        //outf.open("win.bin");
         for(k=0;k<nwin;k++)
         {
             matcopy(win[k],0.0,x2fft,x3fft);
             //a2=angletransform(winangle[k]);
             fft2dwindows(angle1,win[k],x2fft,x3fft,winangle[k],a2_err);
-            datawrite(win[k],x2fft,x3fft,outf);
+            //datawrite(win[k],x2fft,x3fft,outf);
         }
-        outf.close();
+        //outf.close();
+    }
+
+    void creatRecvAngle(int na, float anglebeg, float anglegep)
+    {
+        recva_num=na;
+        recvA=newfmat(x3,x2,recva_num);
+        matcopy(recvA, 0.0, x3, x2, recva_num);
+        recva_beg=anglebeg;
+        recva_gep=anglegep;
+        recvid=1;
+        cout<<"You have create a Recv-Angle-Gather"<<endl;
     }
 
     template<typename T1, typename T2>
@@ -254,7 +267,7 @@ public:
     template<typename T1>
     void addFA_DA(T1 **swave, cx_fmat rwave)  //S-wave:pyt ; R-wave:fft2d
     {
-        int i,j,k,ang;
+        int i,j,k,ang;float imagpower;
         cx_fmat wfft(x2fft,x3fft),wfftwin(x2fft,x3fft),wifft(x2fft,x3fft);
         fmat copyreal(x2fft,x3fft),copyimag(x2fft,x3fft),wintrans(x2fft,x3fft),copy(x2fft,x3fft);
         wfft=fft2(rwave,x2fft,x3fft);
@@ -276,15 +289,20 @@ public:
             {
                 for(j=0;j<x3;j++)
                 {
+                    imagpower=swave[i][j]*copy(i,j);
                     ang=int((ps[i][j]-winangle[k]-a_beg)/a_gep);
                     if(ang<x1 && ang>0)
                     {
-                        FA[j][i][ang]+=swave[i][j]*copy(i,j);
+                        FA[j][i][ang]+=imagpower;
                     }
                     ang=int(((ps[i][j]+winangle[k])/2.0-a_beg)/a_gep);
                     if(ang<x1 && ang>0)
                     {
-                        DA[j][i][ang]+=swave[i][j]*copy(i,j);
+                        DA[j][i][ang]+=imagpower;
+                    }
+                    if(recvid!=0 && k<recva_num)
+                    {
+                        recvA[j][i][k]+=imagpower;
                     }
                 }
             }
@@ -295,6 +313,10 @@ public:
     {
         matcopy(FA, 0.0, x3, x2, x1);
         matcopy(DA, 0.0, x3, x2, x1);
+        if(recvid!=0)
+        {
+            matcopy(recvA, 0.0, x3, x2, recva_num);
+        }
     }
 };
 

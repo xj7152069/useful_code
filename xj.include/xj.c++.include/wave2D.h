@@ -18,10 +18,10 @@ using namespace std;
 #include "mat.h"
 /////////////////////////////////////////////////////////////////////////////////////////////
 void wave2Dtest(int Z, int X);
-float wavelet01(int k, float DT, float hz=35.0, int delay=100);
-template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=35.0, int delay=100);
-float wavelet02(int k, float DT, float hz=35.0, int delay=100);
-template <typename T1> void wavelet02(T1 *w, int N, float DT, float hz=35.0, int delay=100);
+float wavelet01(int k, float DT, float hz=30.0, int delay=100);
+template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=30.0, int delay=100);
+float wavelet02(int k, float DT, float hz=30.0, int delay=100);
+template <typename T1> void wavelet02(T1 *w, int N, float DT, float hz=30.0, int delay=100);
 template <typename T1> float* hilbert1D(T1 *s, int n, float dt);
 float Blackman(float n, float N);
 
@@ -56,7 +56,7 @@ wave2D::wave2D()
 {
     nx=0;
     ny=0;
-    dx=5.0;dy=5.0;dt=0.0005;PML_wide=25;suface=1;R=10000000;
+    dx=10.0;dy=10.0;dt=0.001;PML_wide=25;suface=1;R=10000000;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
@@ -64,7 +64,7 @@ wave2D::wave2D(int z, int x)
 {
     nx=x;
     ny=z;
-    dx=5.0;dy=5.0;dt=0.0005;PML_wide=25;suface=1;R=10000000;
+    dx=10.0;dy=10.0;dt=0.001;PML_wide=25;suface=1;R=10000000;
     int i,j;
     s1=new float*[ny];  
     s2=new float*[ny];   
