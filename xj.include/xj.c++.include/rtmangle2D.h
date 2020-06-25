@@ -31,10 +31,12 @@ template <typename T1, typename T2> extern void matcopy(T1 ***mat1, T2 n, int n1
 template <typename T1, typename T2> extern void matcopy(T1 **mat1, T2 **mat2, int nz, int nx);
 fmat windowsZ(int Z, int X, float thetaN);
 void fft2dwindows(float **ang, float **win, int x1, int x2, float theta, float thetaN);
+void fft2dwindows_Gabor(float **ang, float **win, int x1, int x2, float theta, float thetaN);
 fmat fft2dwintransform(float **win, int Z, int X);
 float angletransform(float a);
 void getangle1(float **angle1, int Z, int X);
 void getangle2(float **angle1, int Z, int X);
+float Gabor(float da,float a);
 
 ////////////////////////////////////////////////////////////////////////////
 template<typename T1, typename T2>
@@ -58,7 +60,8 @@ float anglecal_z1_x0(T1 z, T2 x, float err)
 }
 
 ////////////////////////////////////////////////////////
-class angle_gather2D
+//Make direction-vector to theta (include source&receiver)
+class angle_gather2D  
 {
 public:
     float ***DA, ***FA, ***mutiDA, ***mutiFA, da, fa, a_beg, a_gep;
@@ -184,8 +187,8 @@ public:
 };
 
 //////////////////////////////////////////////////
-
-class fft2d_anglegather2d
+//Make direction-vector to theta (only source wave-field, receiver wave-field use fft2d to decompcose)
+class fft2d_anglegather2d 
 {
 public:
     float ***DA, ***FA, da, fa, a_beg, recva_beg, a_gep, recva_gep, a2_err, ***recvA;
@@ -285,11 +288,12 @@ public:
             wifft=ifft2(wfftwin,x2fft,x3fft);
             copy=real(wifft);
             //datawrite(copy,x2fft,x3fft,outf);
+            
             for(i=0;i<x2;i++)
             {
                 for(j=0;j<x3;j++)
                 {
-                    imagpower=swave[i][j]*copy(i,j);
+                    imagpower=swave[i][j]*copy(i,j)*real(rwave(i,j)); //
                     ang=int((ps[i][j]-winangle[k]-a_beg)/a_gep);
                     if(ang<x1 && ang>0)
                     {
@@ -666,6 +670,32 @@ fmat fft2dwintransform(float **win, int Z, int X)
       }
    }
    return wintrans;
+}
+
+void fft2dwindows_Gabor(float **ang, float **win, int x1, int x2, float theta, float thetaN)
+{
+   int i,j;
+   float xs,dtheta;
+   for(i=0;i<x1;i++)
+   {
+      for(j=0;j<x2;j++)
+      {
+         dtheta=abs(ang[i][j]-theta);
+         if(true)
+         {
+            //dtheta=thetaN-dtheta;
+            xs=Gabor(dtheta,thetaN);
+            win[i][j]=xs;
+         }
+      }
+   }
+}
+
+float Gabor(float da,float a)
+{
+   float n,pi(3.1415926);
+   n=(1.0/(2*sqrt(pi*a)))*exp(-da*da/4.0/a);
+   return n;
 }
 
 #endif
