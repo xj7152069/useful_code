@@ -218,7 +218,8 @@ void wave2D::timeslicecal()
     float dx,dy,ddx,ddy,snx1,sny1,snx2,sny2,t2,t5;
     int i,j,n,i1,j1,t3,t4;
     float u1(0),u2(0),u(0),ux(0),uy(0);
-    float C3=3/2/(xshd)/DX*log(R)/(xshd)/DX/(xshd)/DX;
+    float C_X=3/2/(xshd)/DX*log(R)/(xshd)/DX/(xshd)/DX;
+    float C_Y=3/2/(xshd)/DY*log(R)/(xshd)/DY/(xshd)/DY;
     t5=float(Y)/X;
 
     for(i=5;i<X-5;i++)
@@ -257,9 +258,9 @@ void wave2D::timeslicecal()
                     snx1=i-(X-xshd-5);
                 if(i<=xshd+5 && j>=t5*i && j<=-t5*i+Y)		
                     snx2=xshd+5-i;
-                if(j>=Y-xshd-5 && j>t5*i && j>-t5*i+Y)		
+                if(j>=Y-xshd-5 && j>=t5*i && j>=-t5*i+Y)		
                     sny1=j-(Y-xshd-5);
-                if(j<=xshd+5 && j<t5*i && j<-t5*i+Y)		
+                if(j<=xshd+5 && j<=t5*i && j<=-t5*i+Y)		
                     sny2=xshd+5-j;		
                 }  //´¦Àí½ÇÂä
             else
@@ -276,23 +277,23 @@ void wave2D::timeslicecal()
 
             if(sny1 !=0)
                 {
-                dy=p2[j][i]*C3*sny1*sny1*DY*DY;
-                ddy=p2[j][i]*C3*2*sny1*DY;	
+                dy=p2[j][i]*C_Y*sny1*sny1*DY*DY;
+                ddy=p2[j][i]*C_Y*2*sny1*DY;	
                 }
             if(sny2 !=0)
                 {
-                dy=p2[j][i]*C3*sny2*sny2*DY*DY;
-                ddy=p2[j][i]*C3*2*sny2*DY;	
+                dy=p2[j][i]*C_Y*sny2*sny2*DY*DY;
+                ddy=p2[j][i]*C_Y*2*sny2*DY;	
                 }
             if(snx1 !=0)
                 {
-                dx=p2[j][i]*C3*snx1*snx1*DX*DX;
-                ddx=p2[j][i]*C3*2*snx1*DX;	
+                dx=p2[j][i]*C_X*snx1*snx1*DX*DX;
+                ddx=p2[j][i]*C_X*2*snx1*DX;	
                 }
             if(snx2 !=0)
                 {
-                dx=p2[j][i]*C3*snx2*snx2*DX*DX;
-                ddx=p2[j][i]*C3*2*snx2*DX;	
+                dx=p2[j][i]*C_X*snx2*snx2*DX*DX;
+                ddx=p2[j][i]*C_X*2*snx2*DX;	
                 }
 
             if(i>=0.5*(X))
@@ -320,18 +321,18 @@ void wave2D::timeslicecal()
                 /(DT*DT*DT))*(DT*DT*DT);
 
                 sx31[j][i]=DT*DT*p2[j][i]*p2[j][i]\
-                *(1.0/(DX*DX))*(u1-u*s2[j][i])+2*sx32[j][i]\
+                *(1.0/(DY*DY))*(u1-u*s2[j][i])+2*sx32[j][i]\
                 -sx33[j][i];
                 }
-            else
+            else if(sny1!=0 || sny2!=0)
                 {
                 sx11[j][i]=p2[j][i]*p2[j][i]\
-                *DT*DT*(u1-u*s2[j][i])*(1.0/(DX*DX))\
+                *DT*DT*(u1-u*s2[j][i])*(1.0/(DY*DY))\
                 -dy*dy*DT*DT*sx12[j][i]+(2*sx12[j][i]\
                 -sx13[j][i])+DT*(2*dy*(sx13[j][i]-sx12[j][i]));
 
                 sx21[j][i]=(-p2[j][i]*p2[j][i]\
-                *ddy*(1.0/(DX))*(uy*t4)-dy*dy*dy*sx22[j][i]\
+                *ddy*(1.0/(DY))*(uy*t4)-dy*dy*dy*sx22[j][i]\
                 +3*dy*dy*(sx23[j][i]-sx22[j][i])/DT\
                 +3*dy*(2*sx23[j][i]-sx22[j][i]-sx24[j][i])\
                 /(DT*DT)+(3*sx22[j][i]-3*sx23[j][i]+sx24[j][i])\
@@ -341,6 +342,24 @@ void wave2D::timeslicecal()
                 *(1.0/(DX*DX))*(u2-u*s2[j][i])+2*sx32[j][i]\
                 -sx33[j][i];
                 }   
+            else
+                {
+                sx11[j][i]=p2[j][i]*p2[j][i]\
+                *DT*DT*(u2-u*s2[j][i])*(1.0/(DX*DX))\
+                -dx*dx*DT*DT*sx12[j][i]+(2*sx12[j][i]\
+                -sx13[j][i])+DT*(2*dx*(sx13[j][i]-sx12[j][i]));
+
+                sx21[j][i]=(-p2[j][i]*p2[j][i]\
+                *ddx*(1.0/(DX))*(ux*t3)-dx*dx*dx*sx22[j][i]\
+                +3*dx*dx*(sx23[j][i]-sx22[j][i])/DT+3*dx*\
+                (2*sx23[j][i]-sx22[j][i]-sx24[j][i])/(DT*DT)\
+                +(3*sx22[j][i]-3*sx23[j][i]+sx24[j][i])\
+                /(DT*DT*DT))*(DT*DT*DT);
+
+                sx31[j][i]=DT*DT*p2[j][i]*p2[j][i]\
+                *(1.0/(DY*DY))*(u1-u*s2[j][i])+2*sx32[j][i]\
+                -sx33[j][i];
+                }
 
             // if(snx1!=0 || snx2!=0 || sny1!=0 || sny2!=0)
             s3[j][i]=sx11[j][i]+sx21[j][i]+sx31[j][i];
