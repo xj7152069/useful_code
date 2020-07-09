@@ -56,7 +56,7 @@ wave2D::wave2D()
 {
     nx=0;
     ny=0;
-    dx=10.0;dy=10.0;dt=0.001;PML_wide=25;suface=1;R=10000000;
+    dx=10.0;dy=10.0;dt=0.001;PML_wide=30;suface=1;R=10000000;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
@@ -64,7 +64,7 @@ wave2D::wave2D(int z, int x)
 {
     nx=x;
     ny=z;
-    dx=10.0;dy=10.0;dt=0.001;PML_wide=25;suface=1;R=10000000;
+    dx=10.0;dy=10.0;dt=0.001;PML_wide=30;suface=1;R=10000000;
     int i,j;
     s1=new float*[ny];  
     s2=new float*[ny];   
@@ -206,30 +206,27 @@ void wave2D::cleardata()
 
 void wave2D::timeslicecal()
 {
-    float DX,DY,DT,xshd,*xs1_in,*xs2_in,t5;
-    int X,Y,suface_PML;
-    DX=dx; DY=dy; DT=dt;
-    xshd=PML_wide;
-    X=nx; Y=ny;
-    suface_PML=suface;
-    xs1_in=xs1; xs2_in=xs2;
-    //t5=t5_out; C_X=C_X_out; C_Y=C_Y_out;
+    static float DX=dx,DY=dy,DT=dt,xshd=PML_wide,*xs1_in=xs1,*xs2_in=xs2;
+    static int X=nx,Y=ny,suface_PML=suface;
  
-    float dx,dy,ddx,ddy,snx1,sny1,snx2,sny2,t2;
-    int i,j,n,i1,j1,t3,t4;
-    float u1(0),u2(0),u(0),ux(0),uy(0);
-    float DT2,DT3,DX2,DY2,mo2;
-    float C_X=3/2/(xshd)/DX*log(R)/(xshd)/DX/(xshd)/DX;
-    float C_Y=3/2/(xshd)/DY*log(R)/(xshd)/DY/(xshd)/DY;
-    t5=float(Y)/X;
-    DX2=DX*DX;DY2=DY*DY;
-    DT2=DT*DT;DT3=DT2*DT;
+    static float dx,dy,ddx,ddy,snx1,sny1,snx2,sny2,t2,t5=float(Y)/X;
+    static int i,j,n,i1,j1,t3,t4;
+    static float u1(0),u2(0),u(0),ux(0),uy(0);
+    static float DT2=DT*DT,DT3=DT2*DT,DX2=DX*DX,DY2=DY*DY,mo2;
+    static float C_X=3/2/(xshd)/DX*log(R)/(xshd)/DX/(xshd)/DX;
+    static float C_Y=3/2/(xshd)/DY*log(R)/(xshd)/DY/(xshd)/DY;
 
-    float **sx11_in=sx11, **sx12_in=sx12, **sx13_in=sx13; //PML boundary
-    float **sx21_in=sx21, **sx22_in=sx22, **sx23_in=sx23, **sx24_in=sx24; //PML boundary
-    float **sx31_in=sx31, **sx32_in=sx32, **sx33_in=sx33; //PML boundary
-    float **p2_in=p2; //velocity model
-    float **s1_in=s1, **s2_in=s2, **s3_in=s3; //time slices, add source to "s2"
+    static float **sx11_in, **sx12_in, **sx13_in; //PML boundary
+    static float **sx21_in, **sx22_in, **sx23_in, **sx24_in; //PML boundary
+    static float **sx31_in, **sx32_in, **sx33_in; //PML boundary
+    static float **p2_in=p2, **swap; //velocity model and swap
+    static float **s1_in=s1, **s2_in=s2, **s3_in=s3; //time slices, add source to "s2"
+
+    sx11_in=sx11, sx12_in=sx12, sx13_in=sx13; //PML boundary
+    sx21_in=sx21, sx22_in=sx22, sx23_in=sx23, sx24_in=sx24; //PML boundary
+    sx31_in=sx31, sx32_in=sx32, sx33_in=sx33; //PML boundary
+    p2_in=p2; //velocity model
+    s1_in=s1, s2_in=s2, s3_in=s3; //time slices, add source to "s2"
 
     for(i=5;i<X-5;i++)
         {
@@ -371,16 +368,11 @@ void wave2D::timeslicecal()
             }
         }
 
-    s1_in=s1;s1=s2;s2=s3;s3=s1_in;
-    s1_in=sx13;sx13=sx12;sx12=sx11;sx11=s1_in;
-    s1_in=sx24;sx24=sx23;sx23=sx22;sx22=sx21;sx21=s1_in;
-    s1_in=sx33;sx33=sx32;sx32=sx31;sx31=s1_in;
+    swap=s1;s1=s2;s2=s3;s3=swap;
+    swap=sx13;sx13=sx12;sx12=sx11;sx11=swap;
+    swap=sx24;sx24=sx23;sx23=sx22;sx22=sx21;sx21=swap;
+    swap=sx33;sx33=sx32;sx32=sx31;sx31=swap;
 
-    xs1_in=NULL;xs2_in=NULL;
-    p2_in=NULL;s1_in=NULL;s2_in=NULL;s3_in=NULL;
-    sx11_in=NULL;sx12_in=NULL;sx13_in=NULL;
-    sx21_in=NULL;sx22_in=NULL;sx23_in=NULL;sx24_in=NULL;
-    sx31_in=NULL;sx32_in=NULL;sx33_in=NULL;
 }
 
 void wave2D::timeslicecopy()
