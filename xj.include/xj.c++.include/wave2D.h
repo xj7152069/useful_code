@@ -54,46 +54,29 @@ public:
 
 wave2D::wave2D()
 {
-    nx=0;
-    ny=0;
-    dx=10.0;dy=10.0;dt=0.001;PML_wide=30;suface=1;R=10000000;
+    nx=0;ny=0;
+    dx=10.0;dy=10.0;dt=0.001;
+    PML_wide=30;suface=1;R=10000000;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
 wave2D::wave2D(int z, int x)
 {
-    nx=x;
-    ny=z;
-    dx=10.0;dy=10.0;dt=0.001;PML_wide=30;suface=1;R=10000000;
+    nx=x;ny=z;
+    dx=10.0;dy=10.0;dt=0.001;
+    PML_wide=30;suface=1;R=10000000;
     int i,j;
-    s1=new float*[ny];  
-    s2=new float*[ny];   
-    s3=new float*[ny];  
-    sx11=new float*[ny];    
-    sx12=new float*[ny];     
-    sx13=new float*[ny];     
-    sx21=new float*[ny];     
-    sx22=new float*[ny];     
-    sx23=new float*[ny];     
-    sx24=new float*[ny];     
-    sx31=new float*[ny];     
-    sx32=new float*[ny];     
-    sx33=new float*[ny];      
+    s1=new float*[ny];s2=new float*[ny];s3=new float*[ny];  
+    sx11=new float*[ny];sx12=new float*[ny];sx13=new float*[ny];     
+    sx21=new float*[ny];sx22=new float*[ny];sx23=new float*[ny];sx24=new float*[ny];     
+    sx31=new float*[ny];sx32=new float*[ny];sx33=new float*[ny];
+
     for(j=0;j<ny;j++)  
         {  
-        s1[j]=new float[nx];  
-        s2[j]=new float[nx];   
-        s3[j]=new float[nx];   
-        sx11[j]=new float[nx];   
-        sx12[j]=new float[nx];   
-        sx13[j]=new float[nx];    
-        sx21[j]=new float[nx];   
-        sx22[j]=new float[nx];   
-        sx23[j]=new float[nx];   
-        sx24[j]=new float[nx];   
-        sx31[j]=new float[nx];   
-        sx32[j]=new float[nx];    
-        sx33[j]=new float[nx];   
+        s1[j]=new float[nx];s2[j]=new float[nx];s3[j]=new float[nx];   
+        sx11[j]=new float[nx];sx12[j]=new float[nx];sx13[j]=new float[nx];    
+        sx21[j]=new float[nx];sx22[j]=new float[nx];sx23[j]=new float[nx];sx24[j]=new float[nx];   
+        sx31[j]=new float[nx];sx32[j]=new float[nx];sx33[j]=new float[nx];   
         }
 
     for(j=0;j<ny;j++)
@@ -131,47 +114,20 @@ wave2D::~wave2D()
     delete []p2;
 
     for(int i=0;i<ny;i++)  
-       {delete []s1[i];
-        delete []s2[i];
-        delete []s3[i];
-        delete []sx11[i];
-        delete []sx12[i];
-        delete []sx13[i];
-        delete []sx21[i];
-        delete []sx22[i];
-        delete []sx23[i];
-        delete []sx24[i];
-        delete []sx31[i];
-        delete []sx32[i];
-        delete []sx33[i];
+       {
+        delete []s1[i];delete []s2[i];delete []s3[i];
+        delete []sx11[i];delete []sx12[i];delete []sx13[i];
+        delete []sx21[i];delete []sx22[i];delete []sx23[i];delete []sx24[i];
+        delete []sx31[i];delete []sx32[i];delete []sx33[i];
        }
-    delete []s1;
-    delete []s2;
-    delete []s3;
-    delete []sx11;
-    delete []sx12;
-    delete []sx13;
-    delete []sx21;
-    delete []sx22;
-    delete []sx23;
-    delete []sx24;
-    delete []sx31;
-    delete []sx32;
-    delete []sx33;
-    p2=NULL;
-    s1=NULL;
-    s2=NULL;
-    s3=NULL;
-    sx11=NULL;
-    sx12=NULL;
-    sx13=NULL;
-    sx21=NULL;
-    sx22=NULL;
-    sx23=NULL;
-    sx24=NULL;
-    sx31=NULL;
-    sx32=NULL;
-    sx33=NULL;
+    delete []s1;delete []s2;delete []s3;
+    delete []sx11;delete []sx12;delete []sx13;
+    delete []sx21;delete []sx22;delete []sx23;delete []sx24;
+    delete []sx31;delete []sx32;delete []sx33;
+    p2=NULL;s1=NULL;s2=NULL;s3=NULL;
+    sx11=NULL;sx12=NULL;sx13=NULL;
+    sx21=NULL;sx22=NULL;sx23=NULL;sx24=NULL;
+    sx31=NULL;sx32=NULL;sx33=NULL;
     cout<<"Delete an object-wave_modeling_2D"<<endl;
 }
 
@@ -210,26 +166,26 @@ void wave2D::timeslicecal()
     static int X=nx,Y=ny,suface_PML=suface;
  
     static float dx,dy,ddx,ddy,snx1,sny1,snx2,sny2,t2,t5=float(Y)/X;
-    static int i,j,n,i1,j1,t3,t4;
+    static int i,j,n,t3,t4;
     static float u1(0),u2(0),u(0),ux(0),uy(0);
     static float DT2=DT*DT,DT3=DT2*DT,DX2=DX*DX,DY2=DY*DY,mo2;
     static float C_X=3/2/(xshd)/DX*log(R)/(xshd)/DX/(xshd)/DX;
     static float C_Y=3/2/(xshd)/DY*log(R)/(xshd)/DY/(xshd)/DY;
 
-    static float **sx11_in, **sx12_in, **sx13_in; //PML boundary
-    static float **sx21_in, **sx22_in, **sx23_in, **sx24_in; //PML boundary
-    static float **sx31_in, **sx32_in, **sx33_in; //PML boundary
+    static float **sx11_in=sx11, **sx12_in=sx12, **sx13_in=sx13; //PML boundary
+    static float **sx21_in=sx21, **sx22_in=sx22, **sx23_in=sx23, **sx24_in=sx24; //PML boundary
+    static float **sx31_in=sx31, **sx32_in=sx32, **sx33_in=sx33; //PML boundary
     static float **p2_in=p2, **swap; //velocity model and swap
     static float **s1_in=s1, **s2_in=s2, **s3_in=s3; //time slices, add source to "s2"
 
-    sx11_in=sx11, sx12_in=sx12, sx13_in=sx13; //PML boundary
-    sx21_in=sx21, sx22_in=sx22, sx23_in=sx23, sx24_in=sx24; //PML boundary
-    sx31_in=sx31, sx32_in=sx32, sx33_in=sx33; //PML boundary
-    p2_in=p2; //velocity model
-    s1_in=s1, s2_in=s2, s3_in=s3; //time slices, add source to "s2"
-
     for(i=5;i<X-5;i++)
         {
+
+        if(i>=0.5*(X))
+            {t3=1;}
+        else
+            {t3=-1;}
+
         for(j=5;j<Y-5;j++)
             {
 
@@ -302,11 +258,6 @@ void wave2D::timeslicecal()
                 ddx=p2_in[j][i]*C_X*2*snx2*DX;	
                 }
 
-            if(i>=0.5*(X))
-                {t3=1;}
-            else
-                {t3=-1;}
-
             if(j>=0.5*(Y))
                 {t4=1;}
             else
@@ -368,10 +319,10 @@ void wave2D::timeslicecal()
             }
         }
 
-    swap=s1;s1=s2;s2=s3;s3=swap;
-    swap=sx13;sx13=sx12;sx12=sx11;sx11=swap;
-    swap=sx24;sx24=sx23;sx23=sx22;sx22=sx21;sx21=swap;
-    swap=sx33;sx33=sx32;sx32=sx31;sx31=swap;
+    swap=s1_in;s1_in=s2_in;s2_in=s3_in;s3_in=swap;
+    swap=sx13_in;sx13_in=sx12_in;sx12_in=sx11_in;sx11_in=swap;
+    swap=sx24_in;sx24_in=sx23_in;sx23_in=sx22_in;sx22_in=sx21_in;sx21_in=swap;
+    swap=sx33_in;sx33_in=sx32_in;sx32_in=sx31_in;sx31_in=swap;
 
 }
 
