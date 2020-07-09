@@ -158,6 +158,7 @@ wave2D::~wave2D()
     delete []sx31;
     delete []sx32;
     delete []sx33;
+    p2=NULL;
     s1=NULL;
     s2=NULL;
     s3=NULL;
@@ -205,22 +206,30 @@ void wave2D::cleardata()
 
 void wave2D::timeslicecal()
 {
-    float DX,DY,DT,xshd;
+    float DX,DY,DT,xshd,*xs1_in,*xs2_in,t5;
     int X,Y,suface_PML;
-    DX=dx;
-    DY=dy;
-    DT=dt;
+    DX=dx; DY=dy; DT=dt;
     xshd=PML_wide;
-    X=nx;
-    Y=ny;
+    X=nx; Y=ny;
     suface_PML=suface;
+    xs1_in=xs1; xs2_in=xs2;
+    //t5=t5_out; C_X=C_X_out; C_Y=C_Y_out;
  
-    float dx,dy,ddx,ddy,snx1,sny1,snx2,sny2,t2,t5;
+    float dx,dy,ddx,ddy,snx1,sny1,snx2,sny2,t2;
     int i,j,n,i1,j1,t3,t4;
     float u1(0),u2(0),u(0),ux(0),uy(0);
+    float DT2,DT3,DX2,DY2,mo2;
     float C_X=3/2/(xshd)/DX*log(R)/(xshd)/DX/(xshd)/DX;
     float C_Y=3/2/(xshd)/DY*log(R)/(xshd)/DY/(xshd)/DY;
     t5=float(Y)/X;
+    DX2=DX*DX;DY2=DY*DY;
+    DT2=DT*DT;DT3=DT2*DT;
+
+    float **sx11_in=sx11, **sx12_in=sx12, **sx13_in=sx13; //PML boundary
+    float **sx21_in=sx21, **sx22_in=sx22, **sx23_in=sx23, **sx24_in=sx24; //PML boundary
+    float **sx31_in=sx31, **sx32_in=sx32, **sx33_in=sx33; //PML boundary
+    float **p2_in=p2; //velocity model
+    float **s1_in=s1, **s2_in=s2, **s3_in=s3; //time slices, add source to "s2"
 
     for(i=5;i<X-5;i++)
         {
@@ -229,22 +238,22 @@ void wave2D::timeslicecal()
 
             for(n=0;n<5;n++)
                 {  
-                u=u+2*xs2[n];
-                u1=u1+xs2[n]*(s2[j-n-1][i]+s2[j+n+1][i]);
-                u2=u2+xs2[n]*(s2[j][i-n-1]+s2[j][i+n+1]);
+                u=u+2*xs2_in[n];
+                u1=u1+xs2_in[n]*(s2_in[j-n-1][i]+s2_in[j+n+1][i]);
+                u2=u2+xs2_in[n]*(s2_in[j][i-n-1]+s2_in[j][i+n+1]);
                 }
 
             for(n=0;n<10;n++)
                 {
                 if(n<5)
                     {
-                    ux=ux+s2[j][i+n-5]*xs1[n];
-                    uy=uy+s2[j+n-5][i]*xs1[n];
+                    ux=ux+s2_in[j][i+n-5]*xs1_in[n];
+                    uy=uy+s2_in[j+n-5][i]*xs1_in[n];
                     }
                 else
                     {
-                    ux=ux+s2[j][i+n-4]*xs1[n];
-                    uy=uy+s2[j+n-4][i]*xs1[n];
+                    ux=ux+s2_in[j][i+n-4]*xs1_in[n];
+                    uy=uy+s2_in[j+n-4][i]*xs1_in[n];
                     }
                 }
 
@@ -277,111 +286,106 @@ void wave2D::timeslicecal()
 
             if(sny1 !=0)
                 {
-                dy=p2[j][i]*C_Y*sny1*sny1*DY*DY;
-                ddy=p2[j][i]*C_Y*2*sny1*DY;	
+                dy=p2_in[j][i]*C_Y*sny1*sny1*DY2;
+                ddy=p2_in[j][i]*C_Y*2*sny1*DY;	
                 }
             if(sny2 !=0)
                 {
-                dy=p2[j][i]*C_Y*sny2*sny2*DY*DY;
-                ddy=p2[j][i]*C_Y*2*sny2*DY;	
+                dy=p2_in[j][i]*C_Y*sny2*sny2*DY2;
+                ddy=p2_in[j][i]*C_Y*2*sny2*DY;	
                 }
             if(snx1 !=0)
                 {
-                dx=p2[j][i]*C_X*snx1*snx1*DX*DX;
-                ddx=p2[j][i]*C_X*2*snx1*DX;	
+                dx=p2_in[j][i]*C_X*snx1*snx1*DX2;
+                ddx=p2_in[j][i]*C_X*2*snx1*DX;	
                 }
             if(snx2 !=0)
                 {
-                dx=p2[j][i]*C_X*snx2*snx2*DX*DX;
-                ddx=p2[j][i]*C_X*2*snx2*DX;	
+                dx=p2_in[j][i]*C_X*snx2*snx2*DX2;
+                ddx=p2_in[j][i]*C_X*2*snx2*DX;	
                 }
 
             if(i>=0.5*(X))
-                t3=1;
+                {t3=1;}
             else
-                t3=-1;
+                {t3=-1;}
 
             if(j>=0.5*(Y))
-                t4=1;
+                {t4=1;}
             else
-                t4=-1;
+                {t4=-1;}
 
-            if(snx1!=0 || snx2!=0)
+            mo2=p2_in[j][i]*p2_in[j][i];
+            if(snx1==0 && snx2==0 && sny1==0 && sny2==0)
                 {
-                sx11[j][i]=p2[j][i]*p2[j][i]\
-                *DT*DT*(u2-u*s2[j][i])*(1.0/(DX*DX))\
-                -dx*dx*DT*DT*sx12[j][i]+(2*sx12[j][i]\
-                -sx13[j][i])+DT*(2*dx*(sx13[j][i]-sx12[j][i]));
+                sx11_in[j][i]=mo2*DT2\
+                *(u2-u*s2_in[j][i])*(1.0/(DX2))\
+                +(2*sx12_in[j][i]-sx13_in[j][i]);
 
-                sx21[j][i]=(-p2[j][i]*p2[j][i]\
-                *ddx*(1.0/(DX))*(ux*t3)-dx*dx*dx*sx22[j][i]\
-                +3*dx*dx*(sx23[j][i]-sx22[j][i])/DT+3*dx*\
-                (2*sx23[j][i]-sx22[j][i]-sx24[j][i])/(DT*DT)\
-                +(3*sx22[j][i]-3*sx23[j][i]+sx24[j][i])\
-                /(DT*DT*DT))*(DT*DT*DT);
+                sx21_in[j][i]=(3*sx22_in[j][i]-3*sx23_in[j][i]+sx24_in[j][i]);
 
-                sx31[j][i]=DT*DT*p2[j][i]*p2[j][i]\
-                *(1.0/(DY*DY))*(u1-u*s2[j][i])+2*sx32[j][i]\
-                -sx33[j][i];
+                sx31_in[j][i]=DT2*mo2\
+                *(1.0/(DY2))*(u1-u*s2_in[j][i])\
+                +2*sx32_in[j][i]-sx33_in[j][i];
+                }
+            else if(snx1!=0 || snx2!=0)
+                {
+                sx11_in[j][i]=mo2\
+                *DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
+                -dx*dx*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
+                -sx13_in[j][i])+DT*(2*dx*(sx13_in[j][i]-sx12_in[j][i]));
+
+                sx21_in[j][i]=(-mo2\
+                *ddx*(1.0/(DX))*(ux*t3)-dx*dx*dx*sx22_in[j][i]\
+                +3*dx*dx*(sx23_in[j][i]-sx22_in[j][i])/DT+3*dx*\
+                (2*sx23_in[j][i]-sx22_in[j][i]-sx24_in[j][i])/(DT2)\
+                +(3*sx22_in[j][i]-3*sx23_in[j][i]+sx24_in[j][i])\
+                /(DT3))*(DT3);
+
+                sx31_in[j][i]=DT2*mo2\
+                *(1.0/(DY2))*(u1-u*s2_in[j][i])+2*sx32_in[j][i]\
+                -sx33_in[j][i];
                 }
             else if(sny1!=0 || sny2!=0)
                 {
-                sx11[j][i]=p2[j][i]*p2[j][i]\
-                *DT*DT*(u1-u*s2[j][i])*(1.0/(DY*DY))\
-                -dy*dy*DT*DT*sx12[j][i]+(2*sx12[j][i]\
-                -sx13[j][i])+DT*(2*dy*(sx13[j][i]-sx12[j][i]));
+                sx11_in[j][i]=mo2\
+                *DT2*(u1-u*s2_in[j][i])*(1.0/(DY2))\
+                -dy*dy*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
+                -sx13_in[j][i])+DT*(2*dy*(sx13_in[j][i]-sx12_in[j][i]));
 
-                sx21[j][i]=(-p2[j][i]*p2[j][i]\
-                *ddy*(1.0/(DY))*(uy*t4)-dy*dy*dy*sx22[j][i]\
-                +3*dy*dy*(sx23[j][i]-sx22[j][i])/DT\
-                +3*dy*(2*sx23[j][i]-sx22[j][i]-sx24[j][i])\
-                /(DT*DT)+(3*sx22[j][i]-3*sx23[j][i]+sx24[j][i])\
-                /(DT*DT*DT))*(DT*DT*DT);
+                sx21_in[j][i]=(-mo2\
+                *ddy*(1.0/(DY))*(uy*t4)-dy*dy*dy*sx22_in[j][i]\
+                +3*dy*dy*(sx23_in[j][i]-sx22_in[j][i])/DT\
+                +3*dy*(2*sx23_in[j][i]-sx22_in[j][i]-sx24_in[j][i])\
+                /(DT2)+(3*sx22_in[j][i]-3*sx23_in[j][i]+sx24_in[j][i])\
+                /(DT3))*(DT3);
 
-                sx31[j][i]=DT*DT*p2[j][i]*p2[j][i]\
-                *(1.0/(DX*DX))*(u2-u*s2[j][i])+2*sx32[j][i]\
-                -sx33[j][i];
-                }   
-            else
-                {
-                sx11[j][i]=p2[j][i]*p2[j][i]\
-                *DT*DT*(u2-u*s2[j][i])*(1.0/(DX*DX))\
-                -dx*dx*DT*DT*sx12[j][i]+(2*sx12[j][i]\
-                -sx13[j][i])+DT*(2*dx*(sx13[j][i]-sx12[j][i]));
-
-                sx21[j][i]=(-p2[j][i]*p2[j][i]\
-                *ddx*(1.0/(DX))*(ux*t3)-dx*dx*dx*sx22[j][i]\
-                +3*dx*dx*(sx23[j][i]-sx22[j][i])/DT+3*dx*\
-                (2*sx23[j][i]-sx22[j][i]-sx24[j][i])/(DT*DT)\
-                +(3*sx22[j][i]-3*sx23[j][i]+sx24[j][i])\
-                /(DT*DT*DT))*(DT*DT*DT);
-
-                sx31[j][i]=DT*DT*p2[j][i]*p2[j][i]\
-                *(1.0/(DY*DY))*(u1-u*s2[j][i])+2*sx32[j][i]\
-                -sx33[j][i];
+                sx31_in[j][i]=DT2*mo2\
+                *(1.0/(DX2))*(u2-u*s2_in[j][i])+2*sx32_in[j][i]\
+                -sx33_in[j][i];
                 }
 
             // if(snx1!=0 || snx2!=0 || sny1!=0 || sny2!=0)
-            s3[j][i]=sx11[j][i]+sx21[j][i]+sx31[j][i];
+            s3_in[j][i]=sx11_in[j][i]+sx21_in[j][i]+sx31_in[j][i];
             u1=0,u2=0,u=0,ux=0,uy=0;
             }
         }
+
+    s1_in=s1;s1=s2;s2=s3;s3=s1_in;
+    s1_in=sx13;sx13=sx12;sx12=sx11;sx11=s1_in;
+    s1_in=sx24;sx24=sx23;sx23=sx22;sx22=sx21;sx21=s1_in;
+    s1_in=sx33;sx33=sx32;sx32=sx31;sx31=s1_in;
+
+    xs1_in=NULL;xs2_in=NULL;
+    p2_in=NULL;s1_in=NULL;s2_in=NULL;s3_in=NULL;
+    sx11_in=NULL;sx12_in=NULL;sx13_in=NULL;
+    sx21_in=NULL;sx22_in=NULL;sx23_in=NULL;sx24_in=NULL;
+    sx31_in=NULL;sx32_in=NULL;sx33_in=NULL;
 }
 
 void wave2D::timeslicecopy()
 {
-    int j1,i1;
-    for(j1=0;j1<ny;j1++)
-    {
-    for(i1=0;i1<nx;i1++)
-        {
-        s1[j1][i1]=s2[j1][i1];s2[j1][i1]=s3[j1][i1];
-        sx13[j1][i1]=sx12[j1][i1],sx12[j1][i1]=sx11[j1][i1];
-        sx33[j1][i1]=sx32[j1][i1],sx32[j1][i1]=sx31[j1][i1];
-        sx24[j1][i1]=sx23[j1][i1],sx23[j1][i1]=sx22[j1][i1];
-        sx22[j1][i1]=sx21[j1][i1];
-        }
-    }
+    ;
 }
 
 void wave2Dtest(int Z, int X, int T)
