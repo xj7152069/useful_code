@@ -1,6 +1,6 @@
 /*********(version 1.0)***********/
-/*注释�?
-    C++程序模板�?
+/*注释�?
+    C++程序模板�?
 
 */
 /********************************/
@@ -237,7 +237,8 @@ public:
         {
             matcopy(win[k],0.0,x2fft,x3fft);
             //a2=angletransform(winangle[k]);
-            fft2dwindows(angle1,win[k],x2fft,x3fft,winangle[k],a2_err);
+            //fft2dwindows(angle1,win[k],x2fft,x3fft,winangle[k],a2_err);
+            fft2dwindows_Gabor(angle1,win[k],x2fft,x3fft,winangle[k],a2_err);
             //datawrite(win[k],x2fft,x3fft,outf);
         }
         //outf.close();
@@ -293,7 +294,7 @@ public:
             {
                 for(j=0;j<x3;j++)
                 {
-                    imagpower=swave[i][j]*copy(i,j)*real(rwave(i,j)); //
+                    imagpower=swave[i][j]*copy(i,j); //
                     ang=int((ps[i][j]-winangle[k]-a_beg)/a_gep);
                     if(ang<x1 && ang>0)
                     {
