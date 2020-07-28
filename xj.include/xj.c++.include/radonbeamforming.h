@@ -79,8 +79,8 @@ cout<<"now is running: 1 -- "<<endl;
             }
          }
          A=exp(forAw);
-         Sa=(A.st())*dataX;
-         dataP.row(k)=Sa.col(0).st();  //???复数矩阵的赋值是怎样的？？？
+         Sa=(A.t())*dataX;
+         dataP.row(k)=Sa.col(0).t();  //???复数矩阵的赋值是怎样的？？？
          //cout<<"now is running: "<<k<<endl;
         }
        //dataP.save("S.txt", raw_ascii);

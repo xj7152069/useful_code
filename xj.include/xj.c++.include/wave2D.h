@@ -17,7 +17,7 @@ using namespace std;
 
 #include "mat.h"
 /////////////////////////////////////////////////////////////////////////////////////////////
-void wave2Dtest(int Z, int X);
+void wave2Dtest(int Z, int X, int T);
 float wavelet01(int k, float DT, float hz=30.0, int delay=100);
 template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=30.0, int delay=100);
 float wavelet02(int k, float DT, float hz=30.0, int delay=100);
@@ -55,7 +55,7 @@ public:
 wave2D::wave2D()
 {
     nx=0;ny=0;
-    dx=10.0;dy=10.0;dt=0.001;
+    dx=5.0;dy=5.0;dt=0.0005;
     PML_wide=30;suface=1;R=10000000;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
@@ -63,7 +63,7 @@ wave2D::wave2D()
 wave2D::wave2D(int z, int x)
 {
     nx=x;ny=z;
-    dx=10.0;dy=10.0;dt=0.001;
+    dx=5.0;dy=5.0;dt=0.0005;
     PML_wide=30;suface=1;R=10000000;
     int i,j;
     s1=new float*[ny];s2=new float*[ny];s3=new float*[ny];  
@@ -164,7 +164,7 @@ void wave2D::timeslicecal()
 {
     static float DX=dx,DY=dy,DT=dt,xshd=PML_wide,*xs1_in=xs1,*xs2_in=xs2;
     static int X=nx,Y=ny,suface_PML=suface;
- 
+
     static float dx,dy,ddx,ddy,snx1,sny1,snx2,sny2,t2,t5=float(Y)/X;
     static int i,j,n,t3,t4;
     static float u1(0),u2(0),u(0),ux(0),uy(0);
