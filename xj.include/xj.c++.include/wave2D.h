@@ -17,11 +17,11 @@ using namespace std;
 
 #include "mat.h"
 /////////////////////////////////////////////////////////////////////////////////////////////
-void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, float sf=25.0, float pmlwide=25.0);
-float wavelet01(int k, float DT, float hz=30.0, int delay=100);
-template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=30.0, int delay=100);
-float wavelet02(int k, float DT, float hz=30.0, int delay=100);
-template <typename T1> void wavelet02(T1 *w, int N, float DT, float hz=30.0, int delay=100);
+void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, float sf=30.0, float pmlwide=30.0);
+float wavelet01(int k, float DT, float hz=30.0);
+template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=30.0);
+float wavelet02(int k, float DT, float hz=30.0);
+template <typename T1> void wavelet02(T1 *w, int N, float DT, float hz=30.0);
 template <typename T1> float* hilbert1D(T1 *s, int n, float dt);
 float Blackman(float n, float N);
 
@@ -349,7 +349,7 @@ void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float 
         A.timeslicecal();
         datawrite(A.s3, Z, X, outf1);
         if(k%100==0)
-        {cout<<"now is running : "<<k<<endl}
+        {cout<<"now is running : "<<k<<endl;}
     }
     outf1.close();
     cout<<"Have output test movie."<<endl;
@@ -357,11 +357,11 @@ void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float 
 
 ///////////////////////////////////////////////////////////
 
-float wavelet02(int k, float DT, float hz, int delay)
+float wavelet02(int k, float DT, float hz)
 {
     float pi(3.1415926);
 	float f,det;
-    det=delay*DT;
+    det=0.05*(30.0/hz);
 
     f=(pi)*(pi)*hz*hz*(k*DT-det)*\
     exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
@@ -371,11 +371,11 @@ float wavelet02(int k, float DT, float hz, int delay)
 }
 
 template<typename T1>
-void wavelet02(T1 *w, int N, float DT, float hz, int delay)
+void wavelet02(T1 *w, int N, float DT, float hz)
 {
     float pi(3.1415926);
 	float f,det;
-    det=delay*DT;
+    det=0.05*(30.0/hz);
     int k;
 
     for(k=0;k<N;k++)
@@ -387,11 +387,11 @@ void wavelet02(T1 *w, int N, float DT, float hz, int delay)
     }
 }
 
-float wavelet01(int k, float DT, float hz, int delay)
+float wavelet01(int k, float DT, float hz)
 {
     float pi(3.1415926);
 	float f,det;
-    det=delay*DT;
+    det=0.05*(30.0/hz);
 
     f=exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
     *(1.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
@@ -400,11 +400,11 @@ float wavelet01(int k, float DT, float hz, int delay)
 }
 
 template<typename T1>
-void wavelet01(T1 *w, int N, float DT, float hz, int delay)
+void wavelet01(T1 *w, int N, float DT, float hz)
 {
     float pi(3.1415926);
 	float f,det;
-    det=delay*DT;
+    det=0.05*(30.0/hz);
     int k;
 
     for(k=0;k<N;k++)
