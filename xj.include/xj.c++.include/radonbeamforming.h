@@ -35,7 +35,7 @@ fmat CreatePmat(int NX, int Np, float dx, float dp, float p1)
 
 cx_fmat getTP(fmat data, fmat forA, int Np, int NX, int NF, int Nf, float DT=0.0005, float dig_n=0.01)
 {
-    int i,j,k;
+    int i,j,k;//cout<<"ok"<<endl;
     float w,pi(3.1415926),df,maxpower;
     fmat realTP(NF,Np);
     cx_fmat forAw(NX,Np);
@@ -54,6 +54,7 @@ cx_fmat getTP(fmat data, fmat forA, int Np, int NX, int NF, int Nf, float DT=0.0
     datafft.col(i)=fft(data.col(i),NF);
     } 
     df=1.0/DT/NF;
+
 /*****第一次射线束反演，获得线性拉东谱*****/
 cout<<"now is running: 1 -- "<<endl;
     
@@ -96,6 +97,7 @@ cout<<"now is running: 1 -- "<<endl;
                 realTP(i,j)=real(dataTP(i,j))*real(dataTP(i,j));
                 }
         }
+
 /*****第二次射线束反演，以线性拉东谱作为约束*****/   
 cout<<"now is running: 2 -- "<<endl;
     digA.fill(0.0);

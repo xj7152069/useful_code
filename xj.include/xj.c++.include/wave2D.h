@@ -17,7 +17,7 @@ using namespace std;
 
 #include "mat.h"
 /////////////////////////////////////////////////////////////////////////////////////////////
-void wave2Dtest(int Z, int X, int T);
+void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, float sf=25.0, float pmlwide=25.0);
 float wavelet01(int k, float DT, float hz=30.0, int delay=100);
 template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=30.0, int delay=100);
 float wavelet02(int k, float DT, float hz=30.0, int delay=100);
@@ -331,20 +331,22 @@ void wave2D::timeslicecopy()
     ;
 }
 
-void wave2Dtest(int Z, int X, int T)
+void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, float sf, float pmlwide)
 {
     wave2D A(Z,X);
     ofstream outf1;
     outf1.open("testmovie.bin");
+    A.dx=dx,A.dy=dz,A.dt=dt;
+    w.PML_wide=pmlwide;
 
     int k;
-    float f;
+    float *f;
+    f=new float[T];
+    wavelet01(f,T,dt,sf);
     for(k=0;k<T;k++)
     {
-        f=wavelet01(k,A.dt);
-        A.s2[Z/2][X/2]=A.s2[Z/2][X/2]+f;
+        A.s2[Z/2][X/2]=A.s2[Z/2][X/2]+f[k];
         A.timeslicecal();
-        A.timeslicecopy();
         datawrite(A.s3, Z, X, outf1);
     }
     outf1.close();
