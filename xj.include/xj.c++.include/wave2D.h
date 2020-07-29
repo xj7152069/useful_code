@@ -337,7 +337,7 @@ void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float 
     ofstream outf1;
     outf1.open("testmovie.bin");
     A.dx=dx,A.dy=dz,A.dt=dt;
-    w.PML_wide=pmlwide;
+    A.PML_wide=pmlwide;
 
     int k;
     float *f;
