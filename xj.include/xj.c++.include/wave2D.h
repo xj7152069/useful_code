@@ -348,6 +348,8 @@ void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float 
         A.s2[Z/2][X/2]=A.s2[Z/2][X/2]+f[k];
         A.timeslicecal();
         datawrite(A.s3, Z, X, outf1);
+        if(k%100==0)
+        {cout<<"now is running : "<<k<<endl}
     }
     outf1.close();
     cout<<"Have output test movie."<<endl;
