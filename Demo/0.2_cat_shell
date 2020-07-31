@@ -1,0 +1,8 @@
+for ns in `cat shot_cnooc_fault_id.txt` 
+do 
+  echo "shot =" $ns
+  cat ./shot_cnooc_fault_${ns}.dat >> shot_cnooc_fault_fd_all.pc.dat
+
+done
+
+exit 0

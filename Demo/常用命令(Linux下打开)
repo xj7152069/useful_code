@@ -1,0 +1,30 @@
+流程：
+1.多炮正演模拟
+2.数据整合
+3.加道头（检查道头是否正确）
+4.分选为共中心点道集
+5.NMO
+6.水平叠加
+7.去道头
+
+检查道头信息：
+sugethw <yang_model_shot.su key=fldr,tracf,sx,gx
+
+数据分选：
+susort <yang_model_shot.su >cdp.su cdp offset  (分选为共中心点道集)
+susort <stdin.su >stdout.dat offset cdp  (分选为共偏移距道集)
+
+NMO:
+sunmo <cdp.su >cdp_nmo.su vnmo=2000  (实施动校正；这里假设模型中第一层速度为2000m/s)
+
+水平叠加：
+sustack <cdp_nmo.su >cdp_stk.su  （获得CDP叠加剖面）
+
+去道头：
+sustrip <cdp_stk.su >cdp_stk.dat
+
+检查数据范围：
+surange <stdin.su
+
+DMO:
+sudmotx <offset.su >offset_dmo.su cdpmin=1 cdpmax=*** dxcdp=5 vrms=第一层速度 noffmix=炮间距/CDP间距
