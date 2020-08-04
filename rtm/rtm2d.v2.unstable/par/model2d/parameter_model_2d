@@ -1,0 +1,35 @@
+!*********************the velocity model filename*************************!
+/ssd/ssd_3.2T/wcl/data/layer/2d/vel/layer_nz501_nx601.dat
+!***********************the shot gather filename**************************!
+/ssd/ssd_3.2T/wcl/data/layer/2d/cs/test_v1.su
+!*******************     flag_shot_info : 1: yes, 0:no         ***********!
+1
+!*******************************fn_shot_info******************************!
+/ssd/ssd_3.2T/wcl/adjoint_tomography_master.20.3.16/wcl/tools/shotreceiver_ntr1201_layer_shot61.txt
+!*******************     flag_output_sig: 1: yes, 0:no         ***********!
+0
+!************the dynamic temp file for storage singleshot_result**********!
+/ssd/ssd_3.2T/wcl/data/layer/2d/cs/single/sig_shot61_ntr1201_
+!***********the trace length (sample point number) and dt(ms)*************!
+8000     0.5    
+!*************************nshot_total***and*****ntrace_max****************!
+1		1201
+!*****************  the dimension of the velocity model(nvx, nvz)*********!
+601			501			
+!***************the sampling rate of the velocity model(m)(dvx, dvz)******!
+10.0		10.0
+!*************************  the main frequency(hz)************************!
+25
+!***********************  the imaging grid interval(dx, dz)***************!
+10.0     10.0		
+!**************  the velocity starting coordinate (x, z)(m)***************!
+0.0		 0.0		
+!************the migration aperture(xleft, xrigth, ztop, z bottom)********!
+500.0    	500.0      500.0     	500.0		
+!*************the width of absorbing boundary of x,y, z axis(m)***********!
+1000.0	  1000.0	  1000.0	 	1000.0	
+
+
+
+
+

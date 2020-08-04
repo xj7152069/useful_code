@@ -4,8 +4,8 @@ wave2D.h
     c++ head file: 
 */
 /********************************/
-#ifndef WAVE2D_H_H
-#define WAVE2D_H_H
+#ifndef WAVE2D_UNSTABLE_H_H
+#define WAVE2D_UNSTABLE_H_H
 
 #include <iostream>
 #include <stdio.h>
@@ -16,16 +16,13 @@ wave2D.h
 using namespace std;
 
 #include "mat.h"
+#include "wave2D.h"
 /////////////////////////////////////////////////////////////////////////////////////////////
-void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, float sf=30.0, float pmlwide=30.0);
-float wavelet01(int k, float DT, float hz=30.0);
-template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=30.0);
-float wavelet02(int k, float DT, float hz=30.0);
-template <typename T1> void wavelet02(T1 *w, int N, float DT, float hz=30.0);
-template <typename T1> float* hilbert1D(T1 *s, int n, float dt);
-float Blackman(float n, float N);
+void wave2D_unstable_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, int sz, int sx, float sf, float pmlwide, int dmovie);
+void wave2D_unstable_stabletest(int Z, int X, int T, float dz, float dx, float dt, float **v, int sz, int sx, float sf, float pmlwide, int dmovie);
 
-class wave2D
+
+class wave2D_unstable
 {
 private:
     float xs2[5]={1.666667,-0.238095,0.039683,-0.004960,0.000317};
@@ -41,9 +38,9 @@ public:
     float dx,dy,dt,PML_wide,R;
     int nx,ny,suface;
     
-    wave2D();
-    wave2D(int x, int y);
-    ~wave2D();
+    wave2D_unstable();
+    wave2D_unstable(int x, int y);
+    ~wave2D_unstable();
 
     void setvelocity(float v=3000.0);
     void timeslicecal();
@@ -52,7 +49,7 @@ public:
 };
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-wave2D::wave2D()
+wave2D_unstable::wave2D_unstable()
 {
     nx=0;ny=0;
     dx=5.0;dy=5.0;dt=0.0005;
@@ -60,7 +57,7 @@ wave2D::wave2D()
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
-wave2D::wave2D(int z, int x)
+wave2D_unstable::wave2D_unstable(int z, int x)
 {
     nx=x;ny=z;
     dx=5.0;dy=5.0;dt=0.0005;
@@ -105,7 +102,7 @@ wave2D::wave2D(int z, int x)
         }
 }
 
-wave2D::~wave2D()
+wave2D_unstable::~wave2D_unstable()
 {
     int i,j;
 
@@ -131,7 +128,7 @@ wave2D::~wave2D()
     cout<<"Delete an object-wave_modeling_2D"<<endl;
 }
 
-void wave2D::setvelocity(float v)
+void wave2D_unstable::setvelocity(float v)
 {
     int i,j;
     for(i=0;i<ny;i++)
@@ -143,7 +140,7 @@ void wave2D::setvelocity(float v)
         }
 }
 
-void wave2D::cleardata()
+void wave2D_unstable::cleardata()
 {
     //this->setvelocity(0.0);
     int i,j;
@@ -160,7 +157,7 @@ void wave2D::cleardata()
     cout<<"All Matrix data has been clear!"<<endl;
 }
 
-void wave2D::timeslicecal()
+void wave2D_unstable::timeslicecal()
 {
     static float DX=dx,DY=dy,DT=dt,xshd=PML_wide,*xs1_in=xs1,*xs2_in=xs2;
     static int X=nx,Y=ny,suface_PML=suface;
@@ -264,20 +261,24 @@ void wave2D::timeslicecal()
                 {t4=-1;}
 
             mo2=p2_in[j][i]*p2_in[j][i];
-            if(snx1==0 && snx2==0 && sny1==0 && sny2==0)
-                {
-                sx11_in[j][i]=mo2*DT2\
-                *(u2-u*s2_in[j][i])*(1.0/(DX2))\
-                +(2*sx12_in[j][i]-sx13_in[j][i]);
 
-                sx21_in[j][i]=(3*sx22_in[j][i]-3*sx23_in[j][i]+sx24_in[j][i]);
-
-                sx31_in[j][i]=DT2*mo2\
-                *(1.0/(DY2))*(u1-u*s2_in[j][i])\
-                +2*sx32_in[j][i]-sx33_in[j][i];
-                }
-            else if(snx1!=0 || snx2!=0)
+            if(snx1!=0 || snx2!=0)
                 {
+            //根据系数求得一阶偏微分的离散算子
+                for(n=0;n<10;n++)
+                    {
+                    if(n<5)
+                        {
+                        ux=ux+s2_in[j][i+n-5]*xs1_in[n];
+                        uy=uy+s2_in[j+n-5][i]*xs1_in[n];
+                        }
+                    else
+                        {
+                        ux=ux+s2_in[j][i+n-4]*xs1_in[n];
+                        uy=uy+s2_in[j+n-4][i]*xs1_in[n];
+                        }
+                    }
+
                 sx11_in[j][i]=mo2\
                 *DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
                 -dx*dx*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
@@ -296,6 +297,21 @@ void wave2D::timeslicecal()
                 }
             else if(sny1!=0 || sny2!=0)
                 {
+            //根据系数求得一阶偏微分的离散算子
+                for(n=0;n<10;n++)
+                    {
+                    if(n<5)
+                        {
+                        ux=ux+s2_in[j][i+n-5]*xs1_in[n];
+                        uy=uy+s2_in[j+n-5][i]*xs1_in[n];
+                        }
+                    else
+                        {
+                        ux=ux+s2_in[j][i+n-4]*xs1_in[n];
+                        uy=uy+s2_in[j+n-4][i]*xs1_in[n];
+                        }
+                    }
+
                 sx11_in[j][i]=mo2\
                 *DT2*(u1-u*s2_in[j][i])*(1.0/(DY2))\
                 -dy*dy*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
@@ -313,8 +329,15 @@ void wave2D::timeslicecal()
                 -sx33_in[j][i];
                 }
 
-            // if(snx1!=0 || snx2!=0 || sny1!=0 || sny2!=0)
-            s3_in[j][i]=sx11_in[j][i]+sx21_in[j][i]+sx31_in[j][i];
+            if(snx1==0 && snx2==0 && sny1==0 && sny2==0)
+            {
+                s3_in[j][i]=(mo2*DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
+                +DT2*mo2*(1.0/(DY2))*(u1-u*s2_in[j][i]))+2*s2_in[j][i]-s1_in[j][i];
+            }
+            else
+            {
+                s3_in[j][i]=sx11_in[j][i]+sx21_in[j][i]+sx31_in[j][i];
+            }
             u1=0,u2=0,u=0,ux=0,uy=0;
             }
         }
@@ -326,17 +349,18 @@ void wave2D::timeslicecal()
 
 }
 
-void wave2D::timeslicecopy()
+void wave2D_unstable::timeslicecopy()
 {
     ;
 }
 
-void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, float sf, float pmlwide)
+void wave2D_unstable_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, int sz, int sx, float sf, float pmlwide, int dmovie)
 {
-    wave2D A(Z,X);
+    wave2D_unstable A(Z,X);
     ofstream outf1;
     outf1.open("testmovie.bin");
     A.dx=dx,A.dy=dz,A.dt=dt;
+    A.setvelocity(v);
     A.PML_wide=pmlwide;
 
     int k;
@@ -345,9 +369,12 @@ void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float 
     wavelet01(f,T,dt,sf);
     for(k=0;k<T;k++)
     {
-        A.s2[Z/2][X/2]=A.s2[Z/2][X/2]+f[k];
+        A.s2[sz][sx]=A.s2[sz][sx]+f[k];
         A.timeslicecal();
-        datawrite(A.s3, Z, X, outf1);
+        if(k%dmovie==0)
+        {
+        datawrite(A.s2, Z, X, outf1);
+        }
         if(k%100==0)
         {cout<<"now is running : "<<k<<endl;}
     }
@@ -355,127 +382,36 @@ void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float 
     cout<<"Have output test movie."<<endl;
 }
 
+
+void wave2D_unstable_stabletest(int Z, int X, int T, float dz, float dx, float dt, float **v, int sz, int sx, float sf, float pmlwide, int dmovie)
+{
+    wave2D_unstable A(Z,X);
+    ofstream outf1;
+    outf1.open("testmovie.bin");
+    A.dx=dx,A.dy=dz,A.dt=dt;
+    matcopy(A.p2,v,Z,X);
+    A.PML_wide=pmlwide;
+
+    int k;
+    float *f;
+    f=new float[T];
+    wavelet01(f,T,dt,sf);
+    for(k=0;k<T;k++)
+    {
+        A.s2[sz][sx]=A.s2[sz][sx]+f[k];
+        A.timeslicecal();
+        if(k%dmovie==0)
+        {
+        datawrite(A.s2, Z, X, outf1);
+        }
+        if(k%100==0)
+        {cout<<"now is running : "<<k<<endl;}
+    }
+    outf1.close();
+    cout<<"Have output test movie."<<endl;
+}
 ///////////////////////////////////////////////////////////
 
-float wavelet02(int k, float DT, float hz)
-{
-    float pi(3.1415926);
-	float f,det;
-    det=0.05*(30.0/hz);
-
-    f=(pi)*(pi)*hz*hz*(k*DT-det)*\
-    exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
-    *(3.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
-
-	return f;
-}
-
-template<typename T1>
-void wavelet02(T1 *w, int N, float DT, float hz)
-{
-    float pi(3.1415926);
-	float f,det;
-    det=0.05*(30.0/hz);
-    int k;
-
-    for(k=0;k<N;k++)
-    {
-        f=(pi)*(pi)*hz*hz*(k*DT-det)*\
-        exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
-        *(3.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
-        w[k]=f;
-    }
-}
-
-float wavelet01(int k, float DT, float hz)
-{
-    float pi(3.1415926);
-	float f,det;
-    det=0.05*(30.0/hz);
-
-    f=exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
-    *(1.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
-
-	return f;
-}
-
-template<typename T1>
-void wavelet01(T1 *w, int N, float DT, float hz)
-{
-    float pi(3.1415926);
-	float f,det;
-    det=0.05*(30.0/hz);
-    int k;
-
-    for(k=0;k<N;k++)
-    {
-        f=exp((-pi*pi*hz*hz*(k*DT-det)*(DT*k-det)))\
-        *(1.0-2.0*pi*pi*hz*hz*(k*DT-det)*(DT*k-det));
-        w[k]=f;
-    }
-}
-
-template<typename T1>
-float* hilbert1D(T1 *s, int n, float dt)
-{
-    float *h, pi(3.1415926);
-    int i,j,z,hn;
-    hn=3/dt;
-    z=int(hn/2);
-    h=new float[hn];
-    for(i=0;i<hn;i++)
-    {
-        if((i-z)!=0)
-        {
-            h[i]=1/(pi*dt*(i-z));
-        }
-        else
-        {
-            h[i]=0.0;
-        }   
-    }
-
-    float *h2, *s2, *sh, *sh2;
-    s2=new float[hn+n];
-    h2=new float[hn+n];
-    sh=new float[hn+n];
-    sh2=new float[hn+n];
-    for(i=0;i<hn+n;i++)
-    {
-        s2[i]=0.0;
-        h2[i]=0.0;
-        sh[i]=0.0;
-        sh2[i]=0.0;
-        if(i<n)
-        {
-            s2[i]=s[i];
-        }
-        if(i<hn)
-        {
-            h2[i]=h[i];
-        }
-    }
-
-    for(i=0;i<hn+n;i++)
-    {
-        for(j=0;j<=i;j++)
-        {
-            sh[i]+=s2[i-j]*h2[j];
-        }
-        if(i>=(z))
-        {
-            sh2[i-z]=sh[i]/(1.0/dt);
-        }
-    }
-    return sh2;
-}
-
-float Blackman(float n, float N)
-{
-    float xs, pi(3.1415926);
-    xs=0.42-0.5*cos(2*pi*n/N/2)+0.08*cos(4*pi*n/N/2);
-    return xs;
-}
 
 #endif
 

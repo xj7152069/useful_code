@@ -1,0 +1,16 @@
+ ishot            1
+ myid            1
+ lt        30000
+ ntr         2401
+ nwt          198
+ nx_apert_l =           61  nx_apert_r =           61
+ nz_apert_u =           61  nz_apert_d =           61
+ nx_bound_l =          601  nx_bound_r =          601
+ nz_bound_u =          601  nz_bound_d =          601
+ nx =         2401  nz =          601
+ nx_with_apert =         2523 nz_with_apert =          723
+ nnx =         3725 nnz =         1925
+ nvxx_shift =            0 nvzz_shift =            0
+ nx_shift =          662  nz_shift =          662
+ dx =    5.000000      dz =    5.000000    
+ dt =   2.0000001E-04

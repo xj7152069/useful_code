@@ -1,0 +1,26 @@
+ fn_cs : 
+ /data4/lyh/shot_record_data_lyh/small_paper/only_diving_wave_small_paper_shot_g
+ ather/diving_v2_only_nz601_nx2401_dz5_dx5_shot_gather_new
+ fn_dynamic : /data4/lyh/onuse_data/sig_shot61_ntr1201_
+ fmain  =    25.00000    
+ lt =        30000
+ dt  =   2.0000001E-04
+ nvx, nvz =         2401         601
+ dvx, dvz =    5.000000       5.000000    
+ aperture_x_l =    300.0000    
+ aperture_x_r =    300.0000    
+ aperture_z_u =    300.0000    
+ aperture_z_d =    300.0000    
+ boundary_x_l =    3000.000    
+ boundary_x_r =    3000.000    
+ boundary_z_u =    3000.000    
+ boundary_z_d =    3000.000    
+ dx, dz =    5.000000       5.000000    
+ cvx_initial =   0.0000000E+00
+ cvz_initial =   0.0000000E+00
+ ns_total =            1
+ nx_apert_l, nx_apert_r           61          61
+ nz_apert_u, nz_apert_d           61          61
+ nx_bound_l, nx_bound_r          601         601
+ nz_bound_u, nz_bound_d          601         601
+ vmin, vmax   1500.000       4000.000    

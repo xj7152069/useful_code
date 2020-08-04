@@ -18,6 +18,7 @@ using namespace std;
 #include "mat.h"
 /////////////////////////////////////////////////////////////////////////////////////////////
 void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float v, int sz, int sx, float sf, float pmlwide, int dmovie);
+void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float **v, int sz, int sx, float sf, float pmlwide, int dmovie);
 float wavelet01(int k, float DT, float hz=30.0);
 template <typename T1> void wavelet01(T1 *w, int N, float DT, float hz=30.0);
 float wavelet02(int k, float DT, float hz=30.0);
@@ -399,6 +400,33 @@ void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float 
 }
 
 
+void wave2D_stabletest(int Z, int X, int T, float dz, float dx, float dt, float **v, int sz, int sx, float sf, float pmlwide, int dmovie)
+{
+    wave2D A(Z,X);
+    ofstream outf1;
+    outf1.open("testmovie.bin");
+    A.dx=dx,A.dy=dz,A.dt=dt;
+    matcopy(A.p2,v,Z,X);
+    A.PML_wide=pmlwide;
+
+    int k;
+    float *f;
+    f=new float[T];
+    wavelet01(f,T,dt,sf);
+    for(k=0;k<T;k++)
+    {
+        A.s2[sz][sx]=A.s2[sz][sx]+f[k];
+        A.timeslicecal();
+        if(k%dmovie==0)
+        {
+        datawrite(A.s2, Z, X, outf1);
+        }
+        if(k%100==0)
+        {cout<<"now is running : "<<k<<endl;}
+    }
+    outf1.close();
+    cout<<"Have output test movie."<<endl;
+}
 ///////////////////////////////////////////////////////////
 
 float wavelet02(int k, float DT, float hz)

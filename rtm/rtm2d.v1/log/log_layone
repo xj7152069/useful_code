@@ -1,0 +1,81 @@
+ the shot gather filename/data3/wcl/layer_one/2d/data/layer_one_shot_cut.su
+ the velocity model filename
+ /data3/wcl/layer_one/2d/model/model_nz301_nx601_dz10_dx10_smooth20.dat
+ the migrated and stacked profile/data3/wcl/layer_one/2d/result/rtm/layer_one
+ the single gradient profile file
+ /data3/wcl/layer_one/2d/result/rtm/rtm_test_single230_230
+ the dynamic file storage image result
+ /data3/wcl/layer_one/2d/result/rtm/migration_result_with_
+ the first, interval and last shot           1           1           1
+ the trace length (sample point number)        5000        5000
+ the trace length (sample point number)  0.5000000      0.5000000    
+ the imaging depth(m)   3010.000    
+ the imaging grid interval   10.00000       10.00000    
+ the migration aperture  0.0000000E+00  0.0000000E+00
+ the width of absorbing boundary   1000.000       1000.000    
+ the width of absorbing boundary   1000.000       1000.000    
+ the velocity starting coordinate (x)(m)  0.0000000E+00
+ the dimension of the velocity model         601         301
+ the sampling rate of the velocity model   10.00000       10.00000    
+ the main frequency(hz)   20.00000    
+ the maximum offset of x direction   30000.00    
+ the minimum offset of x direction  0.0000000E+00
+ judge direct wave exist           0
+                                        
+ ********* Check parameters ! **********
+                                        
+ ********************************************
+      Shot gather reverse time migrating     
+                  begins                     
+ ********************************************
+ dt=  5.0000002E-04 dt_real=  5.0000002E-04 dt2=  2.5000003E-07
+ nx_apert_l=           0 nx_apert_r=           0
+ nx_bound_l=         100 nx_bound_r=         100
+ master=           0
+ Form assignment card started...
+ index_table(1,           1 is)=           1
+ index_table(2,           1 ntrace)=         601
+ index_table(3,           1 csx)=        3000
+ index_table(4,           1 0)=           0
+ index_table(5,           1 cx_min)=           0
+ index_table(6,           1 cx_max)=        6000
+ index_table(7,           1 0)=           0
+ index_table(8,           1 0)=           0
+ index_table(9,           1 krec_save)=           1
+ nshot/ns=           1 /           1
+ Index end! wait for MPI_BCAST
+ iss           1
+ ntrace         601
+ xs        3000
+ cx_min           0
+ cx_max        6000
+ krec_save           1
+ nx=         601
+ nx_with_apert         601
+ nz_with_apert         301
+ nnx         801
+ nnz         501
+ nvxx_shift           1
+ memory_needed=   63.11375     m
+ wavefield_slice   1.580891     m
+ nx, dx,  lt, dt, lt_real, dt_real,ns_x, cx_min, krec_save
+         601   10.00000            5000  5.0000002E-04        5000
+  5.0000002E-04         301           0         602
+ shot=           1 myid=           1   step=forward  it=           1
+ shot=           1 myid=           1   step=forward  it=        1001
+ shot=           1 myid=           1   step=forward  it=        2001
+ shot=           1 myid=           1   step=forward  it=        3001
+ shot=           1 myid=           1   step=forward  it=        4001
+ shot=           1 myid=           1   step=forward  it=        5001
+ shot=           1 myid=           1   step=reverse  it=        4001
+ shot=           1 myid=           1   step=reverse  it=        3001
+ shot=           1 myid=           1   step=reverse  it=        2001
+ shot=           1 myid=           1   step=reverse  it=        1001
+ shot=           1 myid=           1   step=reverse  it=           1
+ shot           1 is writing disk!myid=           1
+ shot           1 is done!myid=           1
+ ********************************************
+                                             
+      All shots migrating finished           
+                                             
+ ********************************************

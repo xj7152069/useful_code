@@ -1,0 +1,146 @@
+ the shot gather filename
+ /data4/lyh/shot_record_data_lyh/small_paper/10001_1001_refrected_wave_vel2_shot
+ _gather_2_cut_provece_v1_near_offset.su
+ the velocity model filename
+ /data4/lyh/velocity_model_data_lyh/small_paper/10001_1001_refrected_wave_vel2_s
+ mooth_r1r2_30.dat
+ the migrated and stacked profile
+ /data4/lyh/image_result/small_paper/10001_1001_refrected_wave_vel2_smooth_near_
+ offset_image
+ the single gradient profile file
+ /data4/lyh/onuse_data/migration_result_with_1001001
+ the dynamic file storage image result
+ /data4/lyh/onuse_data/migration_result_with_11011001
+ the first, interval and last shot           1           1           1
+ the trace length (sample point number)       35000       35000
+ the trace length (sample point number)  0.2000000      0.0000000E+00
+ the imaging depth(m)   5000.000    
+ the imaging grid interval   5.000000       5.000000    
+ the migration aperture  0.0000000E+00  0.0000000E+00
+ the width of absorbing boundary   5000.000       5000.000    
+ the width of absorbing boundary   5000.000       5000.000    
+ the velocity starting coordinate (x)(m)  0.0000000E+00
+ the dimension of the velocity model       10001        1001
+ the sampling rate of the velocity model   5.000000       5.000000    
+ the main frequency(hz)   25.00000    
+ the maximum offset of x direction   25000.00    
+ the minimum offset of x direction  -25000.00    
+ judge direct wave exist           0
+                                        
+ ********* Check parameters ! **********
+                                        
+ ********************************************
+      Shot gather reverse time migrating     
+                  begins                     
+ ********************************************
+ dt=  2.0000001E-04 dt_real=  0.0000000E+00 dt2=  4.0000003E-08
+ nx_apert_l=           0 nx_apert_r=           0
+ nx_bound_l=        1000 nx_bound_r=        1000
+ master=           0
+ Form assignment card started...
+ index_table(1,           1 is)=           1
+ index_table(2,           1 ntrace)=       10001
+ index_table(3,           1 csx)=       25000
+ index_table(4,           1 0)=           0
+ index_table(5,           1 cx_min)=           0
+ index_table(6,           1 cx_max)=       50000
+ index_table(7,           1 0)=           0
+ index_table(8,           1 0)=           0
+ index_table(9,           1 krec_save)=           1
+ nshot/ns=           1 /           1
+ Index end! wait for MPI_BCAST
+ iss           1
+ ntrace       10001
+ xs       25000
+ cx_min           0
+ cx_max       50000
+ krec_save           1
+ nx=       10001
+ nx_with_apert       10001
+ nz_with_apert        1000
+ nnx       12001
+ nnz        3000
+ nvxx_shift           1
+ memory_needed=   5954.187     m
+ wavefield_slice   137.9132     m
+ nx, dx,  lt, dt, lt_real, dt_real,ns_x, cx_min, krec_save
+       10001   5.000000           35000  2.0000001E-04       35000
+  0.0000000E+00        5001           0       10002
+ shot=           1 myid=           1   step=forward  it=           1
+ shot=           1 myid=           1   step=forward  it=        1001
+ shot=           1 myid=           1   step=forward  it=        2001
+ shot=           1 myid=           1   step=forward  it=        3001
+ shot=           1 myid=           1   step=forward  it=        4001
+ shot=           1 myid=           1   step=forward  it=        5001
+ shot=           1 myid=           1   step=forward  it=        6001
+ shot=           1 myid=           1   step=forward  it=        7001
+ shot=           1 myid=           1   step=forward  it=        8001
+ shot=           1 myid=           1   step=forward  it=        9001
+ shot=           1 myid=           1   step=forward  it=       10001
+ shot=           1 myid=           1   step=forward  it=       11001
+ shot=           1 myid=           1   step=forward  it=       12001
+ shot=           1 myid=           1   step=forward  it=       13001
+ shot=           1 myid=           1   step=forward  it=       14001
+ shot=           1 myid=           1   step=forward  it=       15001
+ shot=           1 myid=           1   step=forward  it=       16001
+ shot=           1 myid=           1   step=forward  it=       17001
+ shot=           1 myid=           1   step=forward  it=       18001
+ shot=           1 myid=           1   step=forward  it=       19001
+ shot=           1 myid=           1   step=forward  it=       20001
+ shot=           1 myid=           1   step=forward  it=       21001
+ shot=           1 myid=           1   step=forward  it=       22001
+ shot=           1 myid=           1   step=forward  it=       23001
+ shot=           1 myid=           1   step=forward  it=       24001
+ shot=           1 myid=           1   step=forward  it=       25001
+ shot=           1 myid=           1   step=forward  it=       26001
+ shot=           1 myid=           1   step=forward  it=       27001
+ shot=           1 myid=           1   step=forward  it=       28001
+ shot=           1 myid=           1   step=forward  it=       29001
+ shot=           1 myid=           1   step=forward  it=       30001
+ shot=           1 myid=           1   step=forward  it=       31001
+ shot=           1 myid=           1   step=forward  it=       32001
+ shot=           1 myid=           1   step=forward  it=       33001
+ shot=           1 myid=           1   step=forward  it=       34001
+ shot=           1 myid=           1   step=forward  it=       35001
+ shot=           1 myid=           1   step=reverse  it=       34001
+ shot=           1 myid=           1   step=reverse  it=       33001
+ shot=           1 myid=           1   step=reverse  it=       32001
+ shot=           1 myid=           1   step=reverse  it=       31001
+ shot=           1 myid=           1   step=reverse  it=       30001
+ shot=           1 myid=           1   step=reverse  it=       29001
+ shot=           1 myid=           1   step=reverse  it=       28001
+ shot=           1 myid=           1   step=reverse  it=       27001
+ shot=           1 myid=           1   step=reverse  it=       26001
+ shot=           1 myid=           1   step=reverse  it=       25001
+ shot=           1 myid=           1   step=reverse  it=       24001
+ shot=           1 myid=           1   step=reverse  it=       23001
+ shot=           1 myid=           1   step=reverse  it=       22001
+ shot=           1 myid=           1   step=reverse  it=       21001
+ shot=           1 myid=           1   step=reverse  it=       20001
+ shot=           1 myid=           1   step=reverse  it=       19001
+ shot=           1 myid=           1   step=reverse  it=       18001
+ shot=           1 myid=           1   step=reverse  it=       17001
+ shot=           1 myid=           1   step=reverse  it=       16001
+ shot=           1 myid=           1   step=reverse  it=       15001
+ shot=           1 myid=           1   step=reverse  it=       14001
+ shot=           1 myid=           1   step=reverse  it=       13001
+ shot=           1 myid=           1   step=reverse  it=       12001
+ shot=           1 myid=           1   step=reverse  it=       11001
+ shot=           1 myid=           1   step=reverse  it=       10001
+ shot=           1 myid=           1   step=reverse  it=        9001
+ shot=           1 myid=           1   step=reverse  it=        8001
+ shot=           1 myid=           1   step=reverse  it=        7001
+ shot=           1 myid=           1   step=reverse  it=        6001
+ shot=           1 myid=           1   step=reverse  it=        5001
+ shot=           1 myid=           1   step=reverse  it=        4001
+ shot=           1 myid=           1   step=reverse  it=        3001
+ shot=           1 myid=           1   step=reverse  it=        2001
+ shot=           1 myid=           1   step=reverse  it=        1001
+ shot=           1 myid=           1   step=reverse  it=           1
+ shot           1 is writing disk!myid=           1
+ shot           1 is done!myid=           1
+ ********************************************
+                                             
+      All shots migrating finished           
+                                             
+ ********************************************

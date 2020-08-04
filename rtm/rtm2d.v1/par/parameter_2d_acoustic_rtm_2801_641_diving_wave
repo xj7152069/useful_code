@@ -1,0 +1,67 @@
+!************************the shot gather filename(.su)********************!
+/data4/lyh/velocity_model_data_lyh/diving_v_model_with_water/diving_v1_only_nz641_nx2801_dz5_dx5_shot_gather_provece_v2.su
+!***********************the velocity model filename***********************!
+/data4/lyh/velocity_model_data_lyh/diving_v_model_with_water/diving_v1_only_nz641_nx2801_dz5_dx5.dat
+!***************************the image profile*****************************!
+/data4/lyh/image_result/small_paper/diving_v1_only_nz641_nx2801_dz5_dx5_shot_gather_provece_v2_rtm_image
+!**********************the single gradient profile file*******************!
+/data4/lyh/onuse_data/rtm_test_single230_230
+!************the dynamic temp file for storage gradient result************!
+/data4/lyh/onuse_data/migration_result_with_
+!**********************the first, interval and last shot******************!
+1		1		1
+!***********************  the imaging grid interval***********************!
+5.0
+!***********************  the migration aperture**************************!
+0.0		0.0
+!***********the trace length (sample point number) and dt(ms)*************!
+30000    0.2     30000    0.2
+!***************  the imaging depth(m) and step_length(m)*****************!
+3200	5.0
+!**************  the velocity starting coordinate x (m)*******************!
+0	
+!**************  the width of absorbing boundary of x axis****************!
+2000.0		2000.0
+!**************  the width of absorbing boundary of z axis****************!
+2000.0		2000.0
+!*****************  the dimension of the velocity model*******************!
+2801		641
+!***************the sampling rate of the velocity model(m)****************!
+5.0		5.0
+!*************************  the main frequency(hz)************************!
+25
+!*************************  the maxinum of offset*************************!
+30000
+!*************************  the mininun of offset*************************!
+0
+!****judge direct wave exist( 1 represent existance and 0 vice versa)*****!
+0
+!***********order must be odder*******************************************!
+1
+
+
+
+
+
+
+
+Comment:
+fn1
+fn2
+fn3
+fn_single
+fn_dynamic
+ns_start, ns_interval, ns_end
+dx
+aperture_x_l, aperture_x_r
+lt, dt, lt_real, dt_real
+depth, dz
+cvx_initial
+boundary_x_l, boundary_x_r
+boundary_z_u, boundary_z_d
+nvx, nvz
+dvx, dvz
+fmain
+max_offset_x
+min_offset_x
+shot_direct

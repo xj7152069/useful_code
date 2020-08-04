@@ -1,0 +1,19 @@
+ The current shot            1   Parameter is shown as: 
+ ishot           1
+ it_step =            0
+ ntr =         2401
+ lt =        30000  ns =            0 order            5
+ nwt =          198
+ dx =    5.000000      dz =    5.000000    
+ dt =   2.0000001E-04
+ nx_apert_l =           61  nx_apert_r =           61
+ nz_apert_u =           61  nz_apert_d =           61
+ nx_bound_l =          601  nx_bound_r =          601
+ nz_bound_u =          601  nz_bound_d =          601
+ nx =         2401  nz =          601
+ nx_with_apert =         2523
+ nnx =         3725 nnz =         1925
+ nvxx_shift =          -61 nvzz_shift =          -61
+ nx_shift =          662  nz_shift =          662
+ sx, sz  0.0000000E+00  0.0000000E+00
+ ns_x, ns_z         663         663

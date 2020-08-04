@@ -1,0 +1,67 @@
+!************************the shot gather filename(.su)********************!
+/data4/lyh/shot_record_data_lyh/small_paper/5601_601_diving_wave_vel1_shot_gather.su
+!***********************the velocity model filename***********************!
+/data4/lyh/velocity_model_data_lyh/small_paper/5601_601_diving_wave_vel1.dat
+!***************************the image profile*****************************!
+/data3/wcl/layer_one/2d/result/rtm/layer_one
+!**********************the single gradient profile file*******************!
+/data3/wcl/layer_one/2d/result/rtm/rtm_test_single230_230
+!************the dynamic temp file for storage gradient result************!
+/data3/wcl/layer_one/2d/result/rtm/migration_result_with_
+!**********************the first, interval and last shot******************!
+151		1		151
+!***********************  the imaging grid interval***********************!
+10.0
+!***********************  the migration aperture**************************!
+0.0		0.0
+!***********the trace length (sample point number) and dt(ms)*************!
+5000    1.0     5000    1.0
+!***************  the imaging depth(m) and step_length(m)*****************!
+3010	10.0
+!**************  the velocity starting coordinate x (m)*******************!
+0	
+!**************  the width of absorbing boundary of x axis****************!
+1000.0		1000.0
+!**************  the width of absorbing boundary of z axis****************!
+1000.0		1000.0
+!*****************  the dimension of the velocity model*******************!
+601		301
+!***************the sampling rate of the velocity model(m)****************!
+10.0		10.0
+!*************************  the main frequency(hz)************************!
+20
+!*************************  the maxinum of offset*************************!
+30000
+!*************************  the mininun of offset*************************!
+0
+!****judge direct wave exist( 1 represent existance and 0 vice versa)*****!
+0
+!***********order must be odder*******************************************!
+1
+
+
+
+
+
+
+
+Comment:
+fn1
+fn2
+fn3
+fn_single
+fn_dynamic
+ns_start, ns_interval, ns_end
+dx
+aperture_x_l, aperture_x_r
+lt, dt, lt_real, dt_real
+depth, dz
+cvx_initial
+boundary_x_l, boundary_x_r
+boundary_z_u, boundary_z_d
+nvx, nvz
+dvx, dvz
+fmain
+max_offset_x
+min_offset_x
+shot_direct
