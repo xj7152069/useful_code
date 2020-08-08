@@ -8,26 +8,27 @@ module  wave2d_basic
 implicit none   
 
     type wave2d
-        real,target  :: xs2(5)=[1.666667,-0.238095,0.039683,-0.004960,0.000317]
-        real,target  :: xs1(10)=[-0.0007926,0.00991800,-0.0595200,0.238080,-0.833333,&
+        real  :: xs2(5)=[1.666667,-0.238095,0.039683,-0.004960,0.000317]
+        real  :: xs1(10)=[-0.0007926,0.00991800,-0.0595200,0.238080,-0.833333,&
         0.833333,-0.238080,0.0595200,-0.00991800,0.0007926]
         real :: dx,dz,dt,PML_wide,R
         integer :: nx,nz,suface
-        real,allocatable,target :: sx11(:,:)
-        real,allocatable,target :: sx12(:,:)
-        real,allocatable,target :: sx13(:,:)
-        real,allocatable,target :: sxp21(:,:)
-        real,allocatable,target :: sxp22(:,:)
-        real,allocatable,target :: sxp23(:,:)
-        real,allocatable,target :: sx21(:,:)
-        real,allocatable,target :: sx22(:,:) 
-        real,allocatable,target :: sx31(:,:)
-        real,allocatable,target :: sx32(:,:)
-        real,allocatable,target :: sx33(:,:)
-        real,allocatable,target :: vel(:,:)
-        real,allocatable,target :: s1(:,:)
-        real,allocatable,target :: s2(:,:)
-        real,allocatable,target :: s3(:,:)
+        real,allocatable :: sw(:,:)
+        real,allocatable :: sx11(:,:)
+        real,allocatable :: sx12(:,:)
+        real,allocatable :: sx13(:,:)
+        real,allocatable :: sxp21(:,:)
+        real,allocatable :: sxp22(:,:)
+        real,allocatable :: sxp23(:,:)
+        real,allocatable :: sx21(:,:)
+        real,allocatable :: sx22(:,:) 
+        real,allocatable :: sx31(:,:)
+        real,allocatable :: sx32(:,:)
+        real,allocatable :: sx33(:,:)
+        real,allocatable :: vel(:,:)
+        real,allocatable :: s1(:,:)
+        real,allocatable :: s2(:,:)
+        real,allocatable :: s3(:,:)
     end	type wave2d
 
 contains 
@@ -43,6 +44,12 @@ contains
         w%PML_wide=30
         w%suface=1
         w%R=1000
+
+        allocate(w%sw(0:nz, 0:nx), stat=ierr)
+        if(ierr.ne.0)then
+            write(*,*)"Can not allocate working memory about us1, stop!!!"
+            stop
+        endif
 
         allocate(w%s1(0:nz, 0:nx), stat=ierr)
         if(ierr.ne.0)then
@@ -134,25 +141,27 @@ contains
             stop
         endif
 
-        s1(:,:)=0.0
-        s2(:,:)=0.0
-        s3(:,:)=0.0
-        sx11(:,:)=0.0
-        sx12(:,:)=0.0
-        sx13(:,:)=0.0
-        sxp21(:,:)=0.0
-        sxp22(:,:)=0.0
-        sxp23(:,:)=0.0
-        sx21(:,:)=0.0
-        sx22(:,:)=0.0
-        sx31(:,:)=0.0
-        sx32(:,:)=0.0
-        sx33(:,:)=0.0
-        vel(:,:)=3000.0
+        w%sw(:,:)=0.0
+        w%s1(:,:)=0.0
+        w%s2(:,:)=0.0
+        w%s3(:,:)=0.0
+        w%sx11(:,:)=0.0
+        w%sx12(:,:)=0.0
+        w%sx13(:,:)=0.0
+        w%sxp21(:,:)=0.0
+        w%sxp22(:,:)=0.0
+        w%sxp23(:,:)=0.0
+        w%sx21(:,:)=0.0
+        w%sx22(:,:)=0.0
+        w%sx31(:,:)=0.0
+        w%sx32(:,:)=0.0
+        w%sx33(:,:)=0.0
+        w%vel(:,:)=3000.0
     end subroutine wave2d_creater
 
     subroutine wave2d_del(w)
-        type(wave2d),intent (out) :: w
+        type(wave2d),intent (inout) :: w
+        deallocate(w%sw)
         deallocate(w%s1)
         deallocate(w%s2)
         deallocate(w%s3)
@@ -180,14 +189,6 @@ contains
         real :: C_X
         real :: C_Y
         real :: DT2,DT3,DX2,DY2,mo2
-    
-        real,pointer :: xs1_in(:)=>w%xs1, xs2_in(:)=>w%xs2    
-        real,pointer :: sx11_in(:,:)=>w%sx11, sx12_in(:,:)=>w%sx12, sx13_in(:,:)=>w%sx13 
-        real,pointer :: sxp21i(:,:)=>w%sxp21, sxp22i(:,:)=>w%sxp22, sxp23i(:,:)=>w%sxp23
-        real,pointer :: sx21_in(:,:)=>w%sx21, sx22_in(:,:)=>w%sx22 
-        real,pointer :: sx31_in(:,:)=>w%sx31, sx32_in(:,:)=>w%sx32, sx33_in(:,:)=>w%sx33 
-        real,pointer :: p2_in(:,:)=>w%vel, swap=>null()
-        real,pointer :: s1_in(:,:)=>w%s1, s2_in(:,:)=>w%s2, s3_in(:,:)=>w%s3 
     
         DX=w%dx
         DY=w%dz
@@ -221,11 +222,11 @@ contains
             jloop: do j=5, Y-5
                 
             !根据系数求得二阶偏微分的离散算子
-                nloop: do n=0, 5
-                    u=u+2*xs2_in(n);
-                    u1=u1+xs2_in(n)*(s2_in(j-n-1,i)+s2_in(j+n+1,i))
-                    u2=u2+xs2_in(n)*(s2_in(j,i-n-1)+s2_in(j,i+n+1))
-                end do nloop
+                n0loop: do n=0, 5
+                    u=u+2*w%xs2(n);
+                    u1=u1+w%xs2(n)*(w%s2(j-n-1,i)+w%s2(j+n+1,i))
+                    u2=u2+w%xs2(n)*(w%s2(j,i-n-1)+w%s2(j,i+n+1))
+                end do n0loop
     
                 snx1=0.0
                 snx2=0.0
@@ -237,10 +238,10 @@ contains
                 faddy=0
     
                 if (suface_PML==1) then
-                    if (i>=X-xshd-5 .and. j<t5*i .and. j>-t5*i+Y) then	
+                    if (i>=X-xshd-5 .and. j<t5*i .and. j>-t5*i+Y) then
                         snx1=i-(X-xshd-5)
                     end if
-                    if (i<=xshd+5 .and. j>t5*i .and. j<-t5*i+Y) then		
+                    if (i<=xshd+5 .and. j>t5*i .and. j<-t5*i+Y) then	
                         snx2=xshd+5-i
                     end if
                     if(j>=Y-xshd-5 .and. j>=t5*i .and. j>=-t5*i+Y) then
@@ -265,20 +266,20 @@ contains
                 end if
     
                 if (sny1 /= 0) then
-                    fady=p2_in(j,i)*C_Y*sny1*sny1*DY2
-                    faddy=p2_in(j,i)*C_Y*2*sny1*DY
+                    fady=w%vel(j,i)*C_Y*sny1*sny1*DY2
+                    faddy=w%vel(j,i)*C_Y*2*sny1*DY
                 end if
                 if (sny2 /= 0) then
-                    fady=p2_in(j,i)*C_Y*sny2*sny2*DY2
-                    faddy=p2_in(j,i)*C_Y*2*sny2*DY
+                    fady=w%vel(j,i)*C_Y*sny2*sny2*DY2
+                    faddy=w%vel(j,i)*C_Y*2*sny2*DY
                 end if
                 if (snx1 /= 0) then
-                    fadx=p2_in(j,i)*C_X*snx1*snx1*DX2
-                    faddx=p2_in(j,i)*C_X*2*snx1*DX
+                    fadx=w%vel(j,i)*C_X*snx1*snx1*DX2
+                    faddx=w%vel(j,i)*C_X*2*snx1*DX
                 end if
                 if (snx2 /= 0) then 
-                    fadx=p2_in(j,i)*C_X*snx2*snx2*DX2
-                    faddx=p2_in(j,i)*C_X*2*snx2*DX
+                    fadx=w%vel(j,i)*C_X*snx2*snx2*DX2
+                    faddx=w%vel(j,i)*C_X*2*snx2*DX
                 end if
     
                 if(j>=0.5*(Y)) then
@@ -287,68 +288,68 @@ contains
                     t4=-1
                 end if
     
-                mo2=p2_in(j,i)*p2_in(j,i)
+                mo2=w%vel(j,i)*w%vel(j,i)
     
                 if(snx1/=0 .or. snx2/=0) then
                 !根据系数求得一阶偏微分的离散算子
-                    nloop: do n=0, 10
+                    n1loop: do n=0, 10
                         if(n<5) then
-                            ux=ux+s2_in(j,i+n-5)*xs1_in(n)
-                            uy=uy+s2_in(j+n-5,i)*xs1_in(n)
+                            ux=ux+w%s2(j,i+n-5)*w%xs1(n)
+                            uy=uy+w%s2(j+n-5,i)*w%xs1(n)
                         else
-                            ux=ux+s2_in(j,i+n-4)*xs1_in(n)
-                            uy=uy+s2_in(j+n-4,i)*xs1_in(n)
+                            ux=ux+w%s2(j,i+n-4)*w%xs1(n)
+                            uy=uy+w%s2(j+n-4,i)*w%xs1(n)
                         end if
-                    end do nloop
+                    end do n1loop
     
                     !equation 1
-                    sx11_in(j,i)=mo2*DT2*(u2-u*s2_in(j,i))*(1.0/(DX2)) &
-                    -fadx*fadx*DT2*sx12_in(j,i)+(2*sx12_in(j,i) &
-                    -sx13_in(j,i))+DT*(2*fadx*(sx13_in(j,i)-sx12_in(j,i)))
+                    w%sx11(j,i)=mo2*DT2*(u2-u*w%s2(j,i))*(1.0/(DX2)) &
+                    -fadx*fadx*DT2*w%sx12(j,i)+(2*w%sx12(j,i) &
+                    -w%sx13(j,i))+DT*(2*fadx*(w%sx13(j,i)-w%sx12(j,i)))
     
                     !equation 2
-                    sxp21i(j,i) = 2.0*sxp22i(j,i) - sxp23i(j,i) &
+                    w%sxp21(j,i) = 2.0*w%sxp22(j,i) - w%sxp23(j,i) &
                     +DT2*(-1.0*mo2*faddx*(1.0/(DX))*(ux*t3) - &
-                    2.0*fadx*(sxp22i(j,i) - sxp23i(j,i))/DT - fadx*fadx*sxp22i(j,i))
-                    sx21_in(j,i) = sx22_in(j,i) + DT*(sxp22i(j,i) - fadx*sx22_in(j,i))
+                    2.0*fadx*(w%sxp22(j,i) - w%sxp23(j,i))/DT - fadx*fadx*w%sxp22(j,i))
+                    w%sx21(j,i) = w%sx22(j,i) + DT*(w%sxp22(j,i) - fadx*w%sx22(j,i))
     
                     !equation 3
-                    sx31_in(j,i)=DT2*mo2*(1.0/(DY2))*(u1-u*s2_in(j,i)) &
-                    +2*sx32_in(j,i)-sx33_in(j,i)
+                    w%sx31(j,i)=DT2*mo2*(1.0/(DY2))*(u1-u*w%s2(j,i)) &
+                    +2*w%sx32(j,i)-w%sx33(j,i)
                     
                 else if (sny1/=0 .or. sny2/=0) then
                 !根据系数求得一阶偏微分的离散算子
-                    nloop: do n=0, 10
+                    n2loop: do n=0, 10
                         if(n<5) then
-                            ux=ux+s2_in(j,i+n-5)*xs1_in(n)
-                            uy=uy+s2_in(j+n-5,i)*xs1_in(n)
+                            ux=ux+w%s2(j,i+n-5)*w%xs1(n)
+                            uy=uy+w%s2(j+n-5,i)*w%xs1(n)
                         else
-                            ux=ux+s2_in(j,i+n-4)*xs1_in(n)
-                            uy=uy+s2_in(j+n-4,i)*xs1_in(n)
+                            ux=ux+w%s2(j,i+n-4)*w%xs1(n)
+                            uy=uy+w%s2(j+n-4,i)*w%xs1(n)
                         end if
-                    end do nloop
+                    end do n2loop
     
                     !equation 1
-                    sx11_in(j,i)=mo2*DT2*(u1-u*s2_in(j,i))*(1.0/(DY2)) &
-                    -fady*fady*DT2*sx12_in(j,i)+(2*sx12_in(j,i) &
-                    -sx13_in(j,i))+DT*(2*dy*(sx13_in(j,i)-sx12_in(j,i)))
+                    w%sx11(j,i)=mo2*DT2*(u1-u*w%s2(j,i))*(1.0/(DY2)) &
+                    -fady*fady*DT2*w%sx12(j,i)+(2*w%sx12(j,i) &
+                    -w%sx13(j,i))+DT*(2*dy*(w%sx13(j,i)-w%sx12(j,i)))
     
                     !equation 2 : 包含三阶偏微分,需将其拆解为一阶偏微分(p)的二阶导数离散求解
-                    sxp21i(j,i) = 2.0*sxp22i(j,i) - sxp23i(j,i) &
+                    w%sxp21(j,i) = 2.0*w%sxp22(j,i) - w%sxp23(j,i) &
                     +DT2*(-1.0*mo2*faddy*(1.0/(DY))*(uy*t4) - 2.0*fady &
-                    *(sxp22i(j,i) - sxp23i(j,i))/DT - fady*fady*sxp22i(j,i))
-                    sx21_in(j,i) = sx22_in(j,i) + DT*(sxp22i(j,i) - fady*sx22_in(j,i))
+                    *(w%sxp22(j,i) - w%sxp23(j,i))/DT - fady*fady*w%sxp22(j,i))
+                    w%sx21(j,i) = w%sx22(j,i) + DT*(w%sxp22(j,i) - fady*w%sx22(j,i))
     
                     !equation 3
-                    sx31_in(j,i)=DT2*mo2*(1.0/(DX2))*(u2-u*s2_in(j,i)) &
-                    +2*sx32_in(j,i)-sx33_in(j,i)
+                    w%sx31(j,i)=DT2*mo2*(1.0/(DX2))*(u2-u*w%s2(j,i)) &
+                    +2*w%sx32(j,i)-w%sx33(j,i)
                 end if
     
                 if(snx1==0 .and. snx2==0 .and. sny1==0 .and. sny2==0) then
-                    s3_in(j,i)=(mo2*DT2*(u2-u*s2_in(j,i))*(1.0/(DX2)) &
-                    +DT2*mo2*(1.0/(DY2))*(u1-u*s2_in(j,i)))+2*s2_in(j,i)-s1_in(j,i)
+                    w%s3(j,i)=(mo2*DT2*(u2-u*w%s2(j,i))*(1.0/(DX2)) &
+                    +DT2*mo2*(1.0/(DY2))*(u1-u*w%s2(j,i)))+2*w%s2(j,i)-w%s1(j,i)
                 else
-                    s3_in(j,i)=sx11_in(j,i)+sx21_in(j,i)+sx31_in(j,i)
+                    w%s3(j,i)=w%sx11(j,i)+w%sx21(j,i)+w%sx31(j,i)
                 end if
                 u1=0
                 u2=0
@@ -358,29 +359,29 @@ contains
             end do jloop
         end do iloop
     
-        swap=>s1_in
-        s1_in=>s2_in
-        s2_in=>s3_in
-        s3_in=>swap
+        w%sw(:,:)=w%s1(:,:)
+        w%s1(:,:)=w%s2(:,:)
+        w%s2(:,:)=w%s3(:,:)
+        w%s3(:,:)=w%sw(:,:)
 
-        swap=>sx13_in
-        sx13_in=>sx12_in
-        sx12_in=>sx11_in
-        sx11_in=>swap
+        w%sw(:,:)=w%sx13(:,:)
+        w%sx13(:,:)=w%sx12(:,:)
+        w%sx12(:,:)=w%sx11(:,:)
+        w%sx11(:,:)=w%sw(:,:)
 
-        swap=>sxp23i
-        sxp23i=>sxp22i
-        sxp22i=>sxp21i
-        sxp21i=>swap
+        w%sw(:,:)=w%sxp23(:,:)
+        w%sxp23(:,:)=w%sxp22(:,:)
+        w%sxp22(:,:)=w%sxp21(:,:)
+        w%sxp21(:,:)=w%sw(:,:)
 
-        swap=>sx22_in
-        sx22_in=>sx21_in
-        sx21_in=>swap
+        w%sw(:,:)=w%sx22(:,:)
+        w%sx22(:,:)=w%sx21(:,:)
+        w%sx21(:,:)=w%sw(:,:)
 
-        swap=>sx33_in
-        sx33_in=>sx32_in
-        sx32_in=>sx31_in
-        sx31_in=>swap
+        w%sw(:,:)=w%sx33(:,:)
+        w%sx33(:,:)=w%sx32(:,:)
+        w%sx32(:,:)=w%sx31(:,:)
+        w%sx31(:,:)=w%sw(:,:)
     end subroutine timeslicecal
 
     subroutine wavelet02(s, N, DT, hz)
