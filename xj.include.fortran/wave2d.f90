@@ -3,33 +3,37 @@
 !   fortran module file: 
 !/
 !/********************************/
-
-module  wave2d_basic
-implicit none   
+module  wave2d_type
 
     type wave2d
-        real  :: xs2(5)=[1.666667,-0.238095,0.039683,-0.004960,0.000317]
-        real  :: xs1(10)=[-0.0007926,0.00991800,-0.0595200,0.238080,-0.833333,&
+        real(4)  :: xs2(0:4)=[1.666667,-0.238095,0.039683,-0.004960,0.000317]
+        real(4)  :: xs1(0:9)=[-0.0007926,0.00991800,-0.0595200,0.238080,-0.833333,&
         0.833333,-0.238080,0.0595200,-0.00991800,0.0007926]
-        real :: dx,dz,dt,PML_wide,R
+        real(4) :: dx,dz,dt,PML_wide,R
         integer :: nx,nz,suface
-        real,allocatable :: sw(:,:)
-        real,allocatable :: sx11(:,:)
-        real,allocatable :: sx12(:,:)
-        real,allocatable :: sx13(:,:)
-        real,allocatable :: sxp21(:,:)
-        real,allocatable :: sxp22(:,:)
-        real,allocatable :: sxp23(:,:)
-        real,allocatable :: sx21(:,:)
-        real,allocatable :: sx22(:,:) 
-        real,allocatable :: sx31(:,:)
-        real,allocatable :: sx32(:,:)
-        real,allocatable :: sx33(:,:)
-        real,allocatable :: vel(:,:)
-        real,allocatable :: s1(:,:)
-        real,allocatable :: s2(:,:)
-        real,allocatable :: s3(:,:)
-    end	type wave2d
+        real(4),allocatable :: sw(:,:)
+        real(4),allocatable :: sx11(:,:)
+        real(4),allocatable :: sx12(:,:)
+        real(4),allocatable :: sx13(:,:)
+        real(4),allocatable :: sxp21(:,:)
+        real(4),allocatable :: sxp22(:,:)
+        real(4),allocatable :: sxp23(:,:)
+        real(4),allocatable :: sx21(:,:)
+        real(4),allocatable :: sx22(:,:) 
+        real(4),allocatable :: sx31(:,:)
+        real(4),allocatable :: sx32(:,:)
+        real(4),allocatable :: sx33(:,:)
+        real(4),allocatable :: vel(:,:)
+        real(4),allocatable :: s1(:,:)
+        real(4),allocatable :: s2(:,:)
+        real(4),allocatable :: s3(:,:)
+    end	type
+
+end module wave2d_type
+
+module  wave2d_basic
+    use wave2d_type
+implicit none   
 
 contains 
     subroutine wave2d_creater(w,nz,nx)
@@ -45,101 +49,34 @@ contains
         w%suface=1
         w%R=1000
 
-        allocate(w%sw(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sw(0:nz, 0:nx))
 
-        allocate(w%s1(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%s1(0:nz, 0:nx))
 
-        allocate(w%s2(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%s2(0:nz, 0:nx))
 
-        allocate(w%s3(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%s3(0:nz, 0:nx))
 
-        allocate(w%sx11(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sx11(0:nz, 0:nx))
 
-        allocate(w%sx12(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sx12(0:nz, 0:nx))
 
-        allocate(w%sx13(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sx13(0:nz, 0:nx))
+        allocate(w%sx21(0:nz, 0:nx))
+        allocate(w%sx22(0:nz, 0:nx))
 
-        allocate(w%sx21(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sx31(0:nz, 0:nx))
 
-        allocate(w%sx22(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sx32(0:nz, 0:nx))
 
-        allocate(w%sx31(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sx33(0:nz, 0:nx))
 
-        allocate(w%sx32(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sxp21(0:nz, 0:nx))
 
-        allocate(w%sx33(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sxp22(0:nz, 0:nx))
 
-        allocate(w%sxp21(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
-
-        allocate(w%sxp22(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
-
-        allocate(w%sxp23(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
-
-        allocate(w%vel(0:nz, 0:nx), stat=ierr)
-        if(ierr.ne.0)then
-            write(*,*)"Can not allocate working memory about us1, stop!!!"
-            stop
-        endif
+        allocate(w%sxp23(0:nz, 0:nx))
+        allocate(w%vel(0:nz, 0:nx))
 
         w%sw(:,:)=0.0
         w%s1(:,:)=0.0
@@ -179,16 +116,16 @@ contains
         deallocate(w%vel)
     end subroutine wave2d_del
 
-    subroutine timeslicecal(w)
-        type(wave2d),intent (inout) :: w
-        real :: DX,DY,DT,xshd
+    subroutine wave2d_timeslicecal(w)
+        type(wave2d),intent(inout) :: w
+        real(4) :: DX,DY,DT,xshd
         integer :: X,Y,suface_PML
-        real :: fadx,fady,faddx,faddy,snx1,sny1,snx2,sny2,t2,t5
+        real(4) :: fadx,fady,faddx,faddy,snx1,sny1,snx2,sny2,t2,t5
         integer :: i,j,n,t3,t4
-        real :: u1,u2,u,ux,uy
-        real :: C_X
-        real :: C_Y
-        real :: DT2,DT3,DX2,DY2,mo2
+        real(4) :: u1,u2,u,ux,uy
+        real(4) :: C_X
+        real(4) :: C_Y
+        real(4) :: DT2,DT3,DX2,DY2,mo2
     
         DX=w%dx
         DY=w%dz
@@ -202,14 +139,14 @@ contains
         DT3=DT2*DT
         DX2=DX*DX
         DY2=DY*DY
-        t5=float(Y)/X
+        t5=real(Y)/real(X)
         u1=0
         u2=0
         u=0
         ux=0
         uy=0
-        C_X=log(w%R)*3/2/(xshd)/(xshd)/(xshd)/DX2/DX
-        C_Y=log(w%R)*3/2/(xshd)/(xshd)/(xshd)/DY2/DY
+        C_X=log(w%R)*3.0/2.0/(xshd)/(xshd)/(xshd)/DX2/DX
+        C_Y=log(w%R)*3.0/2.0/(xshd)/(xshd)/(xshd)/DY2/DY
 
         iloop: do i=5, X-5
 
@@ -222,7 +159,7 @@ contains
             jloop: do j=5, Y-5
                 
             !根据系数求得二阶偏微分的离散算子
-                n0loop: do n=0, 5
+                n0loop: do n=0, 4
                     u=u+2*w%xs2(n);
                     u1=u1+w%xs2(n)*(w%s2(j-n-1,i)+w%s2(j+n+1,i))
                     u2=u2+w%xs2(n)*(w%s2(j,i-n-1)+w%s2(j,i+n+1))
@@ -292,7 +229,7 @@ contains
     
                 if(snx1/=0 .or. snx2/=0) then
                 !根据系数求得一阶偏微分的离散算子
-                    n1loop: do n=0, 10
+                    n1loop: do n=0, 9
                         if(n<5) then
                             ux=ux+w%s2(j,i+n-5)*w%xs1(n)
                             uy=uy+w%s2(j+n-5,i)*w%xs1(n)
@@ -319,7 +256,7 @@ contains
                     
                 else if (sny1/=0 .or. sny2/=0) then
                 !根据系数求得一阶偏微分的离散算子
-                    n2loop: do n=0, 10
+                    n2loop: do n=0, 9
                         if(n<5) then
                             ux=ux+w%s2(j,i+n-5)*w%xs1(n)
                             uy=uy+w%s2(j+n-5,i)*w%xs1(n)
@@ -332,7 +269,7 @@ contains
                     !equation 1
                     w%sx11(j,i)=mo2*DT2*(u1-u*w%s2(j,i))*(1.0/(DY2)) &
                     -fady*fady*DT2*w%sx12(j,i)+(2*w%sx12(j,i) &
-                    -w%sx13(j,i))+DT*(2*dy*(w%sx13(j,i)-w%sx12(j,i)))
+                    -w%sx13(j,i))+DT*(2*fady*(w%sx13(j,i)-w%sx12(j,i)))
     
                     !equation 2 : 包含三阶偏微分,需将其拆解为一阶偏微分(p)的二阶导数离散求解
                     w%sxp21(j,i) = 2.0*w%sxp22(j,i) - w%sxp23(j,i) &
@@ -362,34 +299,29 @@ contains
         w%sw(:,:)=w%s1(:,:)
         w%s1(:,:)=w%s2(:,:)
         w%s2(:,:)=w%s3(:,:)
-        w%s3(:,:)=w%sw(:,:)
 
         w%sw(:,:)=w%sx13(:,:)
         w%sx13(:,:)=w%sx12(:,:)
         w%sx12(:,:)=w%sx11(:,:)
-        w%sx11(:,:)=w%sw(:,:)
 
         w%sw(:,:)=w%sxp23(:,:)
         w%sxp23(:,:)=w%sxp22(:,:)
         w%sxp22(:,:)=w%sxp21(:,:)
-        w%sxp21(:,:)=w%sw(:,:)
 
         w%sw(:,:)=w%sx22(:,:)
         w%sx22(:,:)=w%sx21(:,:)
-        w%sx21(:,:)=w%sw(:,:)
 
         w%sw(:,:)=w%sx33(:,:)
         w%sx33(:,:)=w%sx32(:,:)
         w%sx32(:,:)=w%sx31(:,:)
-        w%sx31(:,:)=w%sw(:,:)
-    end subroutine timeslicecal
+    end subroutine wave2d_timeslicecal
 
     subroutine wavelet02(s, N, DT, hz)
         integer :: N
-        real,intent(inout) :: s(N)
-        real :: DT, hz
-        real :: pi=3.1415926
-        real :: f,det
+        real(4),intent(inout) :: s(0:N)
+        real(4) :: DT, hz
+        real(4) :: pi=3.1415926
+        real(4) :: f,det
         integer :: k
         det=0.05*(30.0/hz)
 
@@ -401,13 +333,12 @@ contains
         end do
     end subroutine wavelet02
 
-
     subroutine wavelet01(s, N, DT, hz)
         integer :: N
-        real,intent(inout) :: s(N)
-        real :: DT, hz
-        real :: pi=3.1415926
-        real :: f,det
+        real(4),intent(inout) :: s(0:N)
+        real(4) :: DT, hz
+        real(4) :: pi=3.1415926
+        real(4) :: f,det
         integer :: k
         det=0.05*(30.0/hz)
 
@@ -420,3 +351,38 @@ contains
 
 end module wave2d_basic
 
+program wave2d_test
+    use wave2d_type
+    use wave2d_basic
+    
+    implicit none
+    
+        integer :: k,nz,nx,nt
+        real(4) :: dt
+        real(4) :: s(0:3000)
+        type(wave2d) :: w
+        nt=3000
+        nz=500
+        nx=500
+        dt=0.0005
+    
+        call wave2d_creater(w,nz,nx)
+        call wavelet01(s, nt, dt, 30.0)
+    
+        open( 12 , File = 'testmovie.bin' , Access = 'stream' , Form = 'Unformatted'  )
+    
+        do k=0, nt
+            w%s2(nz/2,nx/2)=w%s2(nz/2,nx/2)+s(k)
+            call wave2d_timeslicecal(w)
+            if(mod(k,10)==0) then
+                !Write( 12  ) w%s2
+            end if 
+            if(mod(k,100)==0) then
+                print *, k
+            end if 
+        end do
+    
+        close( 12 )
+        call wave2d_del(w)
+    
+end program wave2d_test
