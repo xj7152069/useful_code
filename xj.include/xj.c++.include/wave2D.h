@@ -50,7 +50,7 @@ public:
     ~wave2D();
 
     void setvelocity(float v=3000.0);
-    void timeslicecal();
+    void timeslicecal(int restart=0);
     void timeslicecopy();
     void cleardata();
 };
@@ -148,7 +148,7 @@ void wave2D::setvelocity(float v)
         {
         for(j=0;j<nx;j++)
             {
-            p2[i][j]=v;
+            this->p2[i][j]=v;
             }
         }
 }
@@ -171,25 +171,41 @@ void wave2D::cleardata()
     cout<<"All Matrix data has been clear!"<<endl;
 }
 
-void wave2D::timeslicecal()
+void wave2D::timeslicecal(int restart)
 {
-    static float DX=dx,DY=dy,DT=dt,xshd=PML_wide,*xs1_in=xs1,*xs2_in=xs2;
-    static int X=nx,Y=ny,suface_PML=suface;
-
-    static float dx,dy,ddx,ddy,snx1,sny1,snx2,sny2,t2,t5=float(Y)/X;
+    static float DX,DY,DT,xshd;
+    static int X,Y,suface_PML;
+    static float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2,t2,t5;
     static int i,j,n,t3,t4;
     static float u1(0),u2(0),u(0),ux(0),uy(0);
-    static float DT2=DT*DT,DT3=DT2*DT,DX2=DX*DX,DY2=DY*DY,mo2;
+    static float DT2,DT3,DX2,DY2,mo2;
 //PML边界的吸收函数d(x),其常数系数部分
-    static float C_X=log(R)*3/2/(xshd)/(xshd)/(xshd)/DX2/DX;
-    static float C_Y=log(R)*3/2/(xshd)/(xshd)/(xshd)/DY2/DY;
+    static float C_X, C_Y;
 
-    static float **sx11_in=sx11, **sx12_in=sx12, **sx13_in=sx13; //PML boundary
-    static float **sxp21i=sxp21, **sxp22i=sxp22, **sxp23i=sxp23; //PML boundary
-    static float **sx21_in=sx21, **sx22_in=sx22; //PML boundary
-    static float **sx31_in=sx31, **sx32_in=sx32, **sx33_in=sx33; //PML boundary
-    static float **p2_in=p2, **swap; //velocity model and swap
-    static float **s1_in=s1, **s2_in=s2, **s3_in=s3; //time slices, add source to "s2"
+    static float **sx11_in=this->sx11, **sx12_in=this->sx12, **sx13_in=this->sx13; //PML boundary
+    static float **sxp21i=this->sxp21, **sxp22i=this->sxp22, **sxp23i=this->sxp23; //PML boundary
+    static float **sx21_in=this->sx21, **sx22_in=this->sx22; //PML boundary
+    static float **sx31_in=this->sx31, **sx32_in=this->sx32, **sx33_in=this->sx33; //PML boundary
+    static float **p2_in=this->p2, **swap,*xs1_in=this->xs1,*xs2_in=this->xs2; //velocity model and swap
+    static float **s1_in=this->s1, **s2_in=this->s2, **s3_in=this->s3; //time slices, add source to "s2"
+
+    DX=this->dx,DY=this->dy,DT=this->dt,xshd=this->PML_wide;
+    X=this->nx,Y=this->ny,suface_PML=this->suface;
+    DT2=DT*DT,DT3=DT2*DT,DX2=DX*DX,DY2=DY*DY;
+    t5=float(Y)/X;
+    C_Y=log(R)*3/2/(xshd)/(xshd)/(xshd)/DY2/DY;
+    C_X=log(R)*3/2/(xshd)/(xshd)/(xshd)/DX2/DX;
+
+//This is very important! If you clear the data, you do need do it just once!
+    if(restart==1)
+    {
+        sx11_in=this->sx11, sx12_in=this->sx12, sx13_in=this->sx13; //PML boundary
+        sxp21i=this->sxp21, sxp22i=this->sxp22, sxp23i=this->sxp23; //PML boundary
+        sx21_in=this->sx21, sx22_in=this->sx22; //PML boundary
+        sx31_in=this->sx31, sx32_in=this->sx32, sx33_in=this->sx33; //PML boundary
+        p2_in=this->p2, xs1_in=this->xs1,xs2_in=this->xs2; //velocity model and swap
+        s1_in=this->s1, s2_in=this->s2, s3_in=this->s3; //time slices, add source to "s2"
+    }
 
     for(i=5;i<X-5;i++)
         {
@@ -211,7 +227,7 @@ void wave2D::timeslicecal()
 
             snx1=0.0;snx2=0.0;
             sny1=0.0;sny2=0.0;
-            dx=0;ddx=0;dy=0;ddy=0;
+            fdx=0;fddx=0;fdy=0;fddy=0;
 
             if(suface_PML==1)
                 {
@@ -238,23 +254,23 @@ void wave2D::timeslicecal()
 
             if(sny1 !=0)
                 {
-                dy=p2_in[j][i]*C_Y*sny1*sny1*DY2;
-                ddy=p2_in[j][i]*C_Y*2*sny1*DY;	
+                fdy=p2_in[j][i]*C_Y*sny1*sny1*DY2;
+                fddy=p2_in[j][i]*C_Y*2*sny1*DY;	
                 }
             if(sny2 !=0)
                 {
-                dy=p2_in[j][i]*C_Y*sny2*sny2*DY2;
-                ddy=p2_in[j][i]*C_Y*2*sny2*DY;	
+                fdy=p2_in[j][i]*C_Y*sny2*sny2*DY2;
+                fddy=p2_in[j][i]*C_Y*2*sny2*DY;	
                 }
             if(snx1 !=0)
                 {
-                dx=p2_in[j][i]*C_X*snx1*snx1*DX2;
-                ddx=p2_in[j][i]*C_X*2*snx1*DX;	
+                fdx=p2_in[j][i]*C_X*snx1*snx1*DX2;
+                fddx=p2_in[j][i]*C_X*2*snx1*DX;	
                 }
             if(snx2 !=0)
                 {
-                dx=p2_in[j][i]*C_X*snx2*snx2*DX2;
-                ddx=p2_in[j][i]*C_X*2*snx2*DX;	
+                fdx=p2_in[j][i]*C_X*snx2*snx2*DX2;
+                fddx=p2_in[j][i]*C_X*2*snx2*DX;	
                 }
 
             if(j>=0.5*(Y))
@@ -298,13 +314,13 @@ void wave2D::timeslicecal()
                 //equation 1
                 sx11_in[j][i]=mo2\
                 *DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
-                -dx*dx*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
-                -sx13_in[j][i])+DT*(2*dx*(sx13_in[j][i]-sx12_in[j][i]));
+                -fdx*fdx*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
+                -sx13_in[j][i])+DT*(2*fdx*(sx13_in[j][i]-sx12_in[j][i]));
 
                 //equation 2
 			    sxp21i[j][i] = 2.0*sxp22i[j][i] - sxp23i[j][i]\
-                +DT2*(-1.0*mo2*ddx*(1.0/(DX))*(ux*t3) - 2.0*dx*(sxp22i[j][i] - sxp23i[j][i])/DT - dx*dx*sxp22i[j][i]);
-			    sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - dx*sx22_in[j][i]) ;
+                +DT2*(-1.0*mo2*fddx*(1.0/(DX))*(ux*t3) - 2.0*fdx*(sxp22i[j][i] - sxp23i[j][i])/DT - fdx*fdx*sxp22i[j][i]);
+			    sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - fdx*sx22_in[j][i]) ;
 
                 //equation 3
                 sx31_in[j][i]=DT2*mo2\
@@ -331,13 +347,13 @@ void wave2D::timeslicecal()
                 //equation 1
                 sx11_in[j][i]=mo2\
                 *DT2*(u1-u*s2_in[j][i])*(1.0/(DY2))\
-                -dy*dy*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
-                -sx13_in[j][i])+DT*(2*dy*(sx13_in[j][i]-sx12_in[j][i]));
+                -fdy*fdy*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
+                -sx13_in[j][i])+DT*(2*fdy*(sx13_in[j][i]-sx12_in[j][i]));
 
                 //equation 2 : 包含三阶偏微分,需将其拆解为一阶偏微分(p)的二阶导数离散求解
                 sxp21i[j][i] = 2.0*sxp22i[j][i] - sxp23i[j][i]\
-                +DT2*(-1.0*mo2*ddy*(1.0/(DY))*(uy*t4) - 2.0*dy*(sxp22i[j][i] - sxp23i[j][i])/DT - dy*dy*sxp22i[j][i]);
-                sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - dy*sx22_in[j][i]) ;
+                +DT2*(-1.0*mo2*fddy*(1.0/(DY))*(uy*t4) - 2.0*fdy*(sxp22i[j][i] - sxp23i[j][i])/DT - fdy*fdy*sxp22i[j][i]);
+                sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - fdy*sx22_in[j][i]) ;
 
                 //equation 3
                 sx31_in[j][i]=DT2*mo2\
