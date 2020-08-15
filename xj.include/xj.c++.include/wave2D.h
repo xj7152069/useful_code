@@ -173,21 +173,21 @@ void wave2D::cleardata()
 
 void wave2D::timeslicecal(int restart)
 {
-    static float DX,DY,DT,xshd;
-    static int X,Y,suface_PML;
-    static float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2,t2,t5;
-    static int i,j,n,t3,t4;
-    static float u1(0),u2(0),u(0),ux(0),uy(0);
-    static float DT2,DT3,DX2,DY2,mo2;
+    float DX,DY,DT,xshd;
+    int X,Y,suface_PML;
+    float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2,t2,t5;
+    int i,j,n,t3,t4;
+    float u1(0),u2(0),u(0),ux(0),uy(0);
+    float DT2,DT3,DX2,DY2,mo2;
 //PML边界的吸收函数d(x),其常数系数部分
-    static float C_X, C_Y;
+    float C_X, C_Y;
 
-    static float **sx11_in=this->sx11, **sx12_in=this->sx12, **sx13_in=this->sx13; //PML boundary
-    static float **sxp21i=this->sxp21, **sxp22i=this->sxp22, **sxp23i=this->sxp23; //PML boundary
-    static float **sx21_in=this->sx21, **sx22_in=this->sx22; //PML boundary
-    static float **sx31_in=this->sx31, **sx32_in=this->sx32, **sx33_in=this->sx33; //PML boundary
-    static float **p2_in=this->p2, **swap,*xs1_in=this->xs1,*xs2_in=this->xs2; //velocity model and swap
-    static float **s1_in=this->s1, **s2_in=this->s2, **s3_in=this->s3; //time slices, add source to "s2"
+    float **sx11_in=this->sx11, **sx12_in=this->sx12, **sx13_in=this->sx13; //PML boundary
+    float **sxp21i=this->sxp21, **sxp22i=this->sxp22, **sxp23i=this->sxp23; //PML boundary
+    float **sx21_in=this->sx21, **sx22_in=this->sx22; //PML boundary
+    float **sx31_in=this->sx31, **sx32_in=this->sx32, **sx33_in=this->sx33; //PML boundary
+    float **p2_in=this->p2, **swap,*xs1_in=this->xs1,*xs2_in=this->xs2; //velocity model and swap
+    float **s1_in=this->s1, **s2_in=this->s2, **s3_in=this->s3; //time slices, add source to "s2"
 
     DX=this->dx,DY=this->dy,DT=this->dt,xshd=this->PML_wide;
     X=this->nx,Y=this->ny,suface_PML=this->suface;
@@ -196,16 +196,6 @@ void wave2D::timeslicecal(int restart)
     C_Y=log(R)*3/2/(xshd)/(xshd)/(xshd)/DY2/DY;
     C_X=log(R)*3/2/(xshd)/(xshd)/(xshd)/DX2/DX;
 
-//This is very important! If you clear the data, you do need do it just once!
-    if(restart==1)
-    {
-        sx11_in=this->sx11, sx12_in=this->sx12, sx13_in=this->sx13; //PML boundary
-        sxp21i=this->sxp21, sxp22i=this->sxp22, sxp23i=this->sxp23; //PML boundary
-        sx21_in=this->sx21, sx22_in=this->sx22; //PML boundary
-        sx31_in=this->sx31, sx32_in=this->sx32, sx33_in=this->sx33; //PML boundary
-        p2_in=this->p2, xs1_in=this->xs1,xs2_in=this->xs2; //velocity model and swap
-        s1_in=this->s1, s2_in=this->s2, s3_in=this->s3; //time slices, add source to "s2"
-    }
 
     for(i=5;i<X-5;i++)
         {
@@ -374,11 +364,20 @@ void wave2D::timeslicecal(int restart)
             }
         }
 
-    swap=s1_in;s1_in=s2_in;s2_in=s3_in;s3_in=swap;
-    swap=sx13_in;sx13_in=sx12_in;sx12_in=sx11_in;sx11_in=swap;
-    swap=sxp23i;sxp23i=sxp22i;sxp22i=sxp21i;sxp21i=swap;
-    swap=sx22_in;sx22_in=sx21_in;sx21_in=swap;
-    swap=sx33_in;sx33_in=sx32_in;sx32_in=sx31_in;sx31_in=swap;
+//注意不要直接定义静态的指针(或变量)并以交换地址的方式更新时间片,在多线程中这可能会出问题,
+//推测在多线程中,可能会在变量寨堆中公用静态变量的代码,从而导致内存问题
+//对于多进程并行会不会出现类似问题尚未进行验证  (!!注意!!)
+    for(j=0;j<Y;j++)
+    {
+    for(i=0;i<X;i++)
+        {
+        s1_in[j][i]=s2_in[j][i];s2_in[j][i]=s3_in[j][i];
+        sx13_in[j][i]=sx12_in[j][i],sx12_in[j][i]=sx11_in[j][i];
+        sx33_in[j][i]=sx32_in[j][i],sx32_in[j][i]=sx31_in[j][i];
+        sx22[j][i]=sx21[j][i];
+        sxp23i[j][i]=sxp22i[j][i],sxp22i[j][i]=sxp21i[j][i];
+        }
+    }
 
 }
 
