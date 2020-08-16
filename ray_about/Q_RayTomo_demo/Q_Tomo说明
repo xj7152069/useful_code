@@ -1,0 +1,59 @@
+Q_Tomo
+1. 在文件夹“Q_Tomo_demo”下。
+编译：make就行。
+运行：run.sh
+
+其中：
+Lsqr*.f90：均为LSQR分解模块；
+QTomo_lsqr_wpy.f90：主程序；
+AnalysisGLI.f90：分析我的内部GLI格式文件；
+Global.f90：定义一些常量和GLI格式的结构体；
+Smooth2.c：平滑模块；
+
+2. 文件夹Data
+	模型以及相关输出结果存储位置。
+
+3. 文件夹write_observe
+	将正演出的观测衰减旅行时转换成geo格式。
+参数卡：
+bg_Q.par的内容如下
+!* THE VELOCITY MODEL FILENAME *!
+./Data/vel_new.dat
+!* GLI *!
+./Data/obs_newq.geo
+!* THE TRAVELTIME FILENAME *!
+./Data/time.dat
+!*	THE RAYTRACING RESULT(.TXT)	*!
+./Data/Ray/
+!*	THE FatRay PATH FILENAME(.DAT)	*!
+./Data/Path/
+!*	THE CALCULATE TRACELTIME	*!
+./Data/Traveltime/
+!*	THE UPDATED VELOCITY	*!
+./Data/UpdateQ/
+!*  THE LSQR PARAMETER(DSS,DVS,DV,DVSM,DVSC)  *!
+./Data/UpdateQ/
+!*	THE CONVERGENCE CURVE FILENAME	*!
+./Data/CONVERGENCE.dat
+!*     THE Elevation file      *!
+./Data/elev_bg.reg
+!*     The initial Q file      *!
+./Data/constant_300_1501_301.dat
+!*	NVX,NVZ OF THE VELOCITY MODEL	*!
+1501,301
+!*	DVX,DVZ OF THE VELOCITY MODEL	*!
+12.5,6.25
+!* DVXS,DVZS WITH SOLVING EQUATION *!
+12.5,6.25
+!*	START COORDINATE IN X/Z DIMENSION OF THE VELOCITY MODEL	*!
+0.0,0.0
+!*	XAPERTURE_MAX AND DEPTH	*!
+6000,600
+!*	shot_start,shots,shot_interval	*!
+1,428,1
+!*	INTERATIONS	*!
+2
+!* =1,RayTracing+LSQR;=2,RayTracing;=3,LSQR *!
+1
+!*  DSTEP *!
+10

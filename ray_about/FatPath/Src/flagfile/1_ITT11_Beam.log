@@ -1,0 +1,747 @@
+ THE INITIAL VELOCITY
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Model/v0_2dVeloNx101Nz101.dat                                                                                                                                                       
+ GLI
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Gli/2DGaussBall_line4_shots10_iso.Gli                                                                                                                                               
+ THE TRAVELTIME FILENAME
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/IsoFat2d/1_Result/time.dat                                                                                                                                                          
+ THE RAYTRACING RESULT(.TXT)
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/IsoFat2d/1_Result/Ray/                                                                                                                                                              
+ THE Ray PATH FILENAME(.Dat)
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/IsoFat2d/1_Result/Path/                                                                                                                                                             
+ THE CALCULATE TRACELTIME
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/IsoFat2d/1_Result/Traveltime/                                                                                                                                                       
+ THE UPDATED VELOCITY
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/IsoFat2d/1_Result/UpdateVel/                                                                                                                                                        
+ THE LSQR PARAMETER(DSS,DVS,DV,DVSM,DVSC)
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/IsoFat2d/1_Result/UpdateVel/                                                                                                                                                        
+ THE CONVERGENCE CURVE FILENAME
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/IsoFat2d/1_Result/CONVERGENCE.dat                                                                                                                                                   
+ THE Elevation file
+/home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Model/elev.rsf@                                                                                                                                                                     
+ NX,NZ OF THE VELOCITY MODEL
+         101         101
+ DX,DZ OF THE VELOCITY MODEL
+   50.00000       50.00000    
+ DVXS,DVZS WITH SOLVING EQUATION
+   50.00000       50.00000    
+ VELOCITY START COORDINATE IN X/Z DIMENSION
+  0.0000000E+00  0.0000000E+00
+ XAPERTURE_LEFT,XAPERTURE_RIGHT AND DEPTH
+   5000.000       5000.000       5000.000    
+ line_start,lines,line_interval
+           1           4           1
+ shot_start,shots,shot_interval
+           1          10           1
+ INTERATIONS
+          11
+ =1,RayTracing+LSQR;=2,RayTracing;=3,LSQR
+           1
+ Calculate fresnell zone(1=Dynamic;2=Approximate)
+           2
+ DSTEP
+   50.00000    
+ Period (1/HZ)
+  5.0000001E-02
+ Sigma
+   3.000000    
+ DXS=   50.00000     DZS=   50.00000    
+ NX=       32766 NZ     4813328
+ NV=       10201 NVS=       10201
+ NTR=       11640
+ IIT=           1
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Mod
+ el/v0_2dVeloNx101Nz101.dat                                                     
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            1
+ Working node:            2 received itask:            2
+ Working node:            3 received itask:            3
+ Working node:            2 received itask:            4
+ Working node:            3 received itask:            5
+ Working node:            1 received itask:            6
+ Working node:            2 received itask:            7
+ Working node:            3 received itask:            8
+ Working node:            1 received itask:            9
+ Working node:            2 received itask:           10
+ Working node:            3 received itask:           11
+ Working node:            1 received itask:           12
+ Working node:            2 received itask:           13
+ Working node:            1 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            2 received itask:           16
+ Working node:            1 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            2 received itask:           19
+ Working node:            1 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            2 received itask:           22
+ Working node:            1 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            2 received itask:           25
+ Working node:            1 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            2 received itask:           28
+ Working node:            1 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            2 received itask:           31
+ Working node:            1 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            2 received itask:           34
+ Working node:            1 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            2 received itask:           37
+ Working node:            1 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            2 received itask:           40
+ Done. myid is            1
+ Done. myid is            3
+ Done. myid is            0
+ Done. myid is            2
+ Start to read ray path
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12831288
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel1.dat                                        
+                                                                                
+                    
+ IIT=           2
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel1.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            1
+ Working node:            2 received itask:            2
+ Working node:            3 received itask:            3
+ Working node:            2 received itask:            4
+ Working node:            3 received itask:            5
+ Working node:            1 received itask:            6
+ Working node:            2 received itask:            7
+ Working node:            1 received itask:            8
+ Working node:            3 received itask:            9
+ Working node:            2 received itask:           10
+ Working node:            1 received itask:           11
+ Working node:            3 received itask:           12
+ Working node:            2 received itask:           13
+ Working node:            1 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            2 received itask:           16
+ Working node:            1 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            2 received itask:           19
+ Working node:            1 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            2 received itask:           22
+ Working node:            3 received itask:           23
+ Working node:            1 received itask:           24
+ Working node:            2 received itask:           25
+ Working node:            1 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            2 received itask:           28
+ Working node:            1 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            2 received itask:           31
+ Working node:            1 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            2 received itask:           34
+ Working node:            1 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            2 received itask:           37
+ Working node:            1 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            2 received itask:           40
+ Done. myid is            1
+ Done. myid is            3
+ Done. myid is            0
+ Start to read ray path
+ Done. myid is            2
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12866283
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel2.dat                                        
+                                                                                
+                    
+ IIT=           3
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel2.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            3
+ Working node:            2 received itask:            1
+ Working node:            3 received itask:            2
+ Working node:            1 received itask:            4
+ Working node:            3 received itask:            5
+ Working node:            2 received itask:            6
+ Working node:            1 received itask:            7
+ Working node:            2 received itask:            8
+ Working node:            3 received itask:            9
+ Working node:            1 received itask:           10
+ Working node:            2 received itask:           11
+ Working node:            3 received itask:           12
+ Working node:            1 received itask:           13
+ Working node:            2 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            1 received itask:           16
+ Working node:            2 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            1 received itask:           19
+ Working node:            2 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            1 received itask:           22
+ Working node:            2 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            1 received itask:           25
+ Working node:            2 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            1 received itask:           28
+ Working node:            2 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            1 received itask:           31
+ Working node:            2 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            1 received itask:           34
+ Working node:            2 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            1 received itask:           37
+ Working node:            2 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            1 received itask:           40
+ Done. myid is            2
+ Done. myid is            3
+ Done. myid is            0
+ Done. myid is            1
+ Start to read ray path
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12863452
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel3.dat                                        
+                                                                                
+                    
+ IIT=           4
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel3.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            1
+ Working node:            2 received itask:            2
+ Working node:            3 received itask:            3
+ Working node:            2 received itask:            4
+ Working node:            3 received itask:            5
+ Working node:            1 received itask:            6
+ Working node:            2 received itask:            7
+ Working node:            3 received itask:            8
+ Working node:            1 received itask:            9
+ Working node:            2 received itask:           10
+ Working node:            3 received itask:           11
+ Working node:            1 received itask:           12
+ Working node:            2 received itask:           13
+ Working node:            1 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            2 received itask:           16
+ Working node:            1 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            2 received itask:           19
+ Working node:            1 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            2 received itask:           22
+ Working node:            1 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            2 received itask:           25
+ Working node:            1 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            2 received itask:           28
+ Working node:            1 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            2 received itask:           31
+ Working node:            1 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            2 received itask:           34
+ Working node:            1 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            2 received itask:           37
+ Working node:            1 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            2 received itask:           40
+ Done. myid is            1
+ Done. myid is            3
+ Done. myid is            0
+ Start to read ray path
+ Done. myid is            2
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12867145
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel4.dat                                        
+                                                                                
+                    
+ IIT=           5
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel4.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            1
+ Working node:            2 received itask:            2
+ Working node:            3 received itask:            3
+ Working node:            2 received itask:            4
+ Working node:            1 received itask:            5
+ Working node:            3 received itask:            6
+ Working node:            2 received itask:            7
+ Working node:            1 received itask:            8
+ Working node:            3 received itask:            9
+ Working node:            2 received itask:           10
+ Working node:            1 received itask:           11
+ Working node:            3 received itask:           12
+ Working node:            2 received itask:           13
+ Working node:            1 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            2 received itask:           16
+ Working node:            1 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            2 received itask:           19
+ Working node:            1 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            2 received itask:           22
+ Working node:            1 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            2 received itask:           25
+ Working node:            1 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            2 received itask:           28
+ Working node:            1 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            2 received itask:           31
+ Working node:            1 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            2 received itask:           34
+ Working node:            1 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            2 received itask:           37
+ Working node:            1 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            2 received itask:           40
+ Done. myid is            1
+ Done. myid is            3
+ Done. myid is            0
+ Done. myid is            2
+ Start to read ray path
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12867864
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel5.dat                                        
+                                                                                
+                    
+ IIT=           6
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel5.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            3
+ Working node:            2 received itask:            1
+ Working node:            3 received itask:            2
+ Working node:            1 received itask:            4
+ Working node:            2 received itask:            5
+ Working node:            3 received itask:            6
+ Working node:            1 received itask:            7
+ Working node:            2 received itask:            8
+ Working node:            3 received itask:            9
+ Working node:            1 received itask:           10
+ Working node:            2 received itask:           11
+ Working node:            3 received itask:           12
+ Working node:            1 received itask:           13
+ Working node:            2 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            1 received itask:           16
+ Working node:            2 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            1 received itask:           19
+ Working node:            2 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            1 received itask:           22
+ Working node:            2 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            1 received itask:           25
+ Working node:            2 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            1 received itask:           28
+ Working node:            2 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            1 received itask:           31
+ Working node:            2 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            1 received itask:           34
+ Working node:            2 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            1 received itask:           37
+ Working node:            2 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            1 received itask:           40
+ Done. myid is            2
+ Done. myid is            3
+ Done. myid is            0
+ Start to read ray path
+ Done. myid is            1
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12869862
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel6.dat                                        
+                                                                                
+                    
+ IIT=           7
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel6.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            1
+ Working node:            2 received itask:            2
+ Working node:            3 received itask:            3
+ Working node:            2 received itask:            4
+ Working node:            1 received itask:            5
+ Working node:            3 received itask:            6
+ Working node:            2 received itask:            7
+ Working node:            1 received itask:            8
+ Working node:            3 received itask:            9
+ Working node:            2 received itask:           10
+ Working node:            1 received itask:           11
+ Working node:            3 received itask:           12
+ Working node:            2 received itask:           13
+ Working node:            1 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            2 received itask:           16
+ Working node:            1 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            2 received itask:           19
+ Working node:            1 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            2 received itask:           22
+ Working node:            1 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            2 received itask:           25
+ Working node:            1 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            2 received itask:           28
+ Working node:            1 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            2 received itask:           31
+ Working node:            1 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            2 received itask:           34
+ Working node:            1 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            2 received itask:           37
+ Working node:            1 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            2 received itask:           40
+ Done. myid is            1
+ Done. myid is            3
+ Done. myid is            0
+ Start to read ray path
+ Done. myid is            2
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12866353
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel7.dat                                        
+                                                                                
+                    
+ IIT=           8
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel7.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            1
+ Working node:            2 received itask:            2
+ Working node:            3 received itask:            3
+ Working node:            3 received itask:            4
+ Working node:            2 received itask:            5
+ Working node:            1 received itask:            6
+ Working node:            3 received itask:            7
+ Working node:            2 received itask:            8
+ Working node:            1 received itask:            9
+ Working node:            3 received itask:           10
+ Working node:            2 received itask:           11
+ Working node:            1 received itask:           12
+ Working node:            3 received itask:           13
+ Working node:            2 received itask:           14
+ Working node:            1 received itask:           15
+ Working node:            3 received itask:           16
+ Working node:            2 received itask:           17
+ Working node:            1 received itask:           18
+ Working node:            3 received itask:           19
+ Working node:            2 received itask:           20
+ Working node:            1 received itask:           21
+ Working node:            3 received itask:           22
+ Working node:            1 received itask:           23
+ Working node:            2 received itask:           24
+ Working node:            3 received itask:           25
+ Working node:            1 received itask:           26
+ Working node:            2 received itask:           27
+ Working node:            3 received itask:           28
+ Working node:            1 received itask:           29
+ Working node:            2 received itask:           30
+ Working node:            3 received itask:           31
+ Working node:            1 received itask:           32
+ Working node:            2 received itask:           33
+ Working node:            3 received itask:           34
+ Working node:            1 received itask:           35
+ Working node:            2 received itask:           36
+ Working node:            3 received itask:           37
+ Working node:            1 received itask:           38
+ Working node:            2 received itask:           39
+ Working node:            3 received itask:           40
+ Done. myid is            1
+ Done. myid is            2
+ Done. myid is            0
+ Start to read ray path
+ Done. myid is            3
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12871843
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel8.dat                                        
+                                                                                
+                    
+ IIT=           9
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel8.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            2
+ Working node:            2 received itask:            3
+ Working node:            3 received itask:            1
+ Working node:            2 received itask:            4
+ Working node:            1 received itask:            5
+ Working node:            3 received itask:            6
+ Working node:            2 received itask:            7
+ Working node:            1 received itask:            8
+ Working node:            3 received itask:            9
+ Working node:            2 received itask:           10
+ Working node:            1 received itask:           11
+ Working node:            3 received itask:           12
+ Working node:            2 received itask:           13
+ Working node:            1 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            2 received itask:           16
+ Working node:            1 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            2 received itask:           19
+ Working node:            1 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            2 received itask:           22
+ Working node:            1 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            2 received itask:           25
+ Working node:            1 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            2 received itask:           28
+ Working node:            1 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            2 received itask:           31
+ Working node:            1 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            2 received itask:           34
+ Working node:            1 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            2 received itask:           37
+ Working node:            1 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            2 received itask:           40
+ Done. myid is            1
+ Done. myid is            3
+ Done. myid is            0
+ Start to read ray path
+ Done. myid is            2
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12870100
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel9.dat                                        
+                                                                                
+                    
+ IIT=          10
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel9.dat                                        
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            1
+ Working node:            2 received itask:            2
+ Working node:            3 received itask:            3
+ Working node:            2 received itask:            4
+ Working node:            3 received itask:            5
+ Working node:            1 received itask:            6
+ Working node:            2 received itask:            7
+ Working node:            3 received itask:            8
+ Working node:            1 received itask:            9
+ Working node:            2 received itask:           10
+ Working node:            3 received itask:           11
+ Working node:            1 received itask:           12
+ Working node:            2 received itask:           13
+ Working node:            1 received itask:           14
+ Working node:            3 received itask:           15
+ Working node:            2 received itask:           16
+ Working node:            1 received itask:           17
+ Working node:            3 received itask:           18
+ Working node:            2 received itask:           19
+ Working node:            1 received itask:           20
+ Working node:            3 received itask:           21
+ Working node:            2 received itask:           22
+ Working node:            1 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            2 received itask:           25
+ Working node:            1 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            2 received itask:           28
+ Working node:            1 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            2 received itask:           31
+ Working node:            1 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            2 received itask:           34
+ Working node:            1 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            2 received itask:           37
+ Working node:            1 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            2 received itask:           40
+ Done. myid is            1
+ Done. myid is            3
+ Done. myid is            0
+ Start to read ray path
+ Done. myid is            2
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12870109
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel10.dat                                       
+                                                                                
+                    
+ IIT=          11
+ ORI_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel10.dat                                       
+                                                                                
+                    
+ Task number:           40 Processor number:            4
+ Working node:            1 received itask:            3
+ Working node:            2 received itask:            1
+ Working node:            3 received itask:            2
+ Working node:            1 received itask:            4
+ Working node:            3 received itask:            5
+ Working node:            2 received itask:            6
+ Working node:            1 received itask:            7
+ Working node:            3 received itask:            8
+ Working node:            2 received itask:            9
+ Working node:            1 received itask:           10
+ Working node:            3 received itask:           11
+ Working node:            2 received itask:           12
+ Working node:            1 received itask:           13
+ Working node:            3 received itask:           14
+ Working node:            2 received itask:           15
+ Working node:            1 received itask:           16
+ Working node:            3 received itask:           17
+ Working node:            2 received itask:           18
+ Working node:            1 received itask:           19
+ Working node:            3 received itask:           20
+ Working node:            2 received itask:           21
+ Working node:            1 received itask:           22
+ Working node:            2 received itask:           23
+ Working node:            3 received itask:           24
+ Working node:            1 received itask:           25
+ Working node:            2 received itask:           26
+ Working node:            3 received itask:           27
+ Working node:            1 received itask:           28
+ Working node:            2 received itask:           29
+ Working node:            3 received itask:           30
+ Working node:            1 received itask:           31
+ Working node:            2 received itask:           32
+ Working node:            3 received itask:           33
+ Working node:            1 received itask:           34
+ Working node:            2 received itask:           35
+ Working node:            3 received itask:           36
+ Working node:            1 received itask:           37
+ Working node:            2 received itask:           38
+ Working node:            3 received itask:           39
+ Working node:            1 received itask:           40
+ Done. myid is            2
+ Done. myid is            3
+ Done. myid is            0
+ Done. myid is            1
+ Start to read ray path
+ Start to blanace illumination
+ Start to solve equation
+ m=       11640 n=       10200
+ nzz=    12870407
+ Start to update velocity
+ Start to write Updated velocity
+ CUR_VEL=
+ /home/geoflying/Program/NumericalExperiment/Tomo/2d_PositiveGaussianAnomaly/Iso
+ Fat2d/1_Result/UpdateVel/updatevel11.dat                                       
+                                                                                
+                    
+
+real	32m56.592s
+user	124m10.096s
+sys	7m0.391s

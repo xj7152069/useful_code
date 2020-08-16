@@ -1,0 +1,40 @@
+!* THE VELOCITY MODEL FILENAME *!
+./Data/vel_new.dat
+!* GLI *!
+./Data/obs_newq.geo
+!* THE TRAVELTIME FILENAME *!
+./Data/time.dat
+!*	THE RAYTRACING RESULT(.TXT)	*!
+./Data/Ray/
+!*	THE FatRay PATH FILENAME(.DAT)	*!
+./Data/Path/
+!*	THE CALCULATE TRACELTIME	*!
+./Data/Traveltime/
+!*	THE UPDATED VELOCITY	*!
+./Data/UpdateQ/
+!*  THE LSQR PARAMETER(DSS,DVS,DV,DVSM,DVSC)  *!
+./Data/UpdateQ/
+!*	THE CONVERGENCE CURVE FILENAME	*!
+./Data/CONVERGENCE.dat
+!*     THE Elevation file      *!
+./Data/elev_bg.reg
+!*     The initial Q file      *!
+./Data/constant_300_1501_301.dat
+!*	NVX,NVZ OF THE VELOCITY MODEL	*!
+1501,301
+!*	DVX,DVZ OF THE VELOCITY MODEL	*!
+12.5,6.25
+!* DVXS,DVZS WITH SOLVING EQUATION *!
+12.5,6.25
+!*	START COORDINATE IN X/Z DIMENSION OF THE VELOCITY MODEL	*!
+0.0,0.0
+!*	XAPERTURE_MAX AND DEPTH	*!
+6000,600
+!*	shot_start,shots,shot_interval	*!
+1,428,1
+!*	INTERATIONS	*!
+2
+!* =1,RayTracing+LSQR;=2,RayTracing;=3,LSQR *!
+1
+!*  DSTEP *!
+10

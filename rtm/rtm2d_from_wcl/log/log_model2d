@@ -1,0 +1,56 @@
+ myid           4  processorname : Lenovo_2
+ myid           2  processorname : Lenovo_2
+ myid           5  processorname : Lenovo_2
+ myid           1  processorname : Lenovo_2
+ The OPENMP threads is:          45
+ myid           0  processorname : Lenovo_2
+ myid           3  processorname : Lenovo_2
+ ********************************************
+          2D acoustic wave modelling         
+                  begins                     
+ ********************************************
+ myid          14  processorname : supermicro
+ myid          15  processorname : supermicro
+ myid          11  processorname : supermicro
+ myid          13  processorname : supermicro
+ myid          12  processorname : supermicro
+ myid           6  processorname : Lenovo_1
+ myid           7  processorname : Lenovo_1
+ myid          10  processorname : Lenovo_1
+ myid           8  processorname : Lenovo_1
+ myid           9  processorname : Lenovo_1
+ ns_total, ishot           1           2
+ The shot and receiver info :      
+ fldr           1           1
+ krec           1                     1
+ sx             1  0.0000000E+00
+ sx             1  0.0000000E+00
+ sz             1  0.0000000E+00
+ ntr            1        1201
+       
+       
+ cx_min, cx_max,   -6000.000       6000.000    
+     RUN Single Shot RTM: Begin :            1
+ here. debug
+ shot=           1 myid=           1   step=forward  it=           1
+ shot=           1 myid=           1   step=forward  it=         501
+ shot=           1 myid=           1   step=forward  it=        1001
+ shot=           1 myid=           1   step=forward  it=        1501
+ shot=           1 myid=           1   step=forward  it=        2001
+ shot=           1 myid=           1   step=forward  it=        2501
+ shot=           1 myid=           1   step=forward  it=        3001
+ shot=           1 myid=           1   step=forward  it=        3501
+ shot=           1 myid=           1   step=forward  it=        4001
+ shot=           1 myid=           1   step=forward  it=        4501
+ shot=           1 myid=           1   step=forward  it=        5001
+ shot=           1 myid=           1   step=forward  it=        5501
+ shot=           1 myid=           1   step=forward  it=        6001
+ shot=           1 myid=           1   step=forward  it=        6501
+ shot=           1 myid=           1   step=forward  it=        7001
+ shot=           1 myid=           1   step=forward  it=        7501
+     RUN Single Shot RTM: End :            1
+ ishot, ntrace  merging...           1        1201
+ ********************************************
+          2D acoustic wave modelling         
+                  end                        
+ ********************************************

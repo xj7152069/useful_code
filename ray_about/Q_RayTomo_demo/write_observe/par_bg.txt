@@ -1,0 +1,32 @@
+observefile
+./obs_newq.geo
+tobsfile
+./data/t_atte_newq.dat
+
+nx			1501
+ny			0
+nz			301
+nline		1
+linex0		400
+liney0		0
+linez0		50
+ns			428
+sx0			4050
+sy0			0
+sz0			50
+nr			321
+ofx0		-4000
+ofy0		0
+ofz0		0
+dx			12.5
+dy			0
+dz			6.25
+dsx			25
+dsy			0
+dsz			0
+dlinex		0
+dliney		0
+dlinez		0
+dofx		25
+dofy		0
+dofz		0

@@ -1,0 +1,48 @@
+# makefile for C version of LSQR.
+#
+# 08 Sep 1999: First version from James W. Howse <jhowse@lanl.gov>
+
+CC = cc
+CFLAGS = -O
+CLIBS = -lm
+#USRLIBDIR = ${HOME}/lib/SunOS_5.x
+#LIBSRCHDIR = -L${USRLIBDIR}
+#USRINCDIR = ${HOME}/include
+#INCSRCHDIR = -I${USRINCDIR}
+
+PROG = test
+ 
+TEST_SRCS = test_prog.c \
+	    test_lsqr.c \
+	    test_lstp.c \
+	    test_mult.c
+LSQR_SRCS = lsqr.c 
+
+TEST_INCS = test_lsqr.h
+LSQR_INCS = lsqr.h
+ 
+TEST_OBJS = ${TEST_SRCS:.c=.o}
+LSQR_OBJS = ${LSQR_SRCS:.c=.o}
+COBJS = ${TEST_OBJS}  ${LSQR_OBJS}
+
+.SUFFIXES:
+
+.SUFFIXES: .o .c
+
+.c.o:
+	${CC} ${CFLAGS} ${INCSRCHDIR} -c $<
+
+${PROG}: ${COBJS}
+	${CC} ${CFLAGS} -o ${PROG} ${COBJS} ${LIBSRCHDIR} ${CLIBS}
+
+${TEST_OBJS} : ${TEST_INCS}
+${COBJS} : ${LSQR_INCS}
+
+debug:
+	make "CFLAGS=-g -ftrap=division"
+
+profile:
+	make "CFLAGS=-G -g -ftrap=division"
+
+clean:
+	rm *.o ${PROG} 

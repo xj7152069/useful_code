@@ -1,0 +1,46 @@
+!* THE VELOCITY MODEL FILENAME *!
+../Model/v0_2dVeloNx101Nz101.dat
+!* GLI *!
+../Gli/2DGaussBall_line4_shots10_iso.Gli
+!* THE TRAVELTIME FILENAME *!
+../1_Result/time.dat
+!*	THE RAYTRACING RESULT(.TXT)	*!
+../1_Result/Ray/
+!*	THE Ray PATH FILENAME(.DAT)	*!
+../1_Result/Path/
+!*	THE CALCULATE TRACELTIME	*!
+../1_Result/Traveltime/
+!*	THE UPDATED VELOCITY	*!
+../1_Result/UpdateVel/
+!*  THE LSQR PARAMETER(DSS,DVS,DV,DVSM,DVSC)  *!
+../1_Result/UpdateVel/
+!*	THE CONVERGENCE CURVE FILENAME	*!
+../1_Result/CONVERGENCE.dat
+!*     THE Elevation file      *!
+../Model/elev.rsf@
+!*	NVX,NVZ OF THE VELOCITY MODEL	*!
+101,101
+!*	DVX,DVZ OF THE VELOCITY MODEL	*!
+50.0,50.0
+!* DVXS,DVZS WITH SOLVING EQUATION *!
+50.0,50.0
+!*	START COORDINATE IN X/Z DIMENSION OF THE VELOCITY MODEL	*!
+0.0,0.0
+!*	XAPERTURE_LEFT,XAPERTURE_RIGHT AND DEPTH	*!
+5000,5000,5000
+!*	line_start,lines,line_interval	*!
+1,4,1
+!*  shot_start,shots,shot_interval  *!
+1,10,1
+!*	INTERATIONS	*!
+11
+!* =1,RayTracing+LSQR;=2,RayTracing;=3,LSQR *!
+1
+!* Calculate fresnell zone(1=Dynamic;2=Approximate)*!
+2
+!*  DSTEP *!
+50.0
+!*  Period (1/HZ)  *!
+0.05
+!*  Sigma  *!
+3.0

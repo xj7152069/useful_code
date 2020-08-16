@@ -1,0 +1,36 @@
+!****************************初始的速度模型*******************************!
+/ssd/ssd_3.2T/wcl/data/layer/2d/vel/layer_nz501_nx601_const_v2.dat
+!********************************梯度结果*********************************!
+/ssd/ssd_3.2T/wcl/result/rtm2d/image/grad_test_v1
+!***********************the shot gather filename**************************!
+/ssd/ssd_3.2T/wcl/data/layer/2d/shot_gather_v2.txt
+!****************************iflag_shot_info******************************!
+0	
+!****************************有关炮检点坐标信息的文件*********************!
+/ssd/ssd_3.2T/wcl/adjoint_tomography_master.20.3.16/wcl/tools/shotreceiver_ntr1201_layer_shot61.txt
+!*****************  the dimension of the velocity model*******************!
+601			501		
+!***************the sampling rate of the velocity model(m)*(dvx, dvz)**************!
+10			10			
+!**********************the first, interval and last shot******************!
+16			1			16
+!*******************************ntrace_max********************************!
+1201			
+!***********************  the imaging grid interval**(dx, dz)********************!
+10.0     10.0 
+!***********************  the migration aperture**************************!
+1000.0    1000.0     1000.0     1000.0		
+!***********the trace length (sample point number) and dt(ms)*************!
+8000     0.5     8000    0.5
+!***************  the imaging depth(m) and step_length(m)****(depth, dz)*************!
+5000    10.0
+!**************  the velocity starting coordinate (x,    z)(m)************!
+0.0		0.0		
+!*************the width of absorbing boundary of x,   z axis(m)***********!
+500.0	800.0		1000.0		300.0	
+!*************************  the main frequency(hz)************************!
+25
+
+
+
+
