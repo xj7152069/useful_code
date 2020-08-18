@@ -375,7 +375,7 @@ program wave2d_test
             w%s2(nz/2,nx/2)=w%s2(nz/2,nx/2)+s(k)
             call wave2d_timeslicecal(w)
             if(mod(k,10)==0) then
-                !Write( 12  ) w%s2
+                Write( 12  ) w%s2
             end if 
             if(mod(k,100)==0) then
                 print *, k
