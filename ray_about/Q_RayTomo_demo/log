@@ -1,0 +1,40 @@
+ THE INITIAL VELOCITY
+./Data/model.smooth.dat                                                                                                                                                                                                                                         
+ GLI
+./Data/obs_newq.geo                                                                                                                                                                                                                                             
+ THE TRAVELTIME FILENAME
+./Data/time.dat                                                                                                                                                                                                                                                 
+ THE RAYTRACING RESULT(.TXT)
+./Data/Ray/                                                                                                                                                                                                                                                     
+ THE FatRay PATH FILENAME(.TXT)
+./Data/Path/                                                                                                                                                                                                                                                    
+ THE CALCULATE TRACELTIME
+./Data/Traveltime/                                                                                                                                                                                                                                              
+ THE UPDATED VELOCITY
+./Data/UpdateQ/                                                                                                                                                                                                                                                 
+ THE LSQR PARAMETER(DSS,DVS,DV,DVSM,DVSC)
+./Data/UpdateQ/                                                                                                                                                                                                                                                 
+ THE CONVERGENCE CURVE FILENAME
+./Data/CONVERGENCE.dat                                                                                                                                                                                                                                          
+ THE Elevation file
+./Data/elev_bg.reg                                                                                                                                                                                                                                              
+ THE initial Q file
+./Data/constant.dat                                                                                                                                                                                                                                             
+ NX,NZ OF THE VELOCITY MODEL
+         501         250
+ DX,DZ OF THE VELOCITY MODEL
+   10.0000000       10.0000000    
+ DVXS,DVZS WITH SOLVING EQUATION
+   10.0000000       10.0000000    
+ VELOCITY START COORDINATE IN X/Z DIMENSION
+   0.00000000       0.00000000    
+ XAPERTURE_MAX AND DEPTH
+   5000.00000       2500.00000    
+ shot_start,shots,shot_interval
+         100         300           1
+ INTERATIONS
+           2
+ =1,RayTracing+LSQR;=2,RayTracing;=3,LSQR
+           2
+ DSTEP
+   10.0000000    

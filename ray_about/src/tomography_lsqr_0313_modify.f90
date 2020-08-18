@@ -2126,7 +2126,7 @@
 					nzz=nzz+1
 					IF(nzz.GT.maxnz) THEN
 						PRINT*,'nnz is bigger than maxnz'
-						STOP	
+						STOP
 					END IF
 					indx(nzz)=tmpi
 					jndx(nzz)=tmpj
@@ -2166,7 +2166,7 @@
 !			PRINT*,'CUR_TIME=',CUR_TIME
 
 			OPEN(55,FILE=CUR_TIME,STATUS='OLD')
-			DO WHILE(.NOT.EOF(55))
+			DO WHILE(.not. eof(55))
 !				ITR=ITR+1
 !				READ(55,*) TOBS(ITR)
 				READ(55,*) ITR,TMP

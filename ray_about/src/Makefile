@@ -1,5 +1,5 @@
 
-  FC      = mpiifort
+  FC      = mpifort
   FFLAGS  = -g -O
 
   CC      = mpicc
