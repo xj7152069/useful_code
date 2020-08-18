@@ -45,26 +45,31 @@
 		REAL,ALLOCATABLE::SLOW_45(:,:)
 		REAL,ALLOCATABLE::EPSILON_VALUE(:,:)
 
-        NS_X=99+1
-        NS_Z =0 + 1
+!=====================================Par=====================================
+!source location (begin with (1,1))
+        NS_X=1    
+        NS_Z =1 
 
+!model size (depth = (nvz-1)*dvz)
         nvx=501
         nvz=250
-        DEPTH=2490.0
-        
+        DEPTH=2500.0
+
+!sample gep
         DVX=10.0
 		DVZ=10.0
         dxs=10.0
         dzs=10.0
 
+!source distance to the left and right boundary
+		SX_LEFT=000.0
+		SX_RIGHT=5000.0
+!=============================================================================
+
 		DX=DVX
 		DZ=DVZ
-
 		nvxs=ceiling(nvx/(dxs/dvx))
 		nvzs=ceiling(nvz/(dzs/dvz))
-
-		SX_LEFT=1000.0
-		SX_RIGHT=4000.0
 
 		NXS_LEFT=SX_LEFT/DVX+0.5
 		NXS_RIGHT=SX_RIGHT/DVX+0.5
@@ -141,7 +146,6 @@
 		RETURN
     END 
 
-!=============================================================================
 !=============================================================================
 
     SUBROUTINE TRAVELTIME_CAL(SS1, SS2, TT1, TT2, SLOWNESS, TIME,&
