@@ -64,6 +64,10 @@
 !source distance to the left and right boundary
 		SX_LEFT=000.0
 		SX_RIGHT=5000.0
+
+        Open(12,File = "model.smooth.dat" , access="stream" , form = "unformatted" )
+        Read( 12 ) vel
+        close(12)
 !=============================================================================
 
 		DX=DVX
@@ -93,10 +97,6 @@
 		ALLOCATE(SLOW_45(NX+1,NZ+1))
 		ALLOCATE(EPSILON_VALUE(NX+1,NZ+1))
 
-
-        Open(12,File = "model.smooth.dat" , access="stream" , form = "unformatted" )
-        Read( 12 ) vel
-        close(12)
 
         DO IX=1, NVX
 			DO IZ=1, NVZ
