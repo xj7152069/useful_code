@@ -191,7 +191,7 @@ end program main
 !					VX_START, SZ_COORD, ISHOT, DSTEP, NVXS, DXS,&
 !					DZS,myid)
 
-! 注意此处有bug, TT1等数组范围要求炮点从至少2开始
+! 注意此处有bug, TT1等数组范围要求炮点从至少第2个采样点开始
 ! 否则将超出数组范围, 释放内存将导致程序终止
 		deallocate(ELEV)
 		deallocate(SS1)
