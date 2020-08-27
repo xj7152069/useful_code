@@ -23,7 +23,7 @@
 		REAL	SX_COORD, VX_START
 		REAL	DSTEP,DXS,DZS
 		REAL	DS_X, DS_Z
-		REAL	SZ_COORD
+		REAL	SZ_COORD!,maxpath
         real    SX_LEFT,SX_RIGHT,DEPTH,nvzs
 		integer ntraces,trace_start,trace_locate
 
