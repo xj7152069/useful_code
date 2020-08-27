@@ -47,8 +47,8 @@
 
 !=====================================Par=====================================
 !source location (begin with (1,1))
-        NS_X=1    
-        NS_Z =1 
+        NS_X=2    
+        NS_Z=1
 
 !model size (depth = (nvz-1)*dvz)
         nvx=501
@@ -62,12 +62,9 @@
         dzs=10.0
 
 !source distance to the left and right boundary
-		SX_LEFT=000.0
-		SX_RIGHT=5000.0
+		SX_LEFT=10.0
+		SX_RIGHT=4990.0
 
-        Open(12,File = "model.smooth.dat" , access="stream" , form = "unformatted" )
-        Read( 12 ) vel
-        close(12)
 !=============================================================================
 
 		DX=DVX
@@ -97,10 +94,13 @@
 		ALLOCATE(SLOW_45(NX+1,NZ+1))
 		ALLOCATE(EPSILON_VALUE(NX+1,NZ+1))
 
+        Open(12,File = "model.smooth.dat" , access="stream" , form = "unformatted" )
+        Read( 12 ) vel
+        close(12)
 
-        DO IX=1, NVX
-			DO IZ=1, NVZ
-			    SSS(iz,ix)=1.0/vel(iz,ix)   
+        DO IX=1, NX
+			DO IZ=1, NZ
+			    SSS(iz,ix)=1.0/(vel(iz,ix)+10*iz)   
 			END DO
 		END DO
         
