@@ -100,7 +100,8 @@
 
         DO IX=1, NX
 			DO IZ=1, NZ
-			    SSS(iz,ix)=1.0/(vel(iz,ix)+10*iz)   
+			    SSS(iz,ix)=1.0/(vel(iz,ix)+10*iz) 
+!                SSS(iz,ix)=1.0/vel(iz,ix)  
 			END DO
 		END DO
         
