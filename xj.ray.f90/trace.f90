@@ -29,6 +29,7 @@
 
         REAL,ALLOCATABLE::TIME(:,:)
         REAL,ALLOCATABLE::TIME2(:,:)
+        REAL,ALLOCATABLE::pathmat(:,:)
 
 !*	START COORDINATE IN X/Z DIMENSION OF THE VELOCITY MODEL	*!
 !*	0.0,0.0
@@ -87,6 +88,8 @@
 !=============================================================================
 		ALLOCATE(TIME(NX,NZ))
         ALLOCATE(TIME2(NZ,NX))
+        ALLOCATE(pathmat(NZ,NX))
+
 
         Open(12,File = "time.bin" , access="stream" , form = "unformatted" )
         Read( 12 ) time2
@@ -102,14 +105,16 @@
 !		CUR_PATH    =trim(adjustl(FN5))//'path'//trim(adjustl(CUR_IS))//'.dat'
 !		CUR_TIME    =trim(adjustl(FN6))//'traveltime'//trim(adjustl(CUR_IS))//'.dat'
         CALL PreInterpolators_Bspline()
-        Open(12,File = "time.ray.bin" , access="stream" , form = "unformatted" )
-		OPEN(14,FILE='test.ray',STATUS='REPLACE')
-!		OPEN(17,FILE='test.path',STATUS='REPLACE')
-!		OPEN(18,FILE='test.time',STATUS='REPLACE')
+
 !=============================================================================
 !		DO i=1,ntraces
 !			READ(13,REC=i+trace_start-1) geo
 		
+            Open(12,File = "time.ray.bin" , access="stream" , form = "unformatted" )
+		    OPEN(14,FILE='test.ray',STATUS='REPLACE')
+		    OPEN(17,FILE='test.path',STATUS='REPLACE')
+		    OPEN(18,FILE='test.pathmat',access="stream", STATUS='REPLACE')
+
 			NR_X=NINT((RX_COORD-VX_START)/DVX)+1
 
 !			IF(NR_X.LT.1) CYCLE
@@ -117,22 +122,22 @@
 
 !			ITR=trace_locate+i-1
             ITR=0
-			
+			pathmat(:,:)=0.0
 !			if(ITR.eq.1) then
 
             IF(NR_X>=1 .and. NR_X<=NVX) then
-
 			    CALL TRACING(NX, NZ, DX, DZ, TIME, XMIN, ZMIN, DSTEP,&
 						SX_COORD,SZ_COORD,RX_COORD,RZ_COORD,VX_START,&
-						NVXS, DXS, DZS, ITR, time2)
+						NVXS, DXS, DZS, ITR, time2, pathmat)
             end if
             write( 12 ) time2
+            write( 18 ) pathmat
         
 !		END DO
 !=============================================================================
         CLOSE(14)
-!		CLOSE(17)
-!		CLOSE(18)
+		CLOSE(17)
+		CLOSE(18)
         close(12)
 
 	END
@@ -140,7 +145,7 @@
 !===========================================================================
 SUBROUTINE TRACING(NX, NZ, DX, DZ, TIME, XMIN, ZMIN, DSTEP,&
 				SX_COORD,SZ_COORD,RX_COORD,RZ_COORD,VX_START,&
-				NVXS, DXS, DZS, ITR, time2)
+				NVXS, DXS, DZS, ITR, time2, pathmat)
 USE INTERP_GLOBAL
 IMPLICIT NONE
 
@@ -155,6 +160,7 @@ REAL	DSTEP
 REAL	DXS,DZS
 REAL,DIMENSION(NX,NZ)::TIME
 REAL,DIMENSION(NZ,NX)::TIME2
+REAL,DIMENSION(NZ,NX)::pathmat
 
 REAL	X, Z, T, DTDX, DTDZ	!CURRENT POINT PARAMETER
 REAL	X1,Z1,X2,Z2,X3,Z3,X4,Z4
@@ -191,7 +197,7 @@ IF(.NOT.(((rx_coord-sx_coord)*dtdx)>=0.0))THEN
 	TMP=-1
 	GOTO 1201
 ELSE
-	WRITE(14,*) 1, X, Z, 'geophone'                                              !raycoordinate
+	WRITE(14,*) 1, X, Z!, 'geophone'                                              !raycoordinate
 
 	X1=X
 	Z1=Z
@@ -214,7 +220,7 @@ ELSE
             mx=INT(X/DX)+1
             mz=INT(Z/DZ)+1
             IF(mx>=1 .and. mx<=(nx) .and. mz>=1 .and. mz<=(nz) .and. time2(mz,mx)<50)THEN
-                time2(mz,mx)=time2(mz,mx)*5                                           
+                time2(mz,mx)=time2(mz,mx)*10                                           
             end if
 
 !raycoordinate
@@ -234,6 +240,8 @@ ELSE
 				IVZ=IVZ1
 				IV=(IVZ-1)*(NVXS-1)+IVX
 
+                pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
+!                write(*,*) IVZ,IVX,PATH
 				IVRAY(ik)=IV
 				PATHRAY(ik)=PATH
 				ik=ik+1
@@ -248,7 +256,9 @@ ELSE
 				IVX=IVX1
 				IVZ=IVZ1
 				IV=(IVZ-1)*(NVXS-1)+IVX	
-				
+
+                pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
+!                write(*,*) IVZ,IVX,PATH
 				IVRAY(ik)=IV
 				PATHRAY(ik)=PATH
 				ik=ik+1
@@ -267,7 +277,9 @@ ELSE
 				IVX=IVX1
 				IVZ=IVZ1
 				IV=(IVZ-1)*(NVXS-1)+IVX	
-				
+
+                pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
+!                write(*,*) IVZ,IVX,PATH
 				IVRAY(ik)=IV
 				PATHRAY(ik)=PATH
 				ik=ik+1
@@ -284,7 +296,9 @@ ELSE
 				IVX=INT((0.5*(X3+X4)-VX_START)/DXS)+1
 				IVZ=INT(0.5*(Z3+Z4)/DZS)+1
 				IV=(IVZ-1)*(NVXS-1)+IVX	
-				
+
+                pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
+!                write(*,*) IVZ,IVX,PATH
 				IVRAY(ik)=IV
 				PATHRAY(ik)=PATH
 				ik=ik+1
@@ -311,7 +325,7 @@ ELSE
 
 		IF(TMP3.LT.(1*DSTEP)) THEN
 			PATH=PATH+TMP3
-			WRITE(14,*) 2,sx_coord,sz_coord,'source'
+			WRITE(14,*) 2,sx_coord,sz_coord!,'source'
 			EXIT
 		END IF
 							   
@@ -337,7 +351,9 @@ ELSE
 	IVX=IVX1
 	IVZ=IVZ1
 	IV=(IVZ-1)*(NVXS-1)+IVX	
-	
+
+    pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
+!    write(*,*) IVZ,IVX,PATH
 	IVRAY(ik)=IV
 	PATHRAY(ik)=PATH
 	ik=ik+1
@@ -347,15 +363,15 @@ END IF
 	
 1201	CONTINUE
 	
-WRITE(14,*) 3, TMP, TMP*1000, 'ray_time(s|ms)'
+WRITE(14,*) 3, TMP, TMP*1000!, 'ray_time(s|ms)'
 !print* , 'itr,tmp', itr,tmp	
 
-!IF(TMP.NE.-1)THEN
-!	DO I=1,ik-1
-!		WRITE(17,*) ITR, IVRAY(I), PATHRAY(I)
+IF(TMP.NE.-1)THEN
+	DO I=1,ik-1
+		WRITE(17,*) ITR, IVRAY(I), PATHRAY(I)
 !		print* , ITR, IVRAY(I), PATHRAY(I)
-!	END DO
-!END IF
+	END DO
+END IF
 
 DEALLOCATE(IVRAY)
 DEALLOCATE(PATHRAY)
@@ -491,15 +507,5 @@ DO i=1, NTABLE
 ENDDO
 END SUBROUTINE PreInterpolators_Bspline
 	
-
-	
-
-
-
-
-
-
-
-
 
 
