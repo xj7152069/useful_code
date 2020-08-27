@@ -36,7 +36,7 @@
 !model sample begin with (1,1); source should begin with (2,2)
         NS_X=2  
         NS_Z=1
-        NR_X=495
+        NR_X=500
         NR_Z=1
 
 !model size (depth = (nvz-1)*dvz)
@@ -104,8 +104,8 @@
         CALL PreInterpolators_Bspline()
         Open(12,File = "time.ray.bin" , access="stream" , form = "unformatted" )
 		OPEN(14,FILE='test.ray',STATUS='REPLACE')
-		OPEN(17,FILE='test.path',STATUS='REPLACE')
-		OPEN(18,FILE='test.time',STATUS='REPLACE')
+!		OPEN(17,FILE='test.path',STATUS='REPLACE')
+!		OPEN(18,FILE='test.time',STATUS='REPLACE')
 !=============================================================================
 !		DO i=1,ntraces
 !			READ(13,REC=i+trace_start-1) geo
@@ -116,7 +116,7 @@
 !			IF(NR_X.GT.NVX) CYCLE
 
 !			ITR=trace_locate+i-1
-            ITR=6814.0
+            ITR=0
 			
 !			if(ITR.eq.1) then
 
@@ -131,8 +131,8 @@
 !		END DO
 !=============================================================================
         CLOSE(14)
-		CLOSE(17)
-		CLOSE(18)
+!		CLOSE(17)
+!		CLOSE(18)
         close(12)
 
 	END
@@ -167,8 +167,8 @@ REAL 	m,l,a,b
 X=RX_COORD
 Z=RZ_COORD
 
-ALLOCATE(IVRAY(NX+NZ))
-ALLOCATE(PATHRAY(NX+NZ))
+ALLOCATE(IVRAY(NX*NZ))
+ALLOCATE(PATHRAY(NX*NZ))
 DO k=1,nx+nz
 	IVRAY(:)=0
 	PATHRAY(:)=0.0
@@ -191,7 +191,7 @@ IF(.NOT.(((rx_coord-sx_coord)*dtdx)>=0.0))THEN
 	TMP=-1
 	GOTO 1201
 ELSE
-	WRITE(14,*) 1, X, Z                                                    !raycoordinate
+	WRITE(14,*) 1, X, Z, 'geophone'                                              !raycoordinate
 
 	X1=X
 	Z1=Z
@@ -213,9 +213,10 @@ ELSE
 
             mx=INT(X/DX)+1
             mz=INT(Z/DZ)+1
-            IF(mx>=1 .and. mx<=(nx) .and. mz>=1 .and. mz<=(nz) .and. time2(mz,mx)<20)THEN
-                time2(mz,mx)=time2(mz,mx)+1                                           
+            IF(mx>=1 .and. mx<=(nx) .and. mz>=1 .and. mz<=(nz) .and. time2(mz,mx)<50)THEN
+                time2(mz,mx)=time2(mz,mx)*5                                           
             end if
+
 !raycoordinate
 
 			X2=X
@@ -310,7 +311,7 @@ ELSE
 
 		IF(TMP3.LT.(1*DSTEP)) THEN
 			PATH=PATH+TMP3
-			WRITE(14,*) 2,sx_coord,sz_coord
+			WRITE(14,*) 2,sx_coord,sz_coord,'source'
 			EXIT
 		END IF
 							   
@@ -346,15 +347,15 @@ END IF
 	
 1201	CONTINUE
 	
-WRITE(18,*) ITR, TMP
+WRITE(14,*) 3, TMP, TMP*1000, 'ray_time(s|ms)'
 !print* , 'itr,tmp', itr,tmp	
 
-IF(TMP.NE.-1)THEN
-	DO I=1,ik-1
-		WRITE(17,*) ITR, IVRAY(I), PATHRAY(I)
+!IF(TMP.NE.-1)THEN
+!	DO I=1,ik-1
+!		WRITE(17,*) ITR, IVRAY(I), PATHRAY(I)
 !		print* , ITR, IVRAY(I), PATHRAY(I)
-	END DO
-END IF
+!	END DO
+!END IF
 
 DEALLOCATE(IVRAY)
 DEALLOCATE(PATHRAY)
