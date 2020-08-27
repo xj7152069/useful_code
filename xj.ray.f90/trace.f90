@@ -35,9 +35,9 @@
 !*	0.0,0.0
 !=====================================Par=====================================
 !model sample begin with (1,1); source should begin with (2,2)
-        NS_X=2  
+        NS_X=1 
         NS_Z=1
-        NR_X=500
+        NR_X=501
         NR_Z=1
 
 !model size (depth = (nvz-1)*dvz)
@@ -112,8 +112,8 @@
 		
             Open(12,File = "time.ray.bin" , access="stream" , form = "unformatted" )
 		    OPEN(14,FILE='test.ray',STATUS='REPLACE')
-		    OPEN(17,FILE='test.path',STATUS='REPLACE')
 		    OPEN(18,FILE='test.pathmat',access="stream", STATUS='REPLACE')
+            OPEN(19,FILE='test.path',STATUS='REPLACE')
 
 			NR_X=NINT((RX_COORD-VX_START)/DVX)+1
 
@@ -136,8 +136,8 @@
 !		END DO
 !=============================================================================
         CLOSE(14)
-		CLOSE(17)
 		CLOSE(18)
+		CLOSE(19)
         close(12)
 
 	END
@@ -166,19 +166,10 @@ REAL	X, Z, T, DTDX, DTDZ	!CURRENT POINT PARAMETER
 REAL	X1,Z1,X2,Z2,X3,Z3,X4,Z4
 INTEGER IVX1,IVZ1,IVX2,IVZ2,IVX,IVZ,ISX,ISZ,IV,I,ik,k
 REAL	PATH,PATH1,PATH2,TMP1,TMP2,TMP3,TMP4
-INTEGER,ALLOCATABLE::IVRAY(:)
-REAL,ALLOCATABLE::PATHRAY(:)
 REAL 	m,l,a,b
 
 X=RX_COORD
 Z=RZ_COORD
-
-ALLOCATE(IVRAY(NX*NZ))
-ALLOCATE(PATHRAY(NX*NZ))
-DO k=1,nx+nz
-	IVRAY(:)=0
-	PATHRAY(:)=0.0
-END DO
 
 PATH=0.0
 PATH1=0.0
@@ -241,9 +232,7 @@ ELSE
 				IV=(IVZ-1)*(NVXS-1)+IVX
 
                 pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
-!                write(*,*) IVZ,IVX,PATH
-				IVRAY(ik)=IV
-				PATHRAY(ik)=PATH
+                write(19,*) IVZ,IVX,PATH
 				ik=ik+1
 !				WRITE(17,*) ITR, IV, PATH
 !				PRINT*,'1881',ITR,IV,PATH
@@ -259,8 +248,7 @@ ELSE
 
                 pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
 !                write(*,*) IVZ,IVX,PATH
-				IVRAY(ik)=IV
-				PATHRAY(ik)=PATH
+                write(19,*) IVZ,IVX,PATH
 				ik=ik+1
 !				WRITE(17,*) ITR, IV, PATH
 !				PRINT*,'1892',ITR,IV,PATH
@@ -280,8 +268,7 @@ ELSE
 
                 pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
 !                write(*,*) IVZ,IVX,PATH
-				IVRAY(ik)=IV
-				PATHRAY(ik)=PATH
+                write(19,*) IVZ,IVX,PATH
 				ik=ik+1
 !				WRITE(17,*) ITR, IV, PATH
 !				PRINT*,'1907',ITR,IV,PATH
@@ -299,8 +286,7 @@ ELSE
 
                 pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
 !                write(*,*) IVZ,IVX,PATH
-				IVRAY(ik)=IV
-				PATHRAY(ik)=PATH
+                write(19,*) IVZ,IVX,PATH
 				ik=ik+1
 !				WRITE(17,*) ITR, IV, PATH
 !				PRINT*,'1920',ITR,IV,PATH
@@ -326,6 +312,11 @@ ELSE
 		IF(TMP3.LT.(1*DSTEP)) THEN
 			PATH=PATH+TMP3
 			WRITE(14,*) 2,sx_coord,sz_coord!,'source'
+            mx=INT(sx_coord/DX)+1
+            mz=INT(sz_coord/DZ)+1
+            IF(mx>=1 .and. mx<=(nx) .and. mz>=1 .and. mz<=(nz) .and. time2(mz,mx)<50)THEN
+                time2(mz,mx)=time2(mz,mx)*10                                           
+            end if
 			EXIT
 		END IF
 							   
@@ -354,8 +345,7 @@ ELSE
 
     pathmat(IVZ,IVX)=pathmat(IVZ,IVX)+PATH
 !    write(*,*) IVZ,IVX,PATH
-	IVRAY(ik)=IV
-	PATHRAY(ik)=PATH
+    write(19,*) IVZ,IVX,PATH
 	ik=ik+1
 	
 !	WRITE(17,*) ITR, IV, PATH
@@ -366,15 +356,6 @@ END IF
 WRITE(14,*) 3, TMP, TMP*1000!, 'ray_time(s|ms)'
 !print* , 'itr,tmp', itr,tmp	
 
-IF(TMP.NE.-1)THEN
-	DO I=1,ik-1
-		WRITE(17,*) ITR, IVRAY(I), PATHRAY(I)
-!		print* , ITR, IVRAY(I), PATHRAY(I)
-	END DO
-END IF
-
-DEALLOCATE(IVRAY)
-DEALLOCATE(PATHRAY)
 END
 
 !===========================================================================
