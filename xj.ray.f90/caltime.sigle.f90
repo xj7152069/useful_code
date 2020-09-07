@@ -46,9 +46,9 @@
 		REAL,ALLOCATABLE::EPSILON_VALUE(:,:)
 
 !=====================================Par=====================================
-!source location (begin with (1,1))
-        NS_X=2    
-        NS_Z=1
+!model sample begin with (1,1); source should begin with (2,2)
+        NS_X=180
+        NS_Z=2
 
 !model size (depth = (nvz-1)*dvz)
         nvx=501
@@ -62,8 +62,8 @@
         dzs=10.0
 
 !source distance to the left and right boundary
-		SX_LEFT=10.0
-		SX_RIGHT=4990.0
+		SX_LEFT=(NS_X-1)*DVX
+		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
 
 !=============================================================================
 
@@ -100,7 +100,7 @@
 
         DO IX=1, NX
 			DO IZ=1, NZ
-			    SSS(iz,ix)=1.0/(vel(iz,ix)+10*iz) 
+			    SSS(iz,ix)=1.0/(vel(iz,ix)+30*iz) 
 !                SSS(iz,ix)=1.0/vel(iz,ix)  
 			END DO
 		END DO

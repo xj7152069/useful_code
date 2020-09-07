@@ -43,7 +43,8 @@ program main
 
 	DO IX=1, NVX
 		DO IZ=1, NVZ
-			!VEL(IZ,IX)=3000.0   
+			!VEL(IZ,IX)=3000.0  
+            slow(IZ,IX)=1.0/VEL(IZ,IX)
 		END DO
 	END DO
 	OPEN(12,FILE = "slow.dat" , ACCESS="STREAM" , FORM = "UNFORMATTED" )
