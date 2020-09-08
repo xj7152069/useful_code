@@ -110,7 +110,7 @@
 !		DO i=1,ntraces
 !			READ(13,REC=i+trace_start-1) geo
 		
-            Open(12,File = "time.ray.bin" , access="stream" , form = "unformatted" )
+            Open(12,File = "time.ray.bin" , access="stream" , form = "unformatted",status='replace')
 		    OPEN(14,FILE='test.ray',STATUS='REPLACE')
 		    OPEN(18,FILE='test.pathmat',access="stream", STATUS='REPLACE')
             OPEN(19,FILE='test.path',STATUS='REPLACE')

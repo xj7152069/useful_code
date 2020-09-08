@@ -26,15 +26,15 @@
         
 !=====================================PAR=====================================
 !MODEL SAMPLE BEGIN WITH (1,1); SOURCE SHOULD BEGIN WITH (2,2)
-        NS_X=180
+        NS_X=2
         NS_Z=2
 !        NR_X=501
         NR_Z=2
 
 !MODEL SIZE (DEPTH = (NVZ-1)*DVZ)
-        NVX=501
-        NVZ=250
-        DEPTH=2500.0
+        NVX=80
+        NVZ=60
+        DEPTH=600.0
 
 !SAMPLE GEP
         DVX=10.0
@@ -54,65 +54,192 @@
 !=============================================================================
         ALLOCATE(TIME2(NVZ,NVX))
         ALLOCATE(PATHMAT(NVZ,NVX))
-        
-        OPEN(12,FILE = "time.bin" , ACCESS="STREAM" , FORM = "UNFORMATTED" )
-        READ( 12 ) TIME2
-        CLOSE(12)
-
 		ALLOCATE(TIME(NVX,NVZ))
+        
+        OPEN(11,FILE = "time.bin" , ACCESS="STREAM" , FORM = "UNFORMATTED" )
+
+	    open(14,file='ray.txt',status='replace')
+	    open(18,file='pathmat.bin',access="stream", status='replace')
+        open(19,file='pathpoint.txt',status='replace')
+        open(20,file='ray.bin',access="stream", status='replace')
+
+    NS_Z=2
+    do NS_X=2, NVX-1, 1
+        READ( 11 ) TIME2
         DO IX=1, NVX
 			DO IZ=1, NVZ
 			    TIME(IX,IZ)=TIME2(IZ,IX)
 			END DO
 		END DO
 
-        open(12,file = "time.ray.bin" , access="stream" , form = "unformatted" )
-	    open(14,file='ray.txt',status='replace')
-	    open(18,file='pathmat.bin',access="stream", status='replace')
-        open(19,file='pathpoint.txt',status='replace')
-        open(20,file='ray.bin',access="stream", status='replace')
-
-        NR_Z=1
-        DO NR_X=1, 501, 1
+        NR_Z=2
+        DO NR_X=2, NVX, 1
             PATHMAT(:,:)=0.0
 			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
 				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
 				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
             WRITE( 18 ) PATHMAT
 		END DO     
-        NR_Z=250    
-        DO NR_X=1, 501, 1
+        NR_Z=NVZ    
+        DO NR_X=2, NVX, 1
             PATHMAT(:,:)=0.0
 			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
 				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
 				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
             WRITE( 18 ) PATHMAT
 		END DO   
-        NR_X=1    
-        DO NR_Z=1, 250, 1
+        NR_X=2    
+        DO NR_Z=2, NVZ, 1
             PATHMAT(:,:)=0.0
 			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
 				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
 				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
             WRITE( 18 ) PATHMAT
 		END DO  
-        NR_X=501    
-        DO NR_Z=1, 250, 1
+        NR_X=NVX    
+        DO NR_Z=2, NVZ, 1
             PATHMAT(:,:)=0.0
 			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
 				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
 				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
             WRITE( 18 ) PATHMAT
 		END DO  
+    end do
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    NS_X=2
+    do NS_Z=2, NVZ-1, 1
+        READ( 11 ) TIME2
+        DO IX=1, NVX
+			DO IZ=1, NVZ
+			    TIME(IX,IZ)=TIME2(IZ,IX)
+			END DO
+		END DO
 
-            WRITE( 12 ) TIME2
-            
+        NR_Z=2
+        DO NR_X=2, NVX, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO     
+        NR_Z=NVZ    
+        DO NR_X=2, NVX, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO   
+        NR_X=2    
+        DO NR_Z=2, NVZ, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO  
+        NR_X=NVX    
+        DO NR_Z=2, NVZ, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO  
+    end do
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    NS_Z=NVZ-1
+    do NS_X=2, NVX-1, 1
+        READ( 11 ) TIME2
+        DO IX=1, NVX
+			DO IZ=1, NVZ
+			    TIME(IX,IZ)=TIME2(IZ,IX)
+			END DO
+		END DO
 
+        NR_Z=2
+        DO NR_X=2, NVX, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO     
+        NR_Z=NVZ    
+        DO NR_X=2, NVX, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO   
+        NR_X=2    
+        DO NR_Z=2, NVZ, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO  
+        NR_X=NVX    
+        DO NR_Z=2, NVZ, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO  
+    end do
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    NS_X=NVX-1
+    do NS_Z=2, NVZ-1, 1
+        READ( 11 ) TIME2
+        DO IX=1, NVX
+			DO IZ=1, NVZ
+			    TIME(IX,IZ)=TIME2(IZ,IX)
+			END DO
+		END DO
+
+        NR_Z=2
+        DO NR_X=2, NVX, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO     
+        NR_Z=NVZ    
+        DO NR_X=2, NVX, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO   
+        NR_X=2    
+        DO NR_Z=2, NVZ, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO  
+        NR_X=NVX    
+        DO NR_Z=2, NVZ, 1
+            PATHMAT(:,:)=0.0
+			call CAL_TRACE_2D(NS_X, NS_Z, NR_X, NR_Z, NVX, NVZ, &
+				SX_LEFT, SX_RIGHT, VX_START, VZ_START, &
+				DVX, DVZ, DXS, DZS, DEPTH, DSTEP, TIME, TIME2, PATHMAT)
+            WRITE( 18 ) PATHMAT
+		END DO  
+    end do
+
+        CLOSE(11)
         CLOSE(20)
         CLOSE(14)
 		CLOSE(18)
 		CLOSE(19)
-        close(12)
 
     END
 !==================================================================

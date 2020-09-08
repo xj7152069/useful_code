@@ -24,9 +24,9 @@ program main
 	REAL,ALLOCATABLE::slow(:,:)	
 	REAL,ALLOCATABLE::TIME_OUT(:,:)
 
-	NVX=501
-    NVZ=250
-	DEPTH=2500.0
+	NVX=80
+    NVZ=60
+	DEPTH=600.0
     DVX=10.0
 	DVZ=10.0
     DXS=10.0
@@ -37,7 +37,7 @@ program main
 	ALLOCATE(slow(1:NVZ,1:NVX))
 
 
-	OPEN(12,FILE = "trmodel.dat" , ACCESS="STREAM" , FORM = "UNFORMATTED" )
+	OPEN(12,FILE = "model.dat" , ACCESS="STREAM" , FORM = "UNFORMATTED" )
     READ( 12 ) VEL
 	CLOSE(12)
 
@@ -47,14 +47,15 @@ program main
             slow(IZ,IX)=1.0/VEL(IZ,IX)
 		END DO
 	END DO
-	OPEN(12,FILE = "slow.dat" , ACCESS="STREAM" , FORM = "UNFORMATTED" )
+	OPEN(12,FILE = "slow.dat" , ACCESS="STREAM" , FORM = "UNFORMATTED",status='replace')
     write( 12 ) slow
 	CLOSE(12)
 
 	write(*,*) 'ok'
-	NS_Z=50
-    open(12,File='time.bin',Access='stream',Form='Unformatted')
-	DO IX=2, NVX-1
+    open(12,File='time.bin',Access='stream',Form='Unformatted',status='replace')
+
+	NS_Z=2
+	DO IX=2, NVX-1,1
 		NS_X=IX
 		SX_LEFT=(NS_X-1)*DVX
 		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
@@ -63,6 +64,40 @@ program main
 		Write( 12 ) TIME_OUT
 		write(*,*) 'ok', ix
 	END DO
+
+	NS_X=2
+	DO IX=2, NVZ-1,1
+		NS_Z=IX
+		SX_LEFT=(NS_X-1)*DVX
+		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
+		CALL CAL_TRAVELTIME_2D(NS_X, NS_Z, NVX, NVZ, DEPTH, &
+			DVX, DVZ, DXS, DZS, SX_LEFT, SX_RIGHT, VEL, TIME_OUT)
+		Write( 12 ) TIME_OUT
+		write(*,*) 'ok', ix
+	END DO
+
+	NS_Z=NVZ-1
+	DO IX=2, NVX-1,1
+		NS_X=IX
+		SX_LEFT=(NS_X-1)*DVX
+		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
+		CALL CAL_TRAVELTIME_2D(NS_X, NS_Z, NVX, NVZ, DEPTH, &
+			DVX, DVZ, DXS, DZS, SX_LEFT, SX_RIGHT, VEL, TIME_OUT)
+		Write( 12 ) TIME_OUT
+		write(*,*) 'ok', ix
+	END DO
+
+	NS_X=NVX-1
+	DO IX=2, NVZ-1,1
+		NS_Z=IX
+		SX_LEFT=(NS_X-1)*DVX
+		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
+		CALL CAL_TRAVELTIME_2D(NS_X, NS_Z, NVX, NVZ, DEPTH, &
+			DVX, DVZ, DXS, DZS, SX_LEFT, SX_RIGHT, VEL, TIME_OUT)
+		Write( 12 ) TIME_OUT
+		write(*,*) 'ok', ix
+	END DO
+
 	close( 12 )
 	
 

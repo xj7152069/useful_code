@@ -47,13 +47,13 @@
 
 !=====================================Par=====================================
 !model sample begin with (1,1); source should begin with (2,2)
-        NS_X=180
+        NS_X=35
         NS_Z=2
 
 !model size (depth = (nvz-1)*dvz)
-        nvx=501
-        nvz=250
-        DEPTH=2500.0
+        nvx=80
+        nvz=60
+        DEPTH=600.0
 
 !sample gep
         DVX=10.0
@@ -94,18 +94,18 @@
 		ALLOCATE(SLOW_45(NX+1,NZ+1))
 		ALLOCATE(EPSILON_VALUE(NX+1,NZ+1))
 
-        Open(12,File = "model.smooth.dat" , access="stream" , form = "unformatted" )
+        Open(12,File = "model.dat" , access="stream" , form = "unformatted")
         Read( 12 ) vel
         close(12)
 
         DO IX=1, NX
 			DO IZ=1, NZ
-			    SSS(iz,ix)=1.0/(vel(iz,ix)+30*iz) 
+			    SSS(iz,ix)=1.0/(vel(iz,ix)+0*iz) 
 !                SSS(iz,ix)=1.0/vel(iz,ix)  
 			END DO
 		END DO
         
-        open(12,File='slowness.bin',Access='stream',Form='Unformatted')
+        open(12,File='slowness.bin',Access='stream',Form='Unformatted',status='replace')
         Write( 12 ) SSS
         close(12)
     !===== ZEROING THE WORKING BUFFER
@@ -130,7 +130,7 @@
 			    TIME2(iz,ix)=TIME(ix,iz)   
 			END DO
 		END DO
-        open(12,File='time.bin',Access='stream',Form='Unformatted')
+        open(12,File='time.bin',Access='stream',Form='Unformatted',status='replace')
         Write( 12 ) TIME2
         close( 12 )
 !		R1=4.0
