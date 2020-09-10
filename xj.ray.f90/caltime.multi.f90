@@ -55,7 +55,7 @@ program main
     open(12,File='time.bin',Access='stream',Form='Unformatted',status='replace')
 
 	NS_Z=2
-	DO IX=2, NVX-1,1
+	DO IX=2, NVX,1
 		NS_X=IX
 		SX_LEFT=(NS_X-1)*DVX
 		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
@@ -66,7 +66,7 @@ program main
 	END DO
 
 	NS_X=2
-	DO IX=2, NVZ-1,1
+	DO IX=2, NVZ,1
 		NS_Z=IX
 		SX_LEFT=(NS_X-1)*DVX
 		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
@@ -76,8 +76,8 @@ program main
 		write(*,*) 'ok', ix
 	END DO
 
-	NS_Z=NVZ-1
-	DO IX=2, NVX-1,1
+	NS_Z=NVZ
+	DO IX=2, NVX,1
 		NS_X=IX
 		SX_LEFT=(NS_X-1)*DVX
 		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
@@ -87,8 +87,8 @@ program main
 		write(*,*) 'ok', ix
 	END DO
 
-	NS_X=NVX-1
-	DO IX=2, NVZ-1,1
+	NS_X=NVX
+	DO IX=2, NVZ,1
 		NS_Z=IX
 		SX_LEFT=(NS_X-1)*DVX
 		SX_RIGHT=(NVX-1)*DVX-SX_LEFT

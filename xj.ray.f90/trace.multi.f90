@@ -64,7 +64,7 @@
         open(20,file='ray.bin',access="stream", status='replace')
 
     NS_Z=2
-    do NS_X=2, NVX-1, 1
+    do NS_X=2, NVX, 1
         READ( 11 ) TIME2
         DO IX=1, NVX
 			DO IZ=1, NVZ
@@ -107,7 +107,7 @@
     end do
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     NS_X=2
-    do NS_Z=2, NVZ-1, 1
+    do NS_Z=2, NVZ, 1
         READ( 11 ) TIME2
         DO IX=1, NVX
 			DO IZ=1, NVZ
@@ -149,8 +149,8 @@
 		END DO  
     end do
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    NS_Z=NVZ-1
-    do NS_X=2, NVX-1, 1
+    NS_Z=NVZ
+    do NS_X=2, NVX, 1
         READ( 11 ) TIME2
         DO IX=1, NVX
 			DO IZ=1, NVZ
@@ -192,8 +192,8 @@
 		END DO  
     end do
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    NS_X=NVX-1
-    do NS_Z=2, NVZ-1, 1
+    NS_X=NVX
+    do NS_Z=2, NVZ, 1
         READ( 11 ) TIME2
         DO IX=1, NVX
 			DO IZ=1, NVZ
@@ -387,7 +387,7 @@ TMP=T
 m=DTDX
 l=DTDZ
                 
-IF(.NOT.(((rx_coord-sx_coord)*dtdx)>=0.0))THEN
+IF(.NOT.(abs(rx_coord-sx_coord)+abs(rz_coord-sz_coord))>0.0)THEN !!!!!!!!!!!!!!!!!!!
 	TMP=-1
 	GOTO 1201
 ELSE
@@ -527,7 +527,7 @@ ELSE
 		END IF
 							   
 
-		IF(.NOT.(((x1-sx_coord)*dtdx)>=0.0))THEN
+		IF(.NOT.(abs(x1-sx_coord)+abs(z1-sz_coord))>0.0)THEN
 			TMP=-1
 			GOTO 1201
 		END IF

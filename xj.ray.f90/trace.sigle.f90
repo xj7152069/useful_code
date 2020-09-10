@@ -35,15 +35,15 @@
 !*	0.0,0.0
 !=====================================Par=====================================
 !model sample begin with (1,1); source should begin with (2,2)
-        NS_X=1 
-        NS_Z=1
-        NR_X=501
-        NR_Z=1
+        NS_X=40
+        NS_Z=2
+        NR_X=40
+        NR_Z=60
 
 !model size (depth = (nvz-1)*dvz)
-        nvx=501
-        nvz=250
-        DEPTH=2500.0
+        nvx=80
+        nvz=60
+        DEPTH=600.0
 
 !sample gep
         DVX=10.0
@@ -52,8 +52,8 @@
         dzs=10.0
 
 !source distance to the left and right boundary
-		SX_LEFT=10.0
-		SX_RIGHT=4990.0
+		SX_LEFT=(NS_X-1)*DVX
+		SX_RIGHT=(NVX-1)*DVX-SX_LEFT
 
         VX_START=0.0
         VZ_START=0.0
@@ -184,7 +184,7 @@ TMP=T
 m=DTDX
 l=DTDZ
                 
-IF(.NOT.(((rx_coord-sx_coord)*dtdx)>=0.0))THEN
+IF(.NOT.(abs(rx_coord-sx_coord)+abs(rz_coord-sz_coord))>0.0)THEN !!!!!!!!!!!!!!!!!!!
 	TMP=-1
 	GOTO 1201
 ELSE
@@ -321,7 +321,7 @@ ELSE
 		END IF
 							   
 
-		IF(.NOT.(((x1-sx_coord)*dtdx)>=0.0))THEN
+		IF(.NOT.(abs(x1-sx_coord)+abs(z1-sz_coord))>0.0)THEN
 			TMP=-1
 			GOTO 1201
 		END IF

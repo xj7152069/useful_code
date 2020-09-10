@@ -47,7 +47,7 @@
 
 !=====================================Par=====================================
 !model sample begin with (1,1); source should begin with (2,2)
-        NS_X=35
+        NS_X=40
         NS_Z=2
 
 !model size (depth = (nvz-1)*dvz)

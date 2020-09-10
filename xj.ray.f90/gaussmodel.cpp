@@ -1,6 +1,6 @@
 /*********(version 1.0)***********/
-/*注释�??
-    C++程序模板�??
+/*注释�??
+    C++程序模板�??
 
 */
 /********************************/
@@ -30,9 +30,9 @@ int main ()
    float **data;
    data=newfmat(nz,nx);
    matcopy(data,3000.0,nz,nx);
-   addgaussobject(data,nz,nx,20,20,800,50);
-   addgaussobject(data,nz,nx,25,60,1000,80);
-   addgaussobject(data,nz,nx,35,45,-600,100);
+   addgaussobject(data,nz,nx,30,40,800,300);
+   //addgaussobject(data,nz,nx,25,60,1000,80);
+   //addgaussobject(data,nz,nx,35,45,-600,100);
    datawrite(data,nz,nx,"model.dat");
    return 0;
 }
