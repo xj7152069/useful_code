@@ -1,4 +1,10 @@
-//Ô¤±àÒë
+/************update in 2020.12.16**************/
+/*
+    make some improvement, add two par into 
+    function getTP; add a new function linerandomtransmat.
+    
+***********************************************/
+
 #ifndef RADONBEAMFORMING_H_H
 #define RADONBEAMFORMING_H_H
 
@@ -11,6 +17,7 @@
 #include<math.h>
 using namespace arma;
 using namespace std;
+#include <xj.c++.include/xjc.h>
 
 fmat CreatePmat(int NX, int Np, float dx, float dp, float p1)
 {
@@ -28,12 +35,13 @@ fmat CreatePmat(int NX, int Np, float dx, float dp, float p1)
         {
         P(0,i)=i*dp+p1;
         }
-     forA=X*P;   //×¼±¸ºÃA¾ØÕóÖÐµÄp£¬dx²¿·Ö
+     forA=X*P;   //×¼ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½pï¿½ï¿½dxï¿½ï¿½ï¿½ï¿½
    //  forA.save("A.txt",raw_ascii);
    return forA;
 }
 
-cx_fmat getTP(fmat data, fmat forA, int Np, int NX, int NF, int Nf, float DT=0.0005, float dig_n=0.01)
+cx_fmat getTP(fmat data, fmat forA, int Np, int NX, int NF, int Nf, \
+    float DT=0.0005, float dig_n=0.01, float par1=0.2, float par2=0.03)
 {
     int i,j,k;//cout<<"ok"<<endl;
     float w,pi(3.1415926),df,maxpower;
@@ -44,10 +52,10 @@ cx_fmat getTP(fmat data, fmat forA, int Np, int NX, int NF, int Nf, float DT=0.0
     cx_fmat dataTP(NF,Np);
     cx_fmat datafft(NF,NX);
     cx_fmat A(NX,Np);
-    cx_fmat dataX(NX,1);
     cx_fmat S(Np,1);
-    cx_fmat Sa(Np,1);
     fmat radon(Np,1);
+    ofstream outf;
+    float outdata;
 
     for(i=0;i<NX;i++)
     {
@@ -55,36 +63,26 @@ cx_fmat getTP(fmat data, fmat forA, int Np, int NX, int NF, int Nf, float DT=0.0
     } 
     df=1.0/DT/NF;
 
-/*****µÚÒ»´ÎÉäÏßÊø·´ÑÝ£¬»ñµÃÏßÐÔÀ­¶«Æ×*****/
 cout<<"now is running: 1 -- "<<endl;
     
     dataP.fill(0.0);    
     digA.fill(0.0);
     digA.diag()+=dig_n;  
  
-     for(k=0;k<Nf;k++)  //¸ù¾ÝÐÅºÅÆµÆ×ÄÜÁ¿£¬Ñ¡È¡0-Nf·¶Î§½øÐÐ´¦Àí
+     for(k=0;k<Nf;k++)  
         {
-        for(i=0;i<NX;i++)
-            {
-            dataX(i,0).real(real(datafft(k,i)));
-            dataX(i,0).imag(imag(datafft(k,i)));    
-            }   
-         w=2.0*pi*(k+1)*df;  //¼ÆËã½ÇÆµÂÊ
+         w=2.0*pi*(k+1)*df;  
          for(i=0;i<NX;i++)
          {for(j=0;j<Np;j++)
             {
             (forAw(i,j).real(0.0));
             (forAw(i,j).imag(0.0));
             (forAw(i,j).imag(forA(i,j)*w));
-            //forAw(i,j)=forAw(i,j);
             }
          }
          A=exp(forAw);
-         Sa=(A.t())*dataX;
-         dataP.row(k)=Sa.col(0).t();  //???¸´Êý¾ØÕóµÄ¸³ÖµÊÇÔõÑùµÄ£¿£¿£¿
-         //cout<<"now is running: "<<k<<endl;
+         dataP.row(k)=(A.t()*datafft.row(k).t()).t();
         }
-       //dataP.save("S.txt", raw_ascii);
     
     for(i=0;i<Np;i++)
         {
@@ -94,44 +92,46 @@ cout<<"now is running: 1 -- "<<endl;
     for(j=0;j<Np;j++)
         {for(i=0;i<NF;i++)
                 {
+                realTP(i,j)=real(dataTP(i,j));
+                }
+        }
+    datawrite(realTP,NF,Np,"media.TP.bin");
+
+    for(j=0;j<Np;j++)
+        {for(i=0;i<NF;i++)
+                {
                 realTP(i,j)=real(dataTP(i,j))*real(dataTP(i,j));
                 }
         }
-
-/*****µÚ¶þ´ÎÉäÏßÊø·´ÑÝ£¬ÒÔÏßÐÔÀ­¶«Æ××÷ÎªÔ¼Êø*****/   
+ 
 cout<<"now is running: 2 -- "<<endl;
     digA.fill(0.0);
     
     for(i=0;i<Np;i++)
         {
         radon(i,0)=sum(realTP.col(i));
-        //if(i<120)
-        //radon(i,0)=radon(i,0)*exp(-(120-i));
-        //if(i>900)
-        //radon(i,0)=radon(i,0)*exp(-(i-900));
+        
+        if(i<Np*par1)
+        radon(i,0)=radon(i,0)*exp(-0.03*(Np*par1-i));
+        if(i>Np*(1-par1))
+        radon(i,0)=radon(i,0)*exp(-0.03*(i-Np*(1-par1)));
         }
     maxpower=max(radon.col(0));
-    //outf.open("radon.bin");
+    outf.open("radon.bin");
     for(i=0;i<Np;i++)
         { 
         radon(i,0)=radon(i,0)/maxpower;
-        //outdata=radon(i,0);
-        //outf.write((char*)&outdata,sizeof(outdata));
-        //outdata=i;
-        //outf.write((char*)&outdata,sizeof(outdata));
+        outdata=radon(i,0);
+        outf.write((char*)&outdata,sizeof(outdata));
+        outdata=i;
+        outf.write((char*)&outdata,sizeof(outdata));
         digA(i,i)=dig_n/(radon(i,0)+dig_n);
         }
     //outf.close();
       
     for(k=0;k<Nf;k++)
         {
-        for(i=0;i<NX;i++)
-            {
-            dataX(i,0).real(real(datafft(k,i)));
-            dataX(i,0).imag(imag(datafft(k,i)));    
-            }   
-            
-         w=2.0*pi*(k+1)*df;  //¼ÆËã½ÇÆµÂÊ
+         w=2.0*pi*(k+1)*df;  //ï¿½ï¿½ï¿½ï¿½ï¿½Æµï¿½ï¿½
          for(i=0;i<NX;i++)
          {for(j=0;j<Np;j++)
             {
@@ -142,8 +142,8 @@ cout<<"now is running: 2 -- "<<endl;
             }
          }
          A=exp(forAw);
-         S=inv(A.t()*A+digA)*A.t()*dataX;
-         dataP.row(k)=S.col(0).st();  //???¸´Êý¾ØÕóµÄ¸³ÖµÊÇÔõÑùµÄ£¿£¿£¿
+         S=inv(A.t()*A+digA)*A.t()*datafft.row(k).st();
+         dataP.row(k)=S.col(0).st();  //???ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¸ï¿½Öµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½
          //cout<<"now is running: "<<k<<endl;
         }
     
@@ -176,7 +176,7 @@ cx_fmat getRebuildData(cx_fmat dataTP, fmat forA, int Np, int NX, int NF, int Nf
     
      for(k=0;k<Nf;k++)
         {    
-         w=2.0*pi*(k+1)*df;  //¼ÆËã½ÇÆµÂÊ
+         w=2.0*pi*(k+1)*df;  //ï¿½ï¿½ï¿½ï¿½ï¿½Æµï¿½ï¿½
          for(i=0;i<NX;i++)
          {for(j=0;j<Np;j++)
             {
@@ -188,7 +188,7 @@ cx_fmat getRebuildData(cx_fmat dataTP, fmat forA, int Np, int NX, int NF, int Nf
          }
          A=exp(forAw);
          rebuild_X=A*dataP.row(k).st();
-         rebuild.row(k)=rebuild_X.col(0).st();  //???¸´Êý¾ØÕóµÄ¸³ÖµÊÇÔõÑùµÄ£¿£¿£¿
+         rebuild.row(k)=rebuild_X.col(0).st();  //???ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¸ï¿½Öµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½
         }
 
     for(i=0;i<NX;i++)
@@ -196,6 +196,41 @@ cx_fmat getRebuildData(cx_fmat dataTP, fmat forA, int Np, int NX, int NF, int Nf
         datarebuild.col(i)=ifft(rebuild.col(i),NF);
         }      
     return datarebuild;      
+}
+
+cx_fmat linerandomtransmat(int NX, int Np, float dx, float dp, float p1, float w)
+{
+    int i,j;
+
+    fmat X(NX,1);
+    fmat P(1,Np);
+    fmat forA(NX,Np);
+
+    for(i=0;i<NX;i++)
+        {
+        X(i,0)=(i)*dx-(NX*dx)/2.0;
+        }
+        
+    for(i=0;i<Np;i++)
+        {
+        P(0,i)=i*dp+p1;
+        }
+     forA=X*P;   //å‡†å¤‡å¥½AçŸ©é˜µä¸­çš„pï¼Œdxéƒ¨åˆ†
+   //  forA.save("A.txt",raw_ascii);
+    cx_fmat forAw(NX,Np);
+    cx_fmat A(NX,Np);
+    for(i=0;i<NX;i++)
+        {for(j=0;j<Np;j++)
+            {
+                (forAw(i,j).real(0.0));
+                (forAw(i,j).imag(0.0));
+                (forAw(i,j).imag(forA(i,j)*w));
+                //forAw(i,j)=forAw(i,j);
+            }
+        }
+    A=exp(forAw);
+
+   return A;
 }
 
 

@@ -7,10 +7,10 @@
     #include "./xj.c++.include/RTMangle2D.h"
     #include "./xj.c++.include/my_armadillo.h"
 */
-#include "./xj.c++.include/mat.h"
-#include "./xj.c++.include/wave2D.h"
-#include "./xj.c++.include/my_armadillo.h"
-#include "./xj.c++.include/rtmangle2D.h"
+#include "./mat.h"
+#include "./wave2D.h"
+#include "./my_armadillo.h"
+#include "./rtmangle2D.h"
 
 
 #endif
