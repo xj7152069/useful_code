@@ -18,7 +18,8 @@
 !					NXS_RIGHT,ntraces,trace_start,trace_locate,&
 !					SZ_COORD,ISHOT,DSTEP,NVXS,DXS,DZS,myid)
 
-    PROGRAM TRAVELTIME_2D				
+    SUBROUTINE TRAVELTIME_2D(NS_Z,NS_X,nvz,nvx,DEPTH,&
+                DVZ,DVX,dzs,dxs,VEL,TIME2)				
 		USE INTERP_GLOBAL
 
 		INTEGER NX, NZ, NS_X, NS_Z, NVX, NVZ, NVXS
@@ -36,30 +37,30 @@
 		REAL,ALLOCATABLE::SS1(:)
 		REAL,ALLOCATABLE::SS2(:)
 		REAL,ALLOCATABLE::SSS(:,:)
-		REAL,ALLOCATABLE::VEL(:,:)
+		REAL::VEL(nvx*nvz)
 		REAL,ALLOCATABLE::TT1(:)
 		REAL,ALLOCATABLE::TT2(:)
 		REAL,ALLOCATABLE::SLOWNESS(:,:)
 		REAL,ALLOCATABLE::TIME(:,:)
-        REAL,ALLOCATABLE::TIME2(:,:)
+        REAL::TIME2(nvx*nvz)
 		REAL,ALLOCATABLE::SLOW_45(:,:)
 		REAL,ALLOCATABLE::EPSILON_VALUE(:,:)
 
 !=====================================Par=====================================
 !model sample begin with (1,1); source should begin with (2,2)
-        NS_X=40
-        NS_Z=2
+        !NS_X=40
+        !NS_Z=2
 
 !model size (depth = (nvz-1)*dvz)
-        nvx=80
-        nvz=60
-        DEPTH=600.0
+        !nvx=80
+        !nvz=60
+        !DEPTH=600.0
 
 !sample gep
-        DVX=10.0
-		DVZ=10.0
-        dxs=10.0
-        dzs=10.0
+        !DVX=10.0
+		!DVZ=10.0
+        !dxs=10.0
+        !dzs=10.0
 
 !source distance to the left and right boundary
 		SX_LEFT=(NS_X-1)*DVX
@@ -85,29 +86,29 @@
 		ALLOCATE(SS1(NX+1))
 		ALLOCATE(SS2(NX+1))
 		ALLOCATE(SSS(NVZ,NVX))
-		ALLOCATE(VEL(NVZ,NVX))
+		!ALLOCATE(VEL(0:NVZ*NVX-1))
 		ALLOCATE(TT1(NX))
 		ALLOCATE(TT2(NX))
 		ALLOCATE(SLOWNESS(NX+1,NZ+1))
 		ALLOCATE(TIME(NX,NZ))
-        ALLOCATE(TIME2(NZ,NX))
+        !ALLOCATE(TIME2(NZ*NX))
 		ALLOCATE(SLOW_45(NX+1,NZ+1))
 		ALLOCATE(EPSILON_VALUE(NX+1,NZ+1))
 
-        Open(12,File = "model.dat" , access="stream" , form = "unformatted")
-        Read( 12 ) vel
-        close(12)
-
+        !Open(12,File = "model.dat" , access="stream" , form = "unformatted")
+        !Read( 12 ) vel
+        !close(12)
+    
         DO IX=1, NX
 			DO IZ=1, NZ
-			    SSS(iz,ix)=1.0/(vel(iz,ix)+0*iz) 
+			    SSS(iz,ix)=1.0/vel((ix-1)*nz+(iz-1)+1) 
 !                SSS(iz,ix)=1.0/vel(iz,ix)  
 			END DO
 		END DO
         
-        open(12,File='slowness.bin',Access='stream',Form='Unformatted',status='replace')
-        Write( 12 ) SSS
-        close(12)
+        !open(12,File='slowness.bin',Access='stream',Form='Unformatted',status='replace')
+        !Write( 12 ) SSS
+        !close(12)
     !===== ZEROING THE WORKING BUFFER
 		
         CALL ZERO_BUF(NX, NZ, SS1, SS2, TT1, TT2, TIME,&
@@ -127,12 +128,12 @@
 
         DO IX=1, NX
 			DO IZ=1, NZ
-			    TIME2(iz,ix)=TIME(ix,iz)   
+			    TIME2((ix-1)*nz+(iz-1)+1)=TIME(ix,iz)   
 			END DO
 		END DO
-        open(12,File='time.bin',Access='stream',Form='Unformatted',status='replace')
-        Write( 12 ) TIME2
-        close( 12 )
+        !open(12,File='time.bin',Access='stream',Form='Unformatted',status='replace')
+        !Write( 12 ) TIME2
+        !close( 12 )
 !		R1=4.0
 !		R2=4.0
 !		CALL smooth2f(NZ,NX,R1,R2,TIME)
