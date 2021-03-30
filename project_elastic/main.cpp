@@ -14,7 +14,7 @@ using namespace arma;
 int main()
 {
 
-    int Z(500),X(500),T(3000);
+    int Z(500),X(500),T(6000);
     elastic2D A(Z,X);
     ofstream outf1,outf2,outf3,outf4;
     float **sufs,**sufp,**w,**uu;
@@ -25,7 +25,7 @@ int main()
     //outf2.open("u2movie.bin");
     outf3.open("u3movie.bin");
     //outf4.open("u4movie.bin");
-    w=gauss_souce_windows(Z,X,50,X/2,5);
+    w=gauss_souce_windows(Z,X,50,50,5);
     datawrite(w,Z,X,"sourcewin.bin");
     int k,i,j;
     for(i=0;i<X;i++)
@@ -34,16 +34,21 @@ int main()
         {
             A.vp[j][i]=2500;
             A.vs[j][i]=1800;
+            A.ro[j][i]=2000;
         }
+        A.vp[200][i]=2500+1000;
+        A.vs[200][i]=1800+350;
+        /*
         for(j=200;j<350;j++)
         {
             A.vp[j][i]=3500;
             A.vs[j][i]=2300;
-        }
-        for(j=350;j<Z;j++)
+        }*/
+        for(j=201;j<Z;j++)
         {
             A.vp[j][i]=4500;
-            A.vs[j][i]=3000;
+            A.vs[j][i]=2500;
+            A.ro[j][i]=2000;
         }
     }
     A.updatepar();
@@ -61,11 +66,14 @@ int main()
         }
 
         A.timeslicecal_u();
-        matcopy(sufp[k],A.data.vpx[50],X);
+        matcopy(uu,A.data.vpx,Z,X);
+        matsmooth(uu,uu,Z,X,3);
+        matcopy(sufp[k],uu[50],X);
+
 
         //matcopy(sufp[k],A.vpy[50],X);
 
-        if(k%1==0)
+        if(k%3==0)
         {
             //matsmooth(uu,A.ux,Z,X,0);
             matcopy(uu,A.vp,Z,X);
@@ -74,9 +82,16 @@ int main()
             datawrite(uu, Z, X, outf1);
             //matsmooth(uu,A.uz,Z,X,0);
             //datawrite(A.uz, Z, X, outf2);
-            datawrite(A.data.vpx, Z, X, outf3);
+            matcopy(uu,A.data.vpx,Z,X);
+            //matsmooth(uu,uu,Z,X,3);
+            datawrite(uu, Z, X, outf3);
             //datawrite(A.data.vsx, Z, X, outf4);
         }
+        if(k==1400)
+        {datawrite(uu,Z,X,"wave1.bin");}
+        if(k==1800)
+        {datawrite(uu,Z,X,"wave2.bin");}
+
         if(k%100==0)
         {cout<<"now is running : "<<k<<endl;}
     }
