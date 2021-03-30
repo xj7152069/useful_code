@@ -69,7 +69,7 @@ public:
     float **vp=NULL,**vs=NULL,**lmd=NULL,**uz=NULL,**ux=NULL,\
         **ro1=NULL,**miu=NULL,**ro=NULL,**mo=NULL,**mo1=NULL,\
         **Txy=NULL,**Tyy=NULL,**Txx=NULL,vp1,vs1,roo; //velocity model
-    float dx,dy,dt,R,dt2,t3;
+    float dx,dy,dt,R,dt2,t3,t5,C_X,C_Y;
     int nx,ny,suface,PML_wide;
     
     elastic2D();
@@ -99,6 +99,8 @@ elastic2D::elastic2D(int z, int x)
     dx=5.0;dy=5.0;dt=0.0005;dt2=dt;
     PML_wide=30;suface=1;R=20;
     vp1=3000,vs1=2000,roo=2000;
+    C_Y=(R)*3/2/(PML_wide-5)/(PML_wide-5)/(PML_wide-5)/dy/dy/dy;
+    C_X=(R)*3/2/(PML_wide-5)/(PML_wide-5)/(PML_wide-5)/dx/dx/dx;
     
     data.txx=newfmatcs(ny,nx,0.0),data.txxx2=newfmatcs(ny,nx,0.0),data.txxx=newfmatcs(ny,nx,0.0),\
     data.txxy2=newfmatcs(ny,nx,0.0),data.txxy=newfmatcs(ny,nx,0.0),data.txy=newfmatcs(ny,nx,0.0),\
@@ -194,6 +196,9 @@ void elastic2D::updatepar()
 {
     int i,j;
     dt2=dt;
+    C_Y=(R)*3/2/(PML_wide-5)/(PML_wide-5)/(PML_wide-5)/dy/dy/dy;
+    C_X=(R)*3/2/(PML_wide-5)/(PML_wide-5)/(PML_wide-5)/dx/dx/dx;
+    t5=1.0;
     for(i=0;i<ny;i++)
     {
         for(j=0;j<nx;j++)
@@ -211,19 +216,12 @@ void elastic2D::caly(float** ut2 ,float **ut1,float **u, float **m,const char & 
 {
     float DX,DY,DT,xshd;
     int X,Y,suface_PML;
-    float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2,t2,t5;
-    int i,j,i1,j1,n,t4;
-    float du1(0),du2(0),du(0),dux(0),duy(0),duxy(0);
-    float DT2,DT3,DX2,DY2,mo2;
-    float C_X, C_Y;
+    int i,j,i1,j1;
+    float du1(0),du2(0),du(0);
     float *xs1_in=this->xs1,*xs2_in=this->xs2; 
 
     DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
     X=this->nx,Y=this->ny,suface_PML=this->suface;
-    DT2=DT*DT,DT3=DT2*DT,DX2=DX*DX,DY2=DY*DY;
-    t5=float(DY)/DX;
-    C_Y=(this->R)*3/2/(xshd-5)/(xshd-5)/(xshd-5)/DY2/DY;
-    C_X=(this->R)*3/2/(xshd-5)/(xshd-5)/(xshd-5)/DX2/DX;
 
     //else if(label=='y')
     {
@@ -279,7 +277,8 @@ void elastic2D::caly(float** ut2 ,float **ut1,float **u, float **m,const char & 
         }
     }
     }
-    du1=0,du2=0,du=0,dux=0,duy=0,duxy=0;
+    du1=0,du2=0,du=0;
+    /*
     for(j=0;j<Y;j++)
     {
         for(i=0;i<X;i++)
@@ -287,25 +286,19 @@ void elastic2D::caly(float** ut2 ,float **ut1,float **u, float **m,const char & 
             ut1[j][i]=(ut2[j][i]);
         }
     }
+    */
 }
 
 void elastic2D::calx(float** ut2 ,float **ut1,float **u, float **m,const char & label)
 {
     float DX,DY,DT,xshd;
     int X,Y,suface_PML;
-    float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2,t2,t5;
-    int i,j,i1,j1,n,t4;
-    float du1(0),du2(0),du(0),dux(0),duy(0),duxy(0);
-    float DT2,DT3,DX2,DY2,mo2;
-    float C_X, C_Y;
+    int i,j,i1,j1;
+    float du1(0),du2(0),du(0);
     float *xs1_in=this->xs1,*xs2_in=this->xs2; 
 
     DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
     X=this->nx,Y=this->ny,suface_PML=this->suface;
-    DT2=DT*DT,DT3=DT2*DT,DX2=DX*DX,DY2=DY*DY;
-    t5=float(DY)/DX;
-    C_Y=(this->R)*3/2/(xshd-5)/(xshd-5)/(xshd-5)/DY2/DY;
-    C_X=(this->R)*3/2/(xshd-5)/(xshd-5)/(xshd-5)/DX2/DX;
 
     //if(label=='x')
     {
@@ -361,7 +354,8 @@ void elastic2D::calx(float** ut2 ,float **ut1,float **u, float **m,const char & 
         }
     }
     }
-    du1=0,du2=0,du=0,dux=0,duy=0,duxy=0;
+    du1=0,du2=0,du=0;
+    /*
     for(j=0;j<Y;j++)
     {
         for(i=0;i<X;i++)
@@ -369,25 +363,19 @@ void elastic2D::calx(float** ut2 ,float **ut1,float **u, float **m,const char & 
             ut1[j][i]=(ut2[j][i]);
         }
     }
+    */
 }
 
 void elastic2D::cal(float** ut2 ,float **ut1,float **u, float **m,const char & label)
 {
     float DX,DY,DT,xshd;
     int X,Y,suface_PML;
-    float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2,t2,t5;
-    int i,j,i1,j1,n,t4;
-    float du1(0),du2(0),du(0),dux(0),duy(0),duxy(0);
-    float DT2,DT3,DX2,DY2,mo2;
-    float C_X, C_Y;
+    int i,j,i1,j1;
+    float du1(0),du2(0),du(0);
     float *xs1_in=this->xs1,*xs2_in=this->xs2; 
 
     DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
     X=this->nx,Y=this->ny,suface_PML=this->suface;
-    DT2=DT*DT,DT3=DT2*DT,DX2=DX*DX,DY2=DY*DY;
-    t5=float(DY)/DX;
-    C_Y=this->R*3/2/(xshd-5)/(xshd-5)/(xshd-5)/DY2/DY;
-    C_X=this->R*3/2/(xshd-5)/(xshd-5)/(xshd-5)/DX2/DX;
 
     if(label=='x')
     {
@@ -501,7 +489,7 @@ void elastic2D::cal(float** ut2 ,float **ut1,float **u, float **m,const char & l
     {
         cout<<"error!"<<endl;
     }
-            du1=0,du2=0,du=0,dux=0,duy=0,duxy=0;
+            du1=0,du2=0,du=0;
     for(j=0;j<Y;j++)
     {
         for(i=0;i<X;i++)
@@ -514,18 +502,29 @@ void elastic2D::cal(float** ut2 ,float **ut1,float **u, float **m,const char & l
 void elastic2D::timeslicecal_u()
 {
     int i,j;
+    float **swap=NULL;
     //cal(float** ut2 ,float **ut1,float **u, float **m,const char & label)
     this->calx(this->data.txyy2,this->data.txyy,this->ux,this->miu,'y');
+    swap=this->data.txyy2,this->data.txyy2=this->data.txyy,this->data.txyy=swap;
     this->caly(this->data.txyx2,this->data.txyx,this->uz,this->miu,'x');
+    swap=this->data.txyx2,this->data.txyx2=this->data.txyx,this->data.txyx=swap;
 
     this->calx(this->data.tyyy2,this->data.tyyy,this->uz,this->mo,'y');
+    swap=this->data.tyyy2,this->data.tyyy2=this->data.tyyy,this->data.tyyy=swap;
     this->caly(this->data.tyyx2,this->data.tyyx,this->ux,this->lmd,'x');
+    swap=this->data.tyyx2,this->data.tyyx2=this->data.tyyx,this->data.tyyx=swap;
 
     this->calx(this->data.txxy2,this->data.txxy,this->uz,this->lmd,'y');
+    swap=this->data.txxy2,this->data.txxy2=this->data.txxy,this->data.txxy=swap;
     this->caly(this->data.txxx2,this->data.txxx,this->ux,this->mo,'x');
+    swap=this->data.txxx2,this->data.txxx2=this->data.txxx,this->data.txxx=swap;
 
     for(i=0;i<ny;i++)
     {
+        /*
+        float ptxx=Txx[i],ptxxx=data.txxx[i],ptxxy=data.txxy[i],\
+            ptxx=Txx[i],ptxx=Txx[i],ptxx=Txx[i],\
+            ptxx=Txx[i],ptxx=Txx[i],ptxx=Txx[i];*/
         for(j=0;j<nx;j++)
         {
             this->Txx[i][j]=this->data.txxx[i][j]+this->data.txxy[i][j];
@@ -534,15 +533,23 @@ void elastic2D::timeslicecal_u()
         }
     }
     this->calx(this->data.vyy2,this->data.vyy,this->Tyy,this->ro1,'n');
+    swap=this->data.vyy2,this->data.vyy2=this->data.vyy,this->data.vyy=swap;
     this->caly(this->data.vyx2,this->data.vyx,this->Txy,this->ro1,'n');
+    swap=this->data.vyx2,this->data.vyx2=this->data.vyx,this->data.vyx=swap;
 
     this->calx(this->data.vxy2,this->data.vxy,this->Txy,this->ro1,'n');
+    swap=this->data.vxy2,this->data.vxy2=this->data.vxy,this->data.vxy=swap;
     this->caly(this->data.vxx2,this->data.vxx,this->Txx,this->ro1,'n');
+    swap=this->data.vxx2,this->data.vxx2=this->data.vxx,this->data.vxx=swap;
 
     this->caly(this->data.vpx12,this->data.vpx1,this->Txx,this->mo1,'n');
+    swap=this->data.vpx12,this->data.vpx12=this->data.vpx1,this->data.vpx1=swap;
     this->caly(this->data.vpx22,this->data.vpx2,this->Tyy,this->mo1,'n');
+    swap=this->data.vpx22,this->data.vpx22=this->data.vpx2,this->data.vpx2=swap;
     this->calx(this->data.vpy12,this->data.vpy1,this->Txx,this->mo1,'n');
+    swap=this->data.vpy12,this->data.vpy12=this->data.vpy1,this->data.vpy1=swap;
     this->calx(this->data.vpy22,this->data.vpy2,this->Tyy,this->mo1,'n');
+    swap=this->data.vpy22,this->data.vpy22=this->data.vpy2,this->data.vpy2=swap;
 
     for(i=0;i<ny;i++)
     {
@@ -557,6 +564,7 @@ void elastic2D::timeslicecal_u()
         }
     }
     //this->t3=this->t3*(-1);
+    swap=NULL;
 }
 
 void elastic2D::timeslicecal_T()
@@ -649,7 +657,7 @@ void elastic_test(int dmovie=1)
         }
         A.timeslicecal_u();
 
-        if(k%dmovie==0)
+        //if(k%dmovie==0)
         {
             //matsmooth(uu,A.ux,Z,X,0);
             //datawrite(A.ux, Z, X, outf1);
