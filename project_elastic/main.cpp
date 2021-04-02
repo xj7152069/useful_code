@@ -25,7 +25,9 @@ int main()
     //outf2.open("u2movie.bin");
     outf3.open("u3movie.bin");
     //outf4.open("u4movie.bin");
-    w=gauss_souce_windows(Z,X,50,50,5);
+    //w=gauss_souce_windows(Z,X,50,50,5);
+    w=newfmatcs(Z,X,0.0);
+    w[60][60]=1.0;
     datawrite(w,Z,X,"sourcewin.bin");
     int k,i,j;
     for(i=0;i<X;i++)
@@ -52,6 +54,7 @@ int main()
         }
     }
     A.updatepar();
+    A.t3=-1;
     datawrite(A.vp,Z,X,"model.vp.bin");
 
     for(k=0;k<T;k++)
@@ -67,7 +70,7 @@ int main()
 
         A.timeslicecal_u();
         matcopy(uu,A.data.vpx,Z,X);
-        matsmooth(uu,uu,Z,X,3);
+        //matsmooth(uu,uu,Z,X,3);
         matcopy(sufp[k],uu[50],X);
 
 
