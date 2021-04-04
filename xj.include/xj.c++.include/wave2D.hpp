@@ -31,7 +31,7 @@ class wave2D
 private:
 //����ƫ΢����ɢ���ϵ��
     //float xs2[5]={1.666667/1.463612\
-    12,-0.238095/1.463612,0.039683/1.463612,\
+    ,-0.238095/1.463612,0.039683/1.463612,\
     -0.004960/1.463612,0.000317/1.463612};
     float xs2[5]={1.66666639,-0.238095194,3.96825150E-02,-4.96031437E-03,3.17460130E-04};
 //һ��ƫ΢����ɢ���ϵ��
@@ -43,19 +43,21 @@ private:
     float **sx31=NULL,  **sx32=NULL, **sx33=NULL; //PML boundary
 
 public:
-    float **p2=NULL; //velocity model
+    float **p2=NULL,**model2=NULL; //velocity model
     float ** & model=p2;
     float **s1=NULL, **s2=NULL, **s3=NULL; //time slices, add source to "s2"
     float dx,dy,dt,R;
     int nx,ny,suface,PML_wide;
+    float DT2o,DT3o,DX2o,DY2o;
+    float C_Xo, C_Yo;
     
     wave2D();
     wave2D(int x, int y);
     ~wave2D();
 
     void setvelocity(float v=3000.0);
-    void timeslicecal(int restart=0);
-    void timeslicecopy();
+    void timeslicecal();
+    void updatepar();
     void cleardata();
 };
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +66,7 @@ wave2D::wave2D()
 {
     nx=0;ny=0;
     dx=5.0;dy=5.0;dt=0.0005;
-    PML_wide=30;suface=1;R=1000;
+    PML_wide=35;suface=1;R=9;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
@@ -72,7 +74,10 @@ wave2D::wave2D(int z, int x)
 {
     nx=x;ny=z;
     dx=5.0;dy=5.0;dt=0.0005;
-    PML_wide=30;suface=1;R=1000;
+    PML_wide=35;suface=1;R=9;
+    DT2o=dt*dt,DT3o=DT2o*dt,DX2o=dx*dx,DY2o=dy*dy;
+    C_Yo=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/DY2o/dy;
+    C_Xo=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/DX2o/dx;
     int i,j;
     s1=new float*[ny];s2=new float*[ny];s3=new float*[ny];  
     sx11=new float*[ny];sx12=new float*[ny];sx13=new float*[ny];    
@@ -101,10 +106,12 @@ wave2D::wave2D(int z, int x)
             }
         }
 
-    p2=new float*[ny];      
+    p2=new float*[ny];
+    model2=new float*[ny];      
     for(j=0;j<ny;j++)  
         {  
         p2[j]=new float[nx];
+        model2[j]=new float[nx];
         } 
 
     for(j=0;j<ny;j++)
@@ -112,8 +119,23 @@ wave2D::wave2D(int z, int x)
         for(i=0;i<nx;i++)
             {
             p2[j][i]=3000;
+            model2[j][i]=3000*3000;
             }
         }
+}
+void wave2D::updatepar()
+{
+    DT2o=dt*dt,DT3o=DT2o*dt,DX2o=dx*dx,DY2o=dy*dy;
+    C_Yo=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/DY2o/dy;
+    C_Xo=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/DX2o/dx;
+    int i,j;
+    for(j=0;j<ny;j++)
+    {
+        for(i=0;i<nx;i++)
+        {
+        model2[j][i]=p2[j][i]*p2[j][i];
+        }
+    }
 }
 
 wave2D::~wave2D()
@@ -123,6 +145,9 @@ wave2D::~wave2D()
     for(int i=0;i<ny;i++)  
         delete []p2[i]; 
     delete []p2;
+    for(int i=0;i<ny;i++)  
+        delete []model2[i]; 
+    delete []model2;
 
     for(int i=0;i<ny;i++)  
        {
@@ -140,7 +165,7 @@ wave2D::~wave2D()
     p2=NULL;s1=NULL;s2=NULL;s3=NULL;
     sx11=NULL;sx12=NULL;sx13=NULL;
     sxp21=NULL;sxp22=NULL;sxp23=NULL;
-    sx21=NULL;sx22=NULL;
+    sx21=NULL;sx22=NULL;model2=NULL;
     sx31=NULL;sx32=NULL;sx33=NULL;
     cout<<"Delete an object-wave_modeling_2D"<<endl;
 }
@@ -175,217 +200,250 @@ void wave2D::cleardata()
     cout<<"All Matrix data has been clear!"<<endl;
 }
 
-void wave2D::timeslicecal(int restart)
+void wave2D::timeslicecal()
 {
-    float DX,DY,DT,xshd;
-    int X,Y,suface_PML;
-    float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2,t2,t5;
-    int i,j,n,t3,t4;
+    float DX=this->dx, DY=this->dy, DT=this->dt;
+    int X=this->nx, Y=this->ny, xshd=this->PML_wide;
+    float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2;
+    int i,j,n,n1,n2;
     float u1(0),u2(0),u(0),ux(0),uy(0);
-    float DT2,DT3,DX2,DY2,mo2;
-//PML�߽�����պ���d(x),�䳣��ϵ������
-    float C_X, C_Y;
+    float DT2=this->DT2o, DT3=this->DT3o, DX2=this->DX2o, DY2=this->DY2o,mo2;
+    float C_X=this->C_Xo, C_Y=this->C_Yo;
 
     float **sx11_in=this->sx11, **sx12_in=this->sx12, **sx13_in=this->sx13; //PML boundary
     float **sxp21i=this->sxp21, **sxp22i=this->sxp22, **sxp23i=this->sxp23; //PML boundary
-    float **sx21_in=this->sx21, **sx22_in=this->sx22; //PML boundary
+    float **sx21_in=this->sx21, **sx22_in=this->sx22, **mo2_in=this->model2; //PML boundary
     float **sx31_in=this->sx31, **sx32_in=this->sx32, **sx33_in=this->sx33; //PML boundary
-    float **p2_in=this->p2, **swap,*xs1_in=this->xs1,*xs2_in=this->xs2; //velocity model and swap
+    float **p2_in=this->p2, *xs1_in=this->xs1,*xs2_in=this->xs2; //velocity model and swap
     float **s1_in=this->s1, **s2_in=this->s2, **s3_in=this->s3; //time slices, add source to "s2"
 
-    DX=this->dx,DY=this->dy,DT=this->dt,xshd=this->PML_wide;
-    X=this->nx,Y=this->ny,suface_PML=this->suface;
-    DT2=DT*DT,DT3=DT2*DT,DX2=DX*DX,DY2=DY*DY;
-    t5=float(Y)/X;
-    C_Y=log(R)*3/2/(xshd)/(xshd)/(xshd)/DY2/DY;
-    C_X=log(R)*3/2/(xshd)/(xshd)/(xshd)/DX2/DX;
-
-
-    for(i=5;i<X-5;i++)
-        {
-
-        if(i>=0.5*(X))
-            {t3=1;}
-        else
-            {t3=-1;}
-
-        for(j=5;j<Y-5;j++)
-            {
-        //����ϵ����ö���ƫ΢�ֵ���ɢ����
-            for(n=0;n<5;n++)
-                {  
-                u=u+2*xs2_in[n];
-                u1=u1+xs2_in[n]*(s2_in[j-n-1][i]+s2_in[j+n+1][i]);
-                u2=u2+xs2_in[n]*(s2_in[j][i-n-1]+s2_in[j][i+n+1]);
-                }
-
-            snx1=0.0;snx2=0.0;
-            sny1=0.0;sny2=0.0;
-            fdx=0;fddx=0;fdy=0;fddy=0;
-
-            if(suface_PML==1)
-                {
-                if(i>=X-xshd-5 && j<t5*i && j>-t5*i+Y)	
-                    snx1=i-(X-xshd-5);
-                if(i<=xshd+5 && j>t5*i && j<-t5*i+Y)		
-                    snx2=xshd+5-i;
-                if(j>=Y-xshd-5 && j>=t5*i && j>=-t5*i+Y)		
-                    sny1=j-(Y-xshd-5);
-                if(j<=xshd+5 && j<=t5*i && j<=-t5*i+Y)		
-                    sny2=xshd+5-j;		
-                }  //��������
-            else
-                {
-                if(i>=X-xshd-5 && j<=t5*i)	
-                    snx1=i-(X-xshd-5);
-                if(i<=xshd+5 && j<=-t5*i+Y)		
-                    snx2=xshd+5-i;
-                if(j>=Y-xshd-5 && j>t5*i && j>-t5*i+Y)		
-                    sny1=j-(Y-xshd-5);
-                if(j<=xshd+5)		
-                    sny2=0;		
-                }
-
-            if(sny1 !=0)
-                {
-                fdy=p2_in[j][i]*C_Y*sny1*sny1*DY2;
-                fddy=p2_in[j][i]*C_Y*2*sny1*DY;	
-                }
-            if(sny2 !=0)
-                {
-                fdy=p2_in[j][i]*C_Y*sny2*sny2*DY2;
-                fddy=p2_in[j][i]*C_Y*2*sny2*DY;	
-                }
-            if(snx1 !=0)
-                {
-                fdx=p2_in[j][i]*C_X*snx1*snx1*DX2;
-                fddx=p2_in[j][i]*C_X*2*snx1*DX;	
-                }
-            if(snx2 !=0)
-                {
-                fdx=p2_in[j][i]*C_X*snx2*snx2*DX2;
-                fddx=p2_in[j][i]*C_X*2*snx2*DX;	
-                }
-
-            if(j>=0.5*(Y))
-                {t4=1;}
-            else
-                {t4=-1;}
-
-            mo2=p2_in[j][i]*p2_in[j][i];
-
-        /*****************the code from wcl fortran***************************
-			!equation 1
-			uz_a3(iiz, iix) = 2.0*uz_a2(iiz, iix) - uz_a1(iiz, iix) + &
-				dt2*(v2*z2_deri - 2.0*a*(uz_a2(iiz, iix) - uz_a1(iiz, iix))/dt - a*a*uz_a2(iiz, iix)) 
-			!equation 2
-			uz_bp3(iiz, iix) = 2.0*uz_bp2(iiz, iix) - uz_bp1(iiz, iix) + &
-				dt2*(-1.0*v2*da*z1_deri - 2.0*a*(uz_bp2(iiz, iix) - uz_bp1(iiz, iix))/dt - a*a*uz_bp2(iiz, iix)) 
-			uz_b2(iiz, iix) = uz_b1(iiz, iix) + dt*(uz_bp2(iiz, iix) - a*uz_b1(iiz, iix))
-			!equation 3
-			uz_c3(iiz, iix) = 2.0*uz_c2(iiz, iix) - uz_c1(iiz, iix) + dt2*v2*x2_deri
-			!update
-			u3(inz, inx) = uz_a3(iiz, iix) + uz_b2(iiz, iix) + uz_c3(iiz, iix)
-            */
-
-            if(snx1!=0 || snx2!=0)
-                {
-            //����ϵ�����һ��ƫ΢�ֵ���ɢ����
-                for(n=0;n<10;n++)
-                    {
-                    if(n<5)
-                        {
-                        ux=ux+s2_in[j][i+n-5]*xs1_in[n];
-                        uy=uy+s2_in[j+n-5][i]*xs1_in[n];
-                        }
-                    else
-                        {
-                        ux=ux+s2_in[j][i+n-4]*xs1_in[n];
-                        uy=uy+s2_in[j+n-4][i]*xs1_in[n];
-                        }
-                    }
-
-                //equation 1
-                sx11_in[j][i]=mo2*DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
-                -fdx*fdx*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
-                -sx13_in[j][i])+DT*(2*fdx*(sx13_in[j][i]-sx12_in[j][i]));
-
-                //equation 2
-			    sxp21i[j][i] = 2.0*sxp22i[j][i] - sxp23i[j][i]\
-                +DT2*(-1.0*mo2*fddx*(1.0/(DX))*(ux*t3) - 2.0*fdx*(sxp22i[j][i] \
-                - sxp23i[j][i])/DT - fdx*fdx*sxp22i[j][i]);
-			    sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - fdx*sx22_in[j][i]) ;
-
-                //equation 3
-                sx31_in[j][i]=DT2*mo2*(1.0/(DY2))*(u1-u*s2_in[j][i])\
-                +2*sx32_in[j][i]-sx33_in[j][i];
-                }
-            else if(sny1!=0 || sny2!=0)
-                {
-            //����ϵ�����һ��ƫ΢�ֵ���ɢ����
-                for(n=0;n<10;n++)
-                    {
-                    if(n<5)
-                        {
-                        ux=ux+s2_in[j][i+n-5]*xs1_in[n];
-                        uy=uy+s2_in[j+n-5][i]*xs1_in[n];
-                        }
-                    else
-                        {
-                        ux=ux+s2_in[j][i+n-4]*xs1_in[n];
-                        uy=uy+s2_in[j+n-4][i]*xs1_in[n];
-                        }
-                    }
-
-                //equation 1
-                sx11_in[j][i]=mo2*DT2*(u1-u*s2_in[j][i])*(1.0/(DY2))\
-                -fdy*fdy*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
-                -sx13_in[j][i])+DT*(2*fdy*(sx13_in[j][i]-sx12_in[j][i]));
-
-                //equation 2 : ��������ƫ΢��,�轫����Ϊһ��ƫ΢��(p)�Ķ��׵�����ɢ���
-                sxp21i[j][i] = 2.0*sxp22i[j][i] - sxp23i[j][i]\
-                +DT2*(-1.0*mo2*fddy*(1.0/(DY))*(uy*t4) - 2.0*fdy*(sxp22i[j][i] \
-                - sxp23i[j][i])/DT - fdy*fdy*sxp22i[j][i]);
-                sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - fdy*sx22_in[j][i]) ;
-
-                //equation 3
-                sx31_in[j][i]=DT2*mo2*(1.0/(DX2))*(u2-u*s2_in[j][i])\
-                +2*sx32_in[j][i]-sx33_in[j][i];
-                }
-
-            if(snx1==0 && snx2==0 && sny1==0 && sny2==0)
-            {
-                s3_in[j][i]=(mo2*DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
-                +DT2*mo2*(1.0/(DY2))*(u1-u*s2_in[j][i]))+2*s2_in[j][i]-s1_in[j][i];
-            }
-            else
-            {
-                s3_in[j][i]=sx11_in[j][i]+sx21_in[j][i]+sx31_in[j][i];
-            }
-            u1=0,u2=0,u=0,ux=0,uy=0;
-            }
-        }
-
-//ע�ⲻҪֱ�Ӷ��徲̬��ָ��(�����)���Խ�����ַ�ķ�ʽ����ʱ��Ƭ,�ڶ��߳�������ܻ������,
-//�Ʋ��ڶ��߳���,���ܻ��ڱ���կ���й��þ�̬�����Ĵ���,�Ӷ������ڴ�����
-//���ڶ���̲��л᲻���������������δ������֤  (!!ע��!!)
-    for(j=0;j<Y;j++)
+    n1=X-5;
+    for(i=X-xshd-5;i<n1;i++)
     {
-    for(i=0;i<X;i++)
+        n2=Y-5-xshd+(i-X+xshd+5);
+        snx1=i-(X-xshd-5);
+        for(j=4+xshd-(i-X+xshd+5);j<=n2;j++)
         {
-        s1_in[j][i]=s2_in[j][i];s2_in[j][i]=s3_in[j][i];
-        sx13_in[j][i]=sx12_in[j][i],sx12_in[j][i]=sx11_in[j][i];
-        sx33_in[j][i]=sx32_in[j][i],sx32_in[j][i]=sx31_in[j][i];
-        sx22[j][i]=sx21[j][i];
-        sxp23i[j][i]=sxp22i[j][i],sxp22i[j][i]=sxp21i[j][i];
+            u=0,u1=0,u2=0,ux=0,uy=0;
+            mo2=mo2_in[j][i];
+            fdx=p2_in[j][i]*C_X*snx1*snx1*DX2;
+            fddx=p2_in[j][i]*C_X*2*snx1*DX;	    
+
+            for(n=0;n<5;n++)
+            {  
+            u=u+2*xs2_in[n];
+            u1=u1+xs2_in[n]*(s2_in[j-n-1][i]+s2_in[j+n+1][i]);
+            u2=u2+xs2_in[n]*(s2_in[j][i-n-1]+s2_in[j][i+n+1]);
+            }
+
+            for(n=0;n<5;n++)
+            {
+                ux=ux+s2_in[j][i+n-5]*xs1_in[n];
+                uy=uy+s2_in[j+n-5][i]*xs1_in[n];
+            }
+            for(n=5;n<10;n++)
+            {
+                ux=ux+s2_in[j][i+n-4]*xs1_in[n];
+                uy=uy+s2_in[j+n-4][i]*xs1_in[n];
+            }
+
+            sx11_in[j][i]=mo2*DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
+            -fdx*fdx*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
+            -sx13_in[j][i])+DT*(2*fdx*(sx13_in[j][i]-sx12_in[j][i]));
+
+            //equation 2
+            sxp21i[j][i] = 2.0*sxp22i[j][i] - sxp23i[j][i]\
+            +DT2*(-1.0*mo2*fddx*(1.0/(DX))*(ux) - 2.0*fdx*(sxp22i[j][i] \
+            - sxp23i[j][i])/DT - fdx*fdx*sxp22i[j][i]);
+            sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - fdx*sx22_in[j][i]) ;
+
+            //equation 3
+            sx31_in[j][i]=DT2*mo2*(1.0/(DY2))*(u1-u*s2_in[j][i])\
+            +2*sx32_in[j][i]-sx33_in[j][i];
+
+            s3_in[j][i]=sx11_in[j][i]+sx21_in[j][i]+sx31_in[j][i];
+
         }
     }
 
-}
+    n1=xshd+5;
+    for(i=5;i<n1;i++)
+    {
+        n2=Y-i;
+        snx2=xshd+5-i;
+        for(j=i;j<n2;j++)
+        {
+            u=0,u1=0,u2=0,ux=0,uy=0;
+            mo2=mo2_in[j][i];
+            fdx=p2_in[j][i]*C_X*snx2*snx2*DX2;
+            fddx=p2_in[j][i]*C_X*2*snx2*DX;	
 
-void wave2D::timeslicecopy()
-{
-    ;
+            for(n=0;n<5;n++)
+            {  
+            u=u+2*xs2_in[n];
+            u1=u1+xs2_in[n]*(s2_in[j-n-1][i]+s2_in[j+n+1][i]);
+            u2=u2+xs2_in[n]*(s2_in[j][i-n-1]+s2_in[j][i+n+1]);
+            }
+
+            for(n=0;n<5;n++)
+            {
+                ux=ux+s2_in[j][i+n-5]*xs1_in[n];
+                uy=uy+s2_in[j+n-5][i]*xs1_in[n];
+            }
+            for(n=5;n<10;n++)
+            {
+                ux=ux+s2_in[j][i+n-4]*xs1_in[n];
+                uy=uy+s2_in[j+n-4][i]*xs1_in[n];
+            }
+
+            sx11_in[j][i]=mo2*DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
+            -fdx*fdx*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
+            -sx13_in[j][i])+DT*(2*fdx*(sx13_in[j][i]-sx12_in[j][i]));
+
+            //equation 2
+            sxp21i[j][i] = 2.0*sxp22i[j][i] - sxp23i[j][i]\
+            +DT2*(-1.0*mo2*fddx*(1.0/(DX))*(-ux) - 2.0*fdx*(sxp22i[j][i] \
+            - sxp23i[j][i])/DT - fdx*fdx*sxp22i[j][i]);
+            sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - fdx*sx22_in[j][i]) ;
+
+            //equation 3
+            sx31_in[j][i]=DT2*mo2*(1.0/(DY2))*(u1-u*s2_in[j][i])\
+            +2*sx32_in[j][i]-sx33_in[j][i];
+
+            s3_in[j][i]=sx11_in[j][i]+sx21_in[j][i]+sx31_in[j][i];
+
+        }
+    }
+
+    n1=Y-5;
+    for(j=Y-xshd-5;j<n1;j++)
+    {
+        n2=X-5-xshd+(j-Y+xshd+5);
+        sny1=j-(Y-xshd-5);
+        for(i=4+xshd-(j-Y+xshd+5);i<=n2;i++)
+        {
+
+            u=0,u1=0,u2=0,ux=0,uy=0;
+            mo2=mo2_in[j][i];
+            fdy=p2_in[j][i]*C_Y*sny1*sny1*DY2;
+            fddy=p2_in[j][i]*C_Y*2*sny1*DY;	
+
+            for(n=0;n<5;n++)
+            {  
+            u=u+2*xs2_in[n];
+            u1=u1+xs2_in[n]*(s2_in[j-n-1][i]+s2_in[j+n+1][i]);
+            u2=u2+xs2_in[n]*(s2_in[j][i-n-1]+s2_in[j][i+n+1]);
+            }
+
+            for(n=0;n<5;n++)
+            {
+                ux=ux+s2_in[j][i+n-5]*xs1_in[n];
+                uy=uy+s2_in[j+n-5][i]*xs1_in[n];
+            }
+            for(n=5;n<10;n++)
+            {
+                ux=ux+s2_in[j][i+n-4]*xs1_in[n];
+                uy=uy+s2_in[j+n-4][i]*xs1_in[n];
+            }
+
+            sx11_in[j][i]=mo2*DT2*(u1-u*s2_in[j][i])*(1.0/(DY2))\
+            -fdy*fdy*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
+            -sx13_in[j][i])+DT*(2*fdy*(sx13_in[j][i]-sx12_in[j][i]));
+
+            //equation 2 : ��������ƫ΢��,�轫����Ϊһ��ƫ΢��(p)�Ķ��׵�����ɢ���
+            sxp21i[j][i] = 2.0*sxp22i[j][i] - sxp23i[j][i]\
+            +DT2*(-1.0*mo2*fddy*(1.0/(DY))*(uy) - 2.0*fdy*(sxp22i[j][i] \
+            - sxp23i[j][i])/DT - fdy*fdy*sxp22i[j][i]);
+            sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - fdy*sx22_in[j][i]) ;
+
+            //equation 3
+            sx31_in[j][i]=DT2*mo2*(1.0/(DX2))*(u2-u*s2_in[j][i])\
+            +2*sx32_in[j][i]-sx33_in[j][i];
+
+            s3_in[j][i]=sx11_in[j][i]+sx21_in[j][i]+sx31_in[j][i];
+
+        }
+    }
+
+    n1=xshd+5;
+    for(j=5;j<n1;j++)
+    {
+        n2=X-j;
+        sny2=xshd+5-j;	
+        for(i=j;i<=n2;i++)
+        {
+
+            u=0,u1=0,u2=0,ux=0,uy=0;
+            mo2=mo2_in[j][i];
+            fdy=p2_in[j][i]*C_Y*sny2*sny2*DY2;
+            fddy=p2_in[j][i]*C_Y*2*sny2*DY;
+
+            for(n=0;n<5;n++)
+            {  
+            u=u+2*xs2_in[n];
+            u1=u1+xs2_in[n]*(s2_in[j-n-1][i]+s2_in[j+n+1][i]);
+            u2=u2+xs2_in[n]*(s2_in[j][i-n-1]+s2_in[j][i+n+1]);
+            }
+
+            for(n=0;n<5;n++)
+            {
+                ux=ux+s2_in[j][i+n-5]*xs1_in[n];
+                uy=uy+s2_in[j+n-5][i]*xs1_in[n];
+            }
+            for(n=5;n<10;n++)
+            {
+                ux=ux+s2_in[j][i+n-4]*xs1_in[n];
+                uy=uy+s2_in[j+n-4][i]*xs1_in[n];
+            }
+
+            sx11_in[j][i]=mo2*DT2*(u1-u*s2_in[j][i])*(1.0/(DY2))\
+            -fdy*fdy*DT2*sx12_in[j][i]+(2*sx12_in[j][i]\
+            -sx13_in[j][i])+DT*(2*fdy*(sx13_in[j][i]-sx12_in[j][i]));
+
+            //equation 2 : ��������ƫ΢��,�轫����Ϊһ��ƫ΢��(p)�Ķ��׵�����ɢ���
+            sxp21i[j][i] = 2.0*sxp22i[j][i] - sxp23i[j][i]\
+            +DT2*(-1.0*mo2*fddy*(1.0/(DY))*(-uy) - 2.0*fdy*(sxp22i[j][i] \
+            - sxp23i[j][i])/DT - fdy*fdy*sxp22i[j][i]);
+            sx21_in[j][i] = sx22_in[j][i] + DT*(sxp22i[j][i] - fdy*sx22_in[j][i]) ;
+
+            //equation 3
+            sx31_in[j][i]=DT2*mo2*(1.0/(DX2))*(u2-u*s2_in[j][i])\
+            +2*sx32_in[j][i]-sx33_in[j][i];
+
+            s3_in[j][i]=sx11_in[j][i]+sx21_in[j][i]+sx31_in[j][i];
+
+        }
+    }
+
+    n1=Y-xshd-5;
+    for(j=xshd+5;j<n1;j++)
+    {
+        n2=X-xshd-5;
+        for(i=xshd+5;i<n2;i++)
+        {
+            u=0,u1=0,u2=0,ux=0,uy=0;
+            mo2=mo2_in[j][i];
+
+            for(n=0;n<5;n++)
+            {  
+            u=u+2*xs2_in[n];
+            u1=u1+xs2_in[n]*(s2_in[j-n-1][i]+s2_in[j+n+1][i]);
+            u2=u2+xs2_in[n]*(s2_in[j][i-n-1]+s2_in[j][i+n+1]);
+            }
+
+            s3_in[j][i]=(mo2*DT2*(u2-u*s2_in[j][i])*(1.0/(DX2))\
+                +DT2*mo2*(1.0/(DY2))*(u1-u*s2_in[j][i]))+2*s2_in[j][i]-s1_in[j][i];
+        }
+    }
+
+float **swap=NULL;
+swap=this->s1,this->s1=this->s2,this->s2=this->s3,this->s3=swap;
+swap=this->sx13,this->sx13=this->sx12,this->sx12=this->sx11,this->sx11=swap;
+swap=this->sx33,this->sx33=this->sx32,this->sx32=this->sx31,this->sx31=swap;
+swap=this->sxp23,this->sxp23=this->sxp22,this->sxp22=this->sxp21,this->sxp21=swap;
+swap=this->sx22,this->sx22=this->sx21,this->sx21=swap;
+swap=NULL;
+
 }
 
 void wave2D_test(int Z, int X)
@@ -393,20 +451,23 @@ void wave2D_test(int Z, int X)
     wave2D A(Z,X);
     ofstream outf1;
     outf1.open("testmovie.bin");
-    int T(3000);
+    int n1(30),n2(100),T(n1*n2),i,j;
 
-    int k;
+    int k(0);
     float *f;
     f=new float[T];
     wavelet01(f,T,A.dt);
-    for(k=0;k<T;k++)
+    for(i=0;i<n1;i++)
+    { 
+    for(j=0;j<n2;j++)
     {
         A.s2[Z/2][X/2]=A.s2[Z/2][X/2]+f[k];
         A.timeslicecal();
         {
         datawrite(A.s2, Z, X, outf1);
         }
-        if(k%100==0)
+        k++;       
+    }
         {cout<<"now is running : "<<k<<endl;}
     }
     outf1.close();
