@@ -107,7 +107,7 @@ void dataread(TT **data_mat, int nz, int nx, ifstream &inf)
 }
 
 template <typename TT>
-void datawrite(TT **data_mat, int n, char const *filename )
+void datawrite(TT *data_mat, int n, char const *filename )
 {
     char str[99];
     strcpy(str, filename);
@@ -117,22 +117,22 @@ void datawrite(TT **data_mat, int n, char const *filename )
     outf.open(str);
     for(i=0;i<n;i++)
     {
-        outdata=i;
-        outf.write((char*)&outdata,sizeof(outdata));
+        //outdata=i;
+        //outf.write((char*)&outdata,sizeof(outdata));
         outdata=data_mat[i];
         outf.write((char*)&outdata,sizeof(outdata));
     }
     outf.close(); 
 }
 template <typename TT>
-void datawrite(TT **data_mat, int n, ofstream &outf)
+void datawrite(TT *data_mat, int n, ofstream &outf)
 {
     int i;
     TT outdata;
     for(i=0;i<n;i++)
     {
-        outdata=i;
-        outf.write((char*)&outdata,sizeof(outdata));
+        //outdata=i;
+        //outf.write((char*)&outdata,sizeof(outdata));
         outdata=data_mat[i];
         outf.write((char*)&outdata,sizeof(outdata));
     }
