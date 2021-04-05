@@ -204,10 +204,8 @@ void wave2D::timeslicecal()
 {
     float DX=this->dx, DY=this->dy, DT=this->dt;
     int X=this->nx, Y=this->ny, xshd=this->PML_wide;
-    float fdx,fdy,fddx,fddy,snx1,sny1,snx2,sny2;
-    int i,j,n,n1,n2;
-    float u1(0),u2(0),u(0),ux(0),uy(0);
-    float DT2=this->DT2o, DT3=this->DT3o, DX2=this->DX2o, DY2=this->DY2o,mo2;
+    int i,j;
+    float DT2=this->DT2o, DT3=this->DT3o, DX2=this->DX2o, DY2=this->DY2o;
     float C_X=this->C_Xo, C_Y=this->C_Yo;
 
     float **sx11_in=this->sx11, **sx12_in=this->sx12, **sx13_in=this->sx13; //PML boundary
@@ -217,14 +215,15 @@ void wave2D::timeslicecal()
     float **p2_in=this->p2, *xs1_in=this->xs1,*xs2_in=this->xs2; //velocity model and swap
     float **s1_in=this->s1, **s2_in=this->s2, **s3_in=this->s3; //time slices, add source to "s2"
 
-    n1=X-5;
+    int n1=X-5;
     for(i=X-xshd-5;i<n1;i++)
     {
-        n2=Y-5-xshd+(i-X+xshd+5);
-        snx1=i-(X-xshd-5);
+        int n,n2=Y-5-xshd+(i-X+xshd+5);
+        float snx1=i-(X-xshd-5);
+        float fdx,fddx,mo2;
         for(j=4+xshd-(i-X+xshd+5);j<=n2;j++)
         {
-            u=0,u1=0,u2=0,ux=0,uy=0;
+            float u1(0),u2(0),u(0),ux(0),uy(0);
             mo2=mo2_in[j][i];
             fdx=p2_in[j][i]*C_X*snx1*snx1*DX2;
             fddx=p2_in[j][i]*C_X*2*snx1*DX;	    
@@ -269,11 +268,12 @@ void wave2D::timeslicecal()
     n1=xshd+5;
     for(i=5;i<n1;i++)
     {
-        n2=Y-i;
-        snx2=xshd+5-i;
+        int n,n2=Y-i;
+        float snx2=xshd+5-i;
+        float fdx,fddx,mo2;
         for(j=i;j<n2;j++)
         {
-            u=0,u1=0,u2=0,ux=0,uy=0;
+            float u1(0),u2(0),u(0),ux(0),uy(0);
             mo2=mo2_in[j][i];
             fdx=p2_in[j][i]*C_X*snx2*snx2*DX2;
             fddx=p2_in[j][i]*C_X*2*snx2*DX;	
@@ -318,12 +318,13 @@ void wave2D::timeslicecal()
     n1=Y-5;
     for(j=Y-xshd-5;j<n1;j++)
     {
-        n2=X-5-xshd+(j-Y+xshd+5);
-        sny1=j-(Y-xshd-5);
+        int n,n2=X-5-xshd+(j-Y+xshd+5);
+        float sny1=j-(Y-xshd-5);
+        float fdy,fddy,mo2;
         for(i=4+xshd-(j-Y+xshd+5);i<=n2;i++)
         {
 
-            u=0,u1=0,u2=0,ux=0,uy=0;
+            float u1(0),u2(0),u(0),ux(0),uy(0);
             mo2=mo2_in[j][i];
             fdy=p2_in[j][i]*C_Y*sny1*sny1*DY2;
             fddy=p2_in[j][i]*C_Y*2*sny1*DY;	
@@ -368,12 +369,13 @@ void wave2D::timeslicecal()
     n1=xshd+5;
     for(j=5;j<n1;j++)
     {
-        n2=X-j;
-        sny2=xshd+5-j;	
+        int n,n2=X-j;
+        float sny2=xshd+5-j;	
+        float fdy,fddy,mo2;
         for(i=j;i<=n2;i++)
         {
 
-            u=0,u1=0,u2=0,ux=0,uy=0;
+            float u1(0),u2(0),u(0),ux(0),uy(0);
             mo2=mo2_in[j][i];
             fdy=p2_in[j][i]*C_Y*sny2*sny2*DY2;
             fddy=p2_in[j][i]*C_Y*2*sny2*DY;
@@ -418,10 +420,11 @@ void wave2D::timeslicecal()
     n1=Y-xshd-5;
     for(j=xshd+5;j<n1;j++)
     {
-        n2=X-xshd-5;
+        int n,n2=X-xshd-5;
+        float mo2;
         for(i=xshd+5;i<n2;i++)
         {
-            u=0,u1=0,u2=0,ux=0,uy=0;
+            float u1(0),u2(0),u(0);
             mo2=mo2_in[j][i];
 
             for(n=0;n<5;n++)
