@@ -586,16 +586,25 @@ void elastic2D::timeslicecal_u()
 void elastic2D::timeslicecal_T()
 {
     int i,j;
-    this->caly(this->data.vyy2,this->data.vyy,this->Tyy,this->ro1,0);
-    this->calx(this->data.vyx2,this->data.vyx,this->Txy,this->ro1,0);
+    float **swap=NULL;
+    this->calx(this->data.vyy2,this->data.vyy,this->Tyy,this->ro1,1);
+    swap=this->data.vyy2,this->data.vyy2=this->data.vyy,this->data.vyy=swap;
+    this->caly(this->data.vyx2,this->data.vyx,this->Txy,this->ro1,1);
+    swap=this->data.vyx2,this->data.vyx2=this->data.vyx,this->data.vyx=swap;
 
-    this->caly(this->data.vxy2,this->data.vxy,this->Txy,this->ro1,0);
-    this->calx(this->data.vxx2,this->data.vxx,this->Txx,this->ro1,0);
+    this->calx(this->data.vxy2,this->data.vxy,this->Txy,this->ro1,0);
+    swap=this->data.vxy2,this->data.vxy2=this->data.vxy,this->data.vxy=swap;
+    this->caly(this->data.vxx2,this->data.vxx,this->Txx,this->ro1,0);
+    swap=this->data.vxx2,this->data.vxx2=this->data.vxx,this->data.vxx=swap;
 
-    this->calx(this->data.vpx12,this->data.vpx1,this->Txx,this->mo1,0);
-    this->calx(this->data.vpx22,this->data.vpx2,this->Tyy,this->mo1,0);
-    this->caly(this->data.vpy12,this->data.vpy1,this->Txx,this->mo1,0);
-    this->caly(this->data.vpy22,this->data.vpy2,this->Tyy,this->mo1,0);
+    this->caly(this->data.vpx12,this->data.vpx1,this->Txx,this->mo1,0);
+    swap=this->data.vpx12,this->data.vpx12=this->data.vpx1,this->data.vpx1=swap;
+    this->caly(this->data.vpx22,this->data.vpx2,this->Tyy,this->mo1,0);
+    swap=this->data.vpx22,this->data.vpx22=this->data.vpx2,this->data.vpx2=swap;
+    this->calx(this->data.vpy12,this->data.vpy1,this->Txx,this->mo1,0);
+    swap=this->data.vpy12,this->data.vpy12=this->data.vpy1,this->data.vpy1=swap;
+    this->calx(this->data.vpy22,this->data.vpy2,this->Tyy,this->mo1,0);
+    swap=this->data.vpy22,this->data.vpy22=this->data.vpy2,this->data.vpy2=swap;
 
     for(i=0;i<ny;i++)
     {
@@ -610,17 +619,27 @@ void elastic2D::timeslicecal_T()
         }
     }
     //cal(float** ut2 ,float **ut1,float **u, float **m,const char & label)
-    this->caly(this->data.txyy2,this->data.txyy,this->ux,this->miu,0);
-    this->calx(this->data.txyx2,this->data.txyx,this->uz,this->miu,0);
+    this->calx(this->data.txyy2,this->data.txyy,this->ux,this->miu,1);
+    swap=this->data.txyy2,this->data.txyy2=this->data.txyy,this->data.txyy=swap;
+    this->caly(this->data.txyx2,this->data.txyx,this->uz,this->miu,0);
+    swap=this->data.txyx2,this->data.txyx2=this->data.txyx,this->data.txyx=swap;
 
-    this->caly(this->data.tyyy2,this->data.tyyy,this->uz,this->mo,0);
-    this->calx(this->data.tyyx2,this->data.tyyx,this->ux,this->lmd,0);
+    this->calx(this->data.tyyy2,this->data.tyyy,this->uz,this->mo,0);
+    swap=this->data.tyyy2,this->data.tyyy2=this->data.tyyy,this->data.tyyy=swap;
+    this->caly(this->data.tyyx2,this->data.tyyx,this->ux,this->lmd,1);
+    swap=this->data.tyyx2,this->data.tyyx2=this->data.tyyx,this->data.tyyx=swap;
 
-    this->caly(this->data.txxy2,this->data.txxy,this->uz,this->lmd,0);
-    this->calx(this->data.txxx2,this->data.txxx,this->ux,this->mo,0);
+    this->calx(this->data.txxy2,this->data.txxy,this->uz,this->lmd,0);
+    swap=this->data.txxy2,this->data.txxy2=this->data.txxy,this->data.txxy=swap;
+    this->caly(this->data.txxx2,this->data.txxx,this->ux,this->mo,1);
+    swap=this->data.txxx2,this->data.txxx2=this->data.txxx,this->data.txxx=swap;
 
     for(i=0;i<ny;i++)
     {
+        /*
+        float ptxx=Txx[i],ptxxx=data.txxx[i],ptxxy=data.txxy[i],\
+            ptxx=Txx[i],ptxx=Txx[i],ptxx=Txx[i],\
+            ptxx=Txx[i],ptxx=Txx[i],ptxx=Txx[i];*/
         for(j=0;j<nx;j++)
         {
             this->Txx[i][j]=this->data.txxx[i][j]+this->data.txxy[i][j];
@@ -628,6 +647,7 @@ void elastic2D::timeslicecal_T()
             this->Txy[i][j]=this->data.txyx[i][j]+this->data.txyy[i][j];
         }
     }
+    swap=NULL;
     //this->t3=this->t3*(-1);
 }
 

@@ -14,7 +14,7 @@ using namespace arma;
 int main()
 {
 
-    int Z(500),X(500),T(100000);
+    int Z(500),X(500),T(6000);
     elastic2D A(Z,X);
     ofstream outf1,outf2,outf3,outf4;
     float **sufs,**sufp,**w,**uu;
@@ -29,7 +29,7 @@ int main()
     w=newfmatcs(Z,X,0.0);
     w[60][60]=1.0;
     datawrite(w,Z,X,"sourcewin.bin");
-    int k,i,j,i1,j1;
+    int k,i,j;
     for(i=0;i<X;i++)
     {
         for(j=0;j<200;j++)
@@ -56,36 +56,32 @@ int main()
     A.updatepar();
     A.t3=-1;
     datawrite(A.vp,Z,X,"model.vp.bin");
-k=0;
-for(i1=0;i1<5;i1++)
-{
-    for(j1=0;j1<100;j1++)
-    {
-        A.ux[60][60]+=wavelet02(k,A.dt,30,1);
-        A.timeslicecal_u();
-        matcopy(sufp[k],A.data.vpx[50],X);
-     k++;   
-    }
-}
-for(i1=5;i1<1000;i1++)
-{
-    for(j1=0;j1<100;j1++)
+
+    for(k=0;k<T;k++)
     {
         //addsouce(A.ux,Z/2,X/2,5,30,A.dt,k,1);
-        //A.ux[60][60]+=wavelet02(k,A.dt,30,1);
-        A.timeslicecal_u();
-        //matcopy(uu,A.data.vpx,Z,X);
+        for(i=0;i<A.ny;i++)
+        {
+            for(j=0;j<A.nx;j++)
+            {
+            A.Txx[i][j]+=w[i][j]*wavelet02(k,A.dt,30,1);
+            A.Tyy[i][j]+=w[i][j]*wavelet02(k,A.dt,30,1);
+            }
+        }
+
+        A.timeslicecal_T();
+        matcopy(uu,A.data.vpx,Z,X);
         //matsmooth(uu,uu,Z,X,3);
-        matcopy(sufp[k],A.data.vpx[50],X);
+        matcopy(sufp[k],uu[50],X);
 
 
         //matcopy(sufp[k],A.vpy[50],X);
 
-        /*if(k%3==0)
+        if(k%3==0)
         {
             //matsmooth(uu,A.ux,Z,X,0);
             matcopy(uu,A.vp,Z,X);
-            matmul(uu,0.0001,Z,X);
+            matmul(uu,1e-13,Z,X);
             matadd(uu,A.ux,Z,X);
             datawrite(uu, Z, X, outf1);
             //matsmooth(uu,A.uz,Z,X,0);
@@ -95,15 +91,14 @@ for(i1=5;i1<1000;i1++)
             datawrite(uu, Z, X, outf3);
             //datawrite(A.data.vsx, Z, X, outf4);
         }
-        //if(k==1400)
-        //{datawrite(uu,Z,X,"wave1.bin");}
-        //if(k==1800)
-        //{datawrite(uu,Z,X,"wave2.bin");}*/
+        if(k==1400)
+        {datawrite(uu,Z,X,"wave1.bin");}
+        if(k==1800)
+        {datawrite(uu,Z,X,"wave2.bin");}
 
-     k++;   
-    }
+        if(k%100==0)
         {cout<<"now is running : "<<k<<endl;}
-}
+    }
     outf1.close();
     //outf2.close();
     outf3.close();

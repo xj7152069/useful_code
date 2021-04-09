@@ -64,11 +64,12 @@ int main()
         {
             for(j=0;j<A.nx;j++)
             {
-            A.ux[i][j]+=w[i][j]*wavelet02(k,A.dt,30,1);
+            A.Txx[i][j]+=w[i][j]*wavelet02(k,A.dt,30,1);
+            A.Tyy[i][j]+=w[i][j]*wavelet02(k,A.dt,30,1);
             }
         }
 
-        A.timeslicecal_u();
+        A.timeslicecal_T();
         matcopy(uu,A.data.vpx,Z,X);
         //matsmooth(uu,uu,Z,X,3);
         matcopy(sufp[k],uu[50],X);
@@ -80,7 +81,7 @@ int main()
         {
             //matsmooth(uu,A.ux,Z,X,0);
             matcopy(uu,A.vp,Z,X);
-            matmul(uu,0.0001,Z,X);
+            matmul(uu,1e-13,Z,X);
             matadd(uu,A.ux,Z,X);
             datawrite(uu, Z, X, outf1);
             //matsmooth(uu,A.uz,Z,X,0);
