@@ -8,9 +8,12 @@
     #include "./xj.c++.include/my_armadillo.h"
 */
 
-#include "./xj.c++.include/wave2D.h"
-#include "./xj.c++.include/my_armadillo.h"
-#include "./xj.c++.include/rtmangle2D.h"
+#include "./xj.c++.include/mat.hpp"
+#include "./xj.c++.include/my_armadillo.hpp"
+#include "./xj.c++.include/wave2D.hpp"
+//#include "./xj.ray.f90/caltime.hpp"
+#include "./xj.c++.include/radon_beamforming.hpp"
+
 /**************************Extern**************************************
 //建议还是在指针数组所在的语句块中释放内存;
 //若要调用以下函数释放空间，应在原语句块中再次将指针空置。

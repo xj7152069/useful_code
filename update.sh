@@ -1,5 +1,4 @@
 
-sudo cp -f xj.c++.h /usr/include
 
-sudo cp -r xj.c++.include /usr/include
+sudo cp -rf ./xj.include /usr/include
 

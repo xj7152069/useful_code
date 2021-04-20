@@ -36,6 +36,7 @@ template <typename T1, typename T2> void matcopy(T1 **mat1, T2 n, int nz, int nx
 template <typename T1, typename T2> void matcopy(T1 ***mat1, T2 n, int n1, int n2, int n3);
 template <typename T1, typename T2> void matcopy(T1 **mat1, T2 **mat2, int nz, int nx);
 template <typename T1, typename T2> void matcopy(T1 *mat1, T2 *mat2, int n);
+template <typename T1> void matcopy(T1 *mat1, float mat2, int n);
 template <typename T1, typename T2> void matmul(T1 **mat1, T2 n, int nz, int nx);
 template <typename T1, typename T2> void matmul(T1 **mat1, T2 **mat2, int nz, int nx);
 template <typename TT> void dataread(TT **data_mat, int nz, int nx, const char * filename);
@@ -148,6 +149,15 @@ void matcopy(T1 *mat1, T2 *mat2, int n)
         }
 }
 
+template <typename T1>
+void matcopy(T1 *mat1, float mat2, int n)
+{
+    int i;
+    for(i=0;i<n;i++)
+        {
+        mat1[i]=mat2;
+        }
+}
 
 template <typename T1, typename T2>
 void matcopy(T1 **mat1, T2 **mat2, int nz, int nx)
