@@ -59,8 +59,11 @@ float anglecal_z1_x0(T1 z, T2 x, float err)
 ////////////////////////////////////////////////////////
 class angle_gather2D
 {
+private:
+    float da, fa, recva;
+
 public:
-    float ***DA, ***FA, ***mutiDA, ***mutiFA, da, fa, a_beg, a_gep;
+    float ***DA, ***FA, ***recvA, a_beg, a_gep;
     float **ps, **pr;
     int x1, x2, x3;
 
@@ -75,7 +78,7 @@ public:
         x1=na;x2=nz;x3=nx;
         ps=newfmat(x2,x3);
         pr=newfmat(x2,x3);
-        da=0;fa=0;
+        da=0;fa=0;recva=0;
         a_beg=A_BEG;
         a_gep=A_GEP;
     }
@@ -83,16 +86,6 @@ public:
     {
         matdelete(ps,x2);
         matdelete(pr,x2);
-        /*
-        if(da!=0)
-        {
-            matdelete(DA,x3,x2);
-        }
-        if(fa!=0)
-        {
-            matdelete(FA,x3,x2);
-        }
-        */
     }
 
     template<typename T1, typename T2>
@@ -165,19 +158,29 @@ public:
                 }
             }
         }
-
     }
 
-    void createmutiangle()
+    template<typename T1, typename T2>
+    void addrecvA(T1 **swave, T2 **rwave)
     {
-        //mutipr=newfmat(x1,x2,x3);
-        //mutips=newfmat(x1,x2,x3);
-        //matcopy(mutips,0.0,x1,x2,x3);
-        //matcopy(mutipr,0.0,x1,x2,x3);
-        mutiDA=newfmat(x3,x2,x1);
-        matcopy(mutiDA, 0.0, x3, x2, x1);
-        mutiFA=newfmat(x3,x2,x1);
-        matcopy(mutiFA, 0.0, x3, x2, x1);
+        if(recva==0)
+        {
+            recvA=newfmat(x3,x2,x1);
+            recva=1;
+            matcopy(recvA, 0.0, x3, x2, x1);
+        }
+        int i,j,k,ang;
+        for(i=0;i<x2;i++)
+        {
+            for(j=0;j<x3;j++)
+            {
+                ang=int((ps[i][j]-a_beg)/a_gep);
+                if(ang<x1 && ang>0)
+                {
+                    DA[j][i][ang]+=swave[i][j]*rwave[i][j];
+                }
+            }
+        }
     }
 
 };
@@ -374,6 +377,10 @@ public:
     }
     OF_2D(int nt, int nz, int nx)
     {
+        if(nt<5)
+        {
+            cout<<"Error: The data is not enough!"<<endl;
+        }
         a=1.0,dx=5.0,dz=5.0,dt=0.0005;
         x1=nt,x2=nz,x3=nx;
         vx1=newfmat(x2,x3);
@@ -399,6 +406,19 @@ public:
         matdelete(v_z,x2);
         matdelete(wave,x1,x2);
         vx1=NULL;vx2=NULL;vz1=NULL;vz2=NULL;wave=NULL;
+    }
+    template<typename T1>
+    void CIG_OF_cal(T1 **wave, int N=25)
+    {
+        int i;
+        this->addtimeslicecal(wave);
+        this->velocityInitialization();
+        for(i=0;i<N;i++)
+        {this->velocityIteration();}
+        matsmooth(this->vx1,this->vx2,this->x1,this->x2);
+        matsmooth(this->vz1,this->vz2,this->x1,this->x2);
+        matcopy(this->vx2,this->vx1,this->x2,this->x3);
+        matcopy(this->vz2,this->vz1,this->x2,this->x3);
     }
 
     template<typename T1>
@@ -550,8 +570,140 @@ public:
         matcopy(vz,0.0,x2,x3);
         matcopy(wave,0.0,x1,x2,x3);
     }
-
 };
+
+class direction_wavefield_state_transition
+{
+public:
+    struct forA_state_transition
+    {
+        int nz,nx;
+        float **velocity,**pz1,**px1,**p_nor,**pz2,**px2;
+        float **coord_z1,**coord_z2,**coord_x1,**coord_x2;
+        float **err_pz,**err_px,**err_nor,**wave1,**wave2;
+        float dz,dx,t_gep,dt,pz_for_or_back_word,px_for_or_back_word;
+    }par;
+
+    void forA_state_transition_initialize_fmat(struct forA_state_transition & par);
+    void A_state_transition(struct forA_state_transition & par);
+    void pfmat_normalize(float **pz, float **px, int nz, int nx, float **p_nor);
+    void p_normalize(float & pz, float & px, float & p, float yz=0.000001);
+
+    direction_wavefield_state_transition()
+    {
+        ;
+    }
+    direction_wavefield_state_transition(int nz, int nx)
+    {
+        par.nz=nz, par.nx=nx, par.dz=5, par.dx=5;
+        this->.forA_state_transition_initialize_fmat(par);
+    }
+    ~direction_wavefield_state_transition()
+    {
+        ;
+    }
+};
+
+void direction_wavefield_state_transition::\
+forA_state_transition_initialize_fmat(struct forA_state_transition & par)
+{
+    par.coord_x1=newfmat(par.nz,par.nx);
+    par.coord_x2=newfmat(par.nz,par.nx);
+    par.coord_z1=newfmat(par.nz,par.nx);
+    par.coord_z2=newfmat(par.nz,par.nx);
+    par.velocity=newfmat(par.nz,par.nx);
+    par.pz1=newfmat(par.nz,par.nx);
+    par.pz2=newfmat(par.nz,par.nx);
+    par.px1=newfmat(par.nz,par.nx);
+    par.px2=newfmat(par.nz,par.nx);
+    par.p_nor=newfmat(par.nz,par.nx);
+    par.err_pz=newfmat(par.nz,par.nx);
+    par.err_px=newfmat(par.nz,par.nx);
+    par.err_nor=newfmat(par.nz,par.nx);
+    par.wave1=newfmat(par.nz,par.nx);
+    par.wave2=newfmat(par.nz,par.nx);
+}
+
+void direction_wavefield_state_transition::\
+A_state_transition(struct forA_state_transition & par)
+{
+    int i,j,k,i1,j1;
+    float xsz,xsx;
+    xsz=par.dt*par.t_gep*par.pz_for_or_back_word;
+    xsx=par.dt*par.t_gep*par.px_for_or_back_word;
+    cout<<xsz<<"  "<<xsx<<endl;
+    pfmat_normalize(par.pz1, par.px1, par.nz, par.nx,par.p_nor);
+    for(i=0;i<par.nz;i++)
+    {
+        for(j=0;j<par.nx;j++)
+        {
+            par.coord_x1[i][j]=j*par.dx;
+            par.coord_z1[i][j]=i*par.dz;
+        } 
+    }
+
+    for(i=0;i<par.nz;i++)
+    {
+        for(j=0;j<par.nx;j++)
+        {
+            par.coord_x2[i][j]=par.coord_x1[i][j]+par.px1[i][j]*xsx*par.velocity[i][j];
+            par.coord_z2[i][j]=par.coord_z1[i][j]+par.pz1[i][j]*xsz*par.velocity[i][j];
+        }
+    }
+
+    for(i=0;i<par.nz;i++)
+    {
+        for(j=0;j<par.nx;j++)
+        {
+            j1=int(par.coord_x2[i][j])/par.dx;
+            i1=int(par.coord_z2[i][j])/par.dz;
+            //par.px1[i][j]=par.px1[i][j]*par.p_nor[i][j];
+            //par.pz1[i][j]=par.pz1[i][j]*par.p_nor[i][j];
+            if(i1>0 && i1<par.nz-1 && j1>0 && j1<par.nx-1)
+            {
+                par.wave2[i1][j1]+=par.wave1[i][j];
+                par.px2[i1][j1]=par.px1[i][j];
+                par.pz2[i1][j1]=par.pz1[i][j];
+                par.px2[i1][j1+1]=par.px1[i][j];
+                par.pz2[i1][j1+1]=par.pz1[i][j];
+                par.px2[i1+1][j1]=par.px1[i][j];
+                par.pz2[i1+1][j1]=par.pz1[i][j];
+                par.px2[i1+1][j1+1]=par.px1[i][j];
+                par.pz2[i1+1][j1+1]=par.pz1[i][j];
+            }
+        }
+    }
+
+}
+
+void direction_wavefield_state_transition::\
+pfmat_normalize(float **pz, float **px, int nz, int nx, float **p_nor)
+{
+    int i,j;
+    for(i=0;i<nz;i++)
+    {
+        for(j=0;j<nx;j++)
+        {
+            p_normalize(pz[i][j],px[i][j],p_nor[i][j]);
+        } 
+    }
+}
+
+void direction_wavefield_state_transition::\
+p_normalize(float & pz, float & px, float & p, float yz)
+{
+    p=0;
+    p=p+pz*pz;
+    p=p+px*px;
+    p=sqrt(p);
+    if(p>yz)
+    {
+        pz=pz/p;
+        px=px/p;
+    }
+    else
+        p=0;
+}
 
 ///////////////////////////////////////////////////
 fmat windowsZ(int Z, int X, float thetaN)
