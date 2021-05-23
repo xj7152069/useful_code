@@ -596,7 +596,7 @@ public:
     direction_wavefield_state_transition(int nz, int nx)
     {
         par.nz=nz, par.nx=nx, par.dz=5, par.dx=5;
-        this->.forA_state_transition_initialize_fmat(par);
+        this->forA_state_transition_initialize_fmat(par);
     }
     ~direction_wavefield_state_transition()
     {
