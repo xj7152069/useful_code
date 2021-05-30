@@ -50,6 +50,7 @@ public:
     int nx,ny,suface,PML_wide;
     float DT2o,DT3o,DX2o,DY2o;
     float C_Xo, C_Yo;
+    float pml1,pml2,pml3,pml4;
     
     wave2D();
     wave2D(int x, int y);
@@ -67,6 +68,7 @@ wave2D::wave2D()
     nx=0;ny=0;
     dx=5.0;dy=5.0;dt=0.0005;
     PML_wide=35;suface=1;R=9;
+    pml1=1.0;pml2=1.0;pml3=1.0;pml4=1.0;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
@@ -75,6 +77,7 @@ wave2D::wave2D(int z, int x)
     nx=x;ny=z;
     dx=5.0;dy=5.0;dt=0.0005;
     PML_wide=35;suface=1;R=9;
+    pml1=1.0;pml2=1.0;pml3=1.0;pml4=1.0;
     DT2o=dt*dt,DT3o=DT2o*dt,DX2o=dx*dx,DY2o=dy*dy;
     C_Yo=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/DY2o/dy;
     C_Xo=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/DX2o/dx;
@@ -225,8 +228,8 @@ void wave2D::timeslicecal()
         {
             float u1(0),u2(0),u(0),ux(0),uy(0);
             mo2=mo2_in[j][i];
-            fdx=p2_in[j][i]*C_X*snx1*snx1*DX2;
-            fddx=p2_in[j][i]*C_X*2*snx1*DX;	    
+            fdx=p2_in[j][i]*C_X*snx1*snx1*DX2*pml2;
+            fddx=p2_in[j][i]*C_X*2*snx1*DX*pml2;	    
 
             for(n=0;n<5;n++)
             {  
@@ -275,8 +278,8 @@ void wave2D::timeslicecal()
         {
             float u1(0),u2(0),u(0),ux(0),uy(0);
             mo2=mo2_in[j][i];
-            fdx=p2_in[j][i]*C_X*snx2*snx2*DX2;
-            fddx=p2_in[j][i]*C_X*2*snx2*DX;	
+            fdx=p2_in[j][i]*C_X*snx2*snx2*DX2*pml4;
+            fddx=p2_in[j][i]*C_X*2*snx2*DX*pml4;	
 
             for(n=0;n<5;n++)
             {  
@@ -326,8 +329,8 @@ void wave2D::timeslicecal()
 
             float u1(0),u2(0),u(0),ux(0),uy(0);
             mo2=mo2_in[j][i];
-            fdy=p2_in[j][i]*C_Y*sny1*sny1*DY2;
-            fddy=p2_in[j][i]*C_Y*2*sny1*DY;	
+            fdy=p2_in[j][i]*C_Y*sny1*sny1*DY2*pml3;
+            fddy=p2_in[j][i]*C_Y*2*sny1*DY*pml3;	
 
             for(n=0;n<5;n++)
             {  
@@ -377,8 +380,8 @@ void wave2D::timeslicecal()
 
             float u1(0),u2(0),u(0),ux(0),uy(0);
             mo2=mo2_in[j][i];
-            fdy=p2_in[j][i]*C_Y*sny2*sny2*DY2;
-            fddy=p2_in[j][i]*C_Y*2*sny2*DY;
+            fdy=p2_in[j][i]*C_Y*sny2*sny2*DY2*pml1;
+            fddy=p2_in[j][i]*C_Y*2*sny2*DY*pml1;
 
             for(n=0;n<5;n++)
             {  
