@@ -18,11 +18,11 @@
 using namespace std;
 using namespace arma;
 
-template<typename T1, typename T2> float anglecal_z1_x0(T1 z, T2 x, float err=0.000000001);
+template<typename T1, typename T2> float anglecal_z1_x0(T1 z, T2 x, float err=0.000000000001);
 extern float** newfmat(int x1, int x2);
 extern float*** newfmat(int x1, int x2, int x3);
-template<typename T1> extern void matdelete(T1 **mat, int x1);
-template<typename T1> extern void matdelete(T1 ***mat, int x1, int x2);
+template <typename T1> extern void matdelete(T1 **mat, int x1);
+template <typename T1> extern void matdelete(T1 ***mat, int x1, int x2);
 template <typename T1, typename T2> extern void matcopy(T1 **mat1, T2 n, int nz, int nx);
 template <typename T1, typename T2> extern void matcopy(T1 ***mat1, T2 n, int n1, int n2, int n3);
 template <typename T1, typename T2> extern void matcopy(T1 **mat1, T2 **mat2, int nz, int nx);
@@ -46,8 +46,10 @@ float anglecal_z1_x0(T1 z, T2 x, float err)
     {
         c=(z0*z+x0*x)/l;
         theta=acos(c)*xs;
+        
         if(x<0.0)
             {theta=-theta;}
+            
     }
     else
     {
@@ -174,10 +176,11 @@ public:
         {
             for(j=0;j<x3;j++)
             {
-                ang=int((ps[i][j]-a_beg)/a_gep);
-                if(ang<x1 && ang>0)
+                ang=int((pr[i][j]-a_beg)/a_gep);
+                //cout<<ang<<" | ";
+                if(ang<x1 && ang>=0)
                 {
-                    DA[j][i][ang]+=swave[i][j]*rwave[i][j];
+                    recvA[j][i][ang]+=swave[i][j]*rwave[i][j];
                 }
             }
         }
@@ -395,6 +398,7 @@ public:
         matcopy(vz1,0.0,x2,x3);
         matcopy(vz2,0.0,x2,x3);
         matcopy(wave,0.0,x1,x2,x3);
+        this->velocityInitialization();
     }
     ~OF_2D()
     {
@@ -407,18 +411,30 @@ public:
         matdelete(wave,x1,x2);
         vx1=NULL;vx2=NULL;vz1=NULL;vz2=NULL;wave=NULL;
     }
+
     template<typename T1>
-    void CIG_OF_cal(T1 **wave, int N=25)
+    void CIG_OF_cal(T1 **wave, int N=5, int n=1)
     {
         int i;
         this->addtimeslicecal(wave);
-        this->velocityInitialization();
+        //this->velocityInitialization();
+        matcopy(vx1,vx2,x2,x3);
+        matcopy(vz1,vz2,x2,x3);
         for(i=0;i<N;i++)
         {this->velocityIteration();}
-        matsmooth(this->vx1,this->vx2,this->x1,this->x2);
-        matsmooth(this->vz1,this->vz2,this->x1,this->x2);
-        matcopy(this->vx2,this->vx1,this->x2,this->x3);
-        matcopy(this->vz2,this->vz1,this->x2,this->x3);
+        matsmooth(this->vx2,this->vx1,this->x2,this->x3,n);
+        matsmooth(this->vz2,this->vz1,this->x2,this->x3,n);
+    }
+
+    void CIG_OF_cal(int N=5, int n=1)
+    {
+        int i;
+        matcopy(vx1,vx2,x2,x3);
+        matcopy(vz1,vz2,x2,x3);
+        for(i=0;i<N;i++)
+        {this->velocityIteration();}
+        matsmooth(this->vx2,this->vx1,this->x2,this->x3,n);
+        matsmooth(this->vz2,this->vz1,this->x2,this->x3,n);
     }
 
     template<typename T1>
@@ -479,8 +495,6 @@ public:
     {
         matcopy(vx1,0.0,x2,x3);
         matcopy(vz1,0.0,x2,x3);
-        matcopy(vx2,0.0,x2,x3);
-        matcopy(vz2,0.0,x2,x3);
         matcopy(v_x,0.0,x2,x3);
         matcopy(v_z,0.0,x2,x3);
     }
@@ -577,32 +591,57 @@ class direction_wavefield_state_transition
 public:
     struct forA_state_transition
     {
-        int nz,nx;
+        int nz,nx,na;
         float **velocity,**pz1,**px1,**p_nor,**pz2,**px2;
         float **coord_z1,**coord_z2,**coord_x1,**coord_x2;
         float **err_pz,**err_px,**err_nor,**wave1,**wave2;
         float dz,dx,t_gep,dt,pz_for_or_back_word,px_for_or_back_word;
+        float ***angle,a_beg,a_gep;
     }par;
 
     void forA_state_transition_initialize_fmat(struct forA_state_transition & par);
     void A_state_transition(struct forA_state_transition & par);
     void pfmat_normalize(float **pz, float **px, int nz, int nx, float **p_nor);
     void p_normalize(float & pz, float & px, float & p, float yz=0.000001);
+    void cleardata();
+
 
     direction_wavefield_state_transition()
     {
         ;
     }
-    direction_wavefield_state_transition(int nz, int nx)
+    direction_wavefield_state_transition(int na, int nz, int nx,\
+         float A_BEG=-90.0, float A_GEP=1.0)
     {
-        par.nz=nz, par.nx=nx, par.dz=5, par.dx=5;
-        this->forA_state_transition_initialize_fmat(par);
+        par.nz=nz, par.nx=nx, par.na=na;
+        par.a_beg=A_BEG,par.a_gep=A_GEP;
+        this->forA_state_transition_initialize_fmat(this->par);
     }
     ~direction_wavefield_state_transition()
     {
         ;
     }
 };
+
+void direction_wavefield_state_transition::\
+cleardata()
+{
+    matcopy(this->par.coord_x1,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.coord_x2,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.coord_z1,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.coord_z2,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.pz1,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.pz2,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.px1,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.px2,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.p_nor,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.err_pz,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.err_px,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.err_nor,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.wave1,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.wave2,0.0,this->par.nz,this->par.nx);
+    matcopy(this->par.angle,0.0,this->par.nx,this->par.nz,this->par.na);
+}
 
 void direction_wavefield_state_transition::\
 forA_state_transition_initialize_fmat(struct forA_state_transition & par)
@@ -622,16 +661,17 @@ forA_state_transition_initialize_fmat(struct forA_state_transition & par)
     par.err_nor=newfmat(par.nz,par.nx);
     par.wave1=newfmat(par.nz,par.nx);
     par.wave2=newfmat(par.nz,par.nx);
+    par.angle=newfmat(par.nx,par.nz,par.na);
 }
 
 void direction_wavefield_state_transition::\
 A_state_transition(struct forA_state_transition & par)
 {
-    int i,j,k,i1,j1;
-    float xsz,xsx;
+    int i,j,k,i1,j1,ang;
+    float xsz,xsx,theta,sx,sz,d,d1,d2,d3,d4;
     xsz=par.dt*par.t_gep*par.pz_for_or_back_word;
     xsx=par.dt*par.t_gep*par.px_for_or_back_word;
-    cout<<xsz<<"  "<<xsx<<endl;
+    //cout<<xsz<<"  "<<xsx<<endl;
     pfmat_normalize(par.pz1, par.px1, par.nz, par.nx,par.p_nor);
     for(i=0;i<par.nz;i++)
     {
@@ -655,8 +695,17 @@ A_state_transition(struct forA_state_transition & par)
     {
         for(j=0;j<par.nx;j++)
         {
-            j1=int(par.coord_x2[i][j])/par.dx;
-            i1=int(par.coord_z2[i][j])/par.dz;
+            j1=int(par.coord_x2[i][j]/par.dx);
+            i1=int(par.coord_z2[i][j]/par.dz);
+
+            sx=(par.coord_x2[i][j]/par.dx);
+            sz=(par.coord_z2[i][j]/par.dz);
+            d1=(sx-j1)*(sx-j1)+(sz-i1)*(sz-i1)+1e-12;
+            d2=(sx-j1-1)*(sx-j1-1)+(sz-i1)*(sz-i1)+1e-12;
+            d3=(sx-j1)*(sx-j1)+(sz-i1-1)*(sz-i1-1)+1e-12;
+            d4=(sx-j1-1)*(sx-j1-1)+(sz-i1-1)*(sz-i1-1)+1e-12;
+            d=0,d=1/d1+1/d2+1/d3+1/d4;
+            d1=1/d1/d;d2=1/d2/d;d3=1/d3/d;d4=1/d4/d;
             //par.px1[i][j]=par.px1[i][j]*par.p_nor[i][j];
             //par.pz1[i][j]=par.pz1[i][j]*par.p_nor[i][j];
             if(i1>0 && i1<par.nz-1 && j1>0 && j1<par.nx-1)
@@ -670,6 +719,17 @@ A_state_transition(struct forA_state_transition & par)
                 par.pz2[i1+1][j1]=par.pz1[i][j];
                 par.px2[i1+1][j1+1]=par.px1[i][j];
                 par.pz2[i1+1][j1+1]=par.pz1[i][j];
+
+                theta=anglecal_z1_x0(par.pz1[i][j],par.px1[i][j]);
+                ang=round((theta-par.a_beg)/par.a_gep);
+                //cout<<ang<<" | "<<endl;
+                if(ang>=0 && ang<par.na)
+                {
+                    par.angle[j1][i1][ang]+=par.wave1[i][j]*d1;
+                    par.angle[j1][i1+1][ang]+=par.wave1[i][j]*d3;
+                    par.angle[j1+1][i1][ang]+=par.wave1[i][j]*d2;
+                    par.angle[j1+1][i1+1][ang]+=par.wave1[i][j]*d4;
+                }
             }
         }
     }
