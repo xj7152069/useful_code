@@ -96,19 +96,20 @@ fmat fmatmul(fmat mat1, fmat mat2)
     return a;
 }
 
-cx_fmat cx_fmatmul(cx_fmat mat1, cx_fmat mat2)
+cx_fmat cx_fmatmul(cx_fmat & mat1, cx_fmat & mat2)
 {
     int nz,nx;
     nz=mat1.n_rows;
     nx=mat1.n_cols;
-    cx_fmat a(nz,nx);
+    cx_fmat a(1,1);
+    a.fill(0.0);
     int i,j;
 
     for(i=0;i<nz;i++)
     {
         for(j=0;j<nx;j++)
             {
-            a(i,j)=mat1(i,j)*mat2(i,j);
+            a(0,0)=a(0,0)+mat1(i,j)*mat2(i,j);
             }
     }
     return a;
