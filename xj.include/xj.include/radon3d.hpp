@@ -198,45 +198,56 @@ void linerradon(struct linerradon3d & par)
     fp_to_tp3d(par);
     par.realdataTP=real(par.dataTP);
 }
-/*
+
 //重建数据，重建之前可以对数据按倾角去噪等
 void rebuildsignal(struct linerradon3d & par)
 {
-    int i,j,k,k2;//cout<<"ok"<<endl;
+    int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
+    float fx,fy,fpx,fpy;
     float w,pi(3.1415926);
-    float df(par.df),dx(par.dx),\
-        dp(par.dp),p1(par.p0),dz(par.dz);
-    int nx(par.nx),np(par.np),nf(par.nf);
+    float df(par.df),dx(par.dx),dy(par.dy),\
+        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
+        p0y(par.p0y),dz(par.dz);
+    int nx(par.nx),npx(par.npx),nf(par.nf),\
+        ny(par.ny),npy(par.npy);
 
-    cx_fmat A(nx,np);
-
+    cx_fmat forA(npx,npy),A(npx,npy),a(1,1),B(npx,npy);
+    forA.fill(0.0);
     ofstream outf;
     ifstream infreal,infimag;
-    infreal.open(par.allAreal);
-    infimag.open(par.allAimag);
 
-    for(i=0;i<np;i++)
+    for(kf=par.nf1;kf<par.nf2;kf++)  
     {
-        par.rebuildfp.col(i)=fft(par.realdataTP.col(i),par.nf);
-    } 
-    
-    infimag.seekg(nx*np*par.nf1*sizeof(float),ios::beg);
-    infreal.seekg(nx*np*par.nf1*sizeof(float),ios::beg);
-    for(k=par.nf1;k<par.nf2;k++)  
-    {
-        A.set_real(dataread(nx,np,infreal));
-        A.set_imag(dataread(nx,np,infimag));
-        par.rebuildfx.row(k)=(A*par.rebuildfp.row(k).st()).st(); 
+        w=2.0*pi*par.df*kf; 
+        cout<<"now is running kf = "<<kf<<endl;
+        B=par.datafP.slice(kf);
+        for(kx=0;kx<nx;kx++)
+        {
+            fx=kx*dx-(nx*dx)/2.0;
+            for(ky=0;ky<ny;ky++)
+            {
+                fy=ky*dy-(ny*dy)/2.0;
+                for(kpx=0;kpx<npx;kpx++)
+                {
+                    fpx=kpx*dpx+p0x;
+                    for(kpy=0;kpy<npy;kpy++)
+                    {
+                        fpy=kpy*dpy+p0y;
+                        forA(kpx,kpy).imag(w*(fx*fpx+fy*fpy));
+                    }
+                }
+                A=exp(forA);
+                a=cx_fmatmul(A,B);
+                par.rebuildfx(kx,ky,kf)=a(0,0);
+            }
+        }
+        
     }
-
-    for(i=0;i<nx;i++)
-    {
-        par.rebuildtx.col(i)=ifft(par.rebuildfx.col(i),par.nz);
-    }      
-    par.realrebuildtx=real(par.rebuildtx);  
-    infimag.close(),infreal.close();
+    fx_to_tx3d(par);
+    par.realrebuildtx=real(par.rebuildtx);
 }
-*/
+
+/////////////
 void cal_p_power_3d(struct linerradon3d & par)
 {
     int i,j,k;
@@ -286,7 +297,7 @@ void fx_to_tx3d(struct linerradon3d & par)
 
     for(i=0;i<par.nx;i++)
     {
-        fx_to_tx2d(data,datafx=par.datafx.row(i),\
+        fx_to_tx2d(data,datafx=par.rebuildfx.row(i),\
             par.ny, par.nz);
         par.rebuildtx.row(i)=data;
     } 
