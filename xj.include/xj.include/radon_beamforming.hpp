@@ -24,6 +24,7 @@ void tx_to_fk2d(struct linerradon2d & par);
 void tx_to_fx2d(cx_fmat datafx, fmat data);
 void tx_to_fx2d(struct linerradon2d & par);
 void smoothdig(fmat & dig,int l,int n);
+fmat get_blackman_win2d(int n1, int n2, float w1, float w2);
 
 //从复数矩阵提取振幅谱
 fmat amplitude_arma(cx_fmat & m, int n1, int n2)
@@ -63,7 +64,7 @@ allAreal[99],allAimag[99]
 struct linerradon2d
 {
     int nz,nx,nf,np,par4,par6,nf1,nf2;
-    float dz,dx,df,dp,p0;
+    float dz,dx,df,dp,p0,pcenter;
     fmat data,realdataTP,realrebuildtx,realdatafk;
     cx_fmat datafP,dataTP,rebuildfp,rebuildfx,\
         rebuildtx,datafx,datafk;
@@ -79,9 +80,12 @@ void beamforming_parset(int nz,int nx, int nf,\
 {
     par.nx=nx,par.nz=nz,par.nf=nf;
     par.par3=1.0;par.par4=1,par.par6=0;
+    par.pcenter=0.0;
     par.dx=(10),par.dz=0.001;
+    par.df=1.0/par.dz/par.nf;
     par.np=par.nz,par.dp=2*par.dz/par.nx/par.dx;
-    par.dig_n=(0.01),par.par1=(0.1),par.par2=(0.03);
+    par.p0=-par.dp*int(par.np/2)+par.pcenter;
+    par.dig_n=(0.01),par.par1=(0.05),par.par2=(0.03);
     par.par5=(0.01);
     par.nf1=0;par.nf2=par.nf/2;
     par.allAreal[0]='\0';
@@ -92,8 +96,7 @@ void beamforming_parset(int nz,int nx, int nf,\
 
 void beamforming_parupdate(struct linerradon2d & par)
 {
-    par.df=1.0/par.dz/par.nf;
-    par.p0=-par.dp*int(par.np/2);
+    par.p0=-par.dp*int(par.np/2)+par.pcenter;
     par.data.zeros(par.nz,par.nx);
     par.datafk.zeros(par.nf,par.nx);
     par.datafP.zeros(par.nf,par.np);
@@ -216,7 +219,7 @@ void rebuildsignal(struct linerradon2d & par)
 
     for(i=0;i<np;i++)
     {
-        par.rebuildfp.col(i)=fft(par.realdataTP.col(i),par.nf);
+        par.rebuildfp.col(i)=fft(par.dataTP.col(i),par.nf);
     } 
     
     infimag.seekg(nx*np*par.nf1*sizeof(float),ios::beg);
@@ -233,6 +236,7 @@ void rebuildsignal(struct linerradon2d & par)
         par.rebuildtx.col(i)=ifft(par.rebuildfx.col(i),par.nz);
     }      
     par.realrebuildtx=real(par.rebuildtx);  
+    par.realrebuildtx/=(par.nf/2.0);
     infimag.close(),infreal.close();
 }
 
@@ -255,6 +259,7 @@ void beamforming(struct linerradon2d & par)
     
 //for(k2=0;k2<par.par4;k2++)
 {
+/*
     for(j=0;j<np;j++)
     {
         for(i=0;i<nf;i++)
@@ -263,9 +268,12 @@ void beamforming(struct linerradon2d & par)
                 *real(par.dataTP(i,j));
         }
     }
+*/
     digA.fill(0.0);
+    radon.fill(0.0);
     
 //根据前一次迭代结果调整获取对角权重
+/*
     for(i=0;i<np;i++)
     {
         radon(i,0)=sum(realTP.col(i));
@@ -288,6 +296,9 @@ void beamforming(struct linerradon2d & par)
         radon(i,0)=radon(i,0)/maxpower;
         digA(i,i).real(par.par3*dig_n/(radon(i,0)+par.par5));
     }
+*/
+///////////////////////////
+    tx_to_fx2d(par);
 
     infreal.open(par.allAreal);
     infimag.open(par.allAimag);
@@ -295,16 +306,35 @@ void beamforming(struct linerradon2d & par)
     infreal.seekg(nx*np*par.nf1*sizeof(float),ios::beg);
     for(k=par.nf1;k<par.nf2;k++)
     {
+        maxpower=max(radon.col(0));        
+        for(i=0;i<np;i++)
+        { 
+            digA(i,i).real(par.par3*dig_n/\
+                ((radon(i,0)/(maxpower+par.par5))+par.par5));
+        }
+
+
         A.set_real(dataread(nx,np,infreal));
         A.set_imag(dataread(nx,np,infimag));
 
         //反演求解
+        //S=inv_sympd(A.t()*A+digA)*A.t()*par.datafx.row(k).st();
         S=inv(A.t()*A+digA)*A.t()*par.datafx.row(k).st();
-        par.datafP.row(k)=S.col(0).st();  
+        par.datafP.row(k)=S.col(0).st(); 
+
+        for(i=0;i<np;i++)
+        {
+            radon(i,0)+=abs(par.datafP(k,i));
+            if(i<np*par.par1)
+            radon(i,0)=radon(i,0)*exp(-par.par2*(np*par.par1-i));
+            if(i>np*(1-par.par1))
+            radon(i,0)=radon(i,0)*exp(-par.par2*(i-np*(1-par.par1)));
+        }
     }
     infimag.close();
     infreal.close();
-    
+    datawrite(radon/=max(radon.col(0)),np,1,"dig.low.bin");
+
     for(i=0;i<np;i++)
     {
         par.dataTP.col(i)=ifft(par.datafP.col(i),par.nz);
@@ -411,7 +441,56 @@ void tx_to_fk2d(fmat realdatafk, cx_fmat datafk, fmat data)
         }
     }    
 }
+/*
+float Blackman(float n, float N)
+{
+    float xs, pi(3.1415926);
+    xs=0.42-0.5*cos(2*pi*n/N/2)+0.08*cos(4*pi*n/N/2);
+    return xs;
+}*/
+fmat get_blackman_win2d(int n1, int n2, float w1, float w2)
+{
+    fmat win(n1,n2);
+    win.fill(1.0);
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(i<=w2)
+            {
+                n=i;
+                n=Blackman(n,w2);
+                win(i,j)*=n;
+            }
+            if(j<=w1)
+            {
+                n=j;
+                n=Blackman(n,w1);
+                win(i,j)*=n;
+            }
+            if(i>=n1-w2-1)
+            {
+                n=n1-1-i;
+                n=Blackman(n,w2);
+                win(i,j)*=n;
+            }
+            if(j>=n2-w1-1)
+            {
+                n=n2-1-j;
+                n=Blackman(n,w1);
+                win(i,j)*=n;
+            }
+        } 
+    }
+    return win;
+}
 
+/////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
 //RLS_beamforming变换函数
 void beamforming_large(struct linerradon2d & par)
