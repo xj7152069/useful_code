@@ -4,8 +4,8 @@
     
 ***********************************************/
 
-#ifndef RADON_BEAMFORMING_HPP
-#define RADON_BEAMFORMING_HPP
+#ifndef RADON3D_HPP
+#define RADON3D_HPP
 
 #include <armadillo>
 #include <iostream>
@@ -15,6 +15,8 @@
 #include <iomanip>
 #include <math.h>
 
+#include <thread>
+#include <future>
 using namespace std;
 using namespace arma;
 
@@ -49,8 +51,8 @@ allAreal[99],allAimag[99]
 */
 struct linerradon3d
 {
-    int nz,nx,ny,nf,npx,npy,nf1,nf2;
-    float dz,dx,dy,df,dpx,dpy,p0x,p0y;
+    int nz,nx,ny,nf,npx,npy,nf1,nf2,numthread;
+    float dz,dx,dy,df,dpx,dpy,p0x,p0y,px_center,py_center;
     fcube data,realdataTP,realrebuildtx,realdatafk;
     cx_fcube datafP,dataTP,rebuildfp,rebuildfx,\
         rebuildtx,datafx,datafk;
@@ -68,7 +70,11 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     par.dx=10,par.dy=10,par.dz=0.001;
     par.npx=par.nz,par.dpx=2*par.dz/par.nx/par.dx;
     par.npy=par.nz,par.dpy=2*par.dz/par.ny/par.dy;
+    par.px_center=0;par.py_center=0;
+    par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
+    par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.nf1=0;par.nf2=par.nf/2;
+    par.numthread=1;
     par.allAreal[0]='\0';
     strcat(par.allAreal,"./allAreal.bin");
     par.allAimag[0]='\0';
@@ -78,8 +84,8 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
 void beamforming_parupdate(struct linerradon3d & par)
 {
     par.df=1.0/par.dz/par.nf;
-    par.p0x=-par.dpx*int(par.npx/2);
-    par.p0y=-par.dpy*int(par.npy/2);
+    par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
+    par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.data.zeros(par.nx,par.ny,par.nz);
     par.datafk.zeros(par.nx,par.ny,par.nf);
     par.datafP.zeros(par.npx,par.npy,par.nf);
@@ -151,28 +157,24 @@ void linerandontransmat(struct linerradon3d & par)
 }
 */
 //线性Radon变换
-void linerradon(struct linerradon3d & par)
+void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 {
     int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
     float w,pi(3.1415926);
-    float df(par.df),dx(par.dx),dy(par.dy),\
-        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
-        p0y(par.p0y),dz(par.dz);
-    int nx(par.nx),npx(par.npx),nf(par.nf),\
-        ny(par.ny),npy(par.npy);
+    float df(par->df),dx(par->dx),dy(par->dy),\
+        dpx(par->dpx),dpy(par->dpy),p0x(par->p0x),\
+        p0y(par->p0y),dz(par->dz);
+    int nx(par->nx),npx(par->npx),nf(par->nf),\
+        ny(par->ny),npy(par->npy);
 
     cx_fmat forA(nx,ny),A(nx,ny),a(1,1),B(nx,ny);
     forA.fill(0.0);
-    ofstream outf;
-    ifstream infreal,infimag;
-
-    tx_to_fx3d(par);
-    for(kf=par.nf1;kf<par.nf2;kf++)  
+    for(kf=pnf1;kf<pnf2;kf++)  
     {
-        w=2.0*pi*par.df*kf; 
+        w=2.0*pi*par->df*kf; 
         cout<<"now is running kf = "<<kf<<endl;
-        B=par.datafx.slice(kf);
+        B=par->datafx.slice(kf);
         for(kpx=0;kpx<npx;kpx++)
         {
             fpx=kpx*dpx+p0x;
@@ -190,37 +192,63 @@ void linerradon(struct linerradon3d & par)
                 }
                 A=exp(forA);
                 a=cx_fmatmul(A,B);
-                par.datafP(kpx,kpy,kf)=a(0,0);
+                par->datafP(kpx,kpy,kf)=a(0,0);
             }
         }
-        
     }
+}
+
+void linerradon(struct linerradon3d & par)
+{
+    tx_to_fx3d(par);
+
+    int pn(par.numthread),pnf1,pnf2,k;
+    float dnf;
+    thread *pcal;
+    pcal=new thread[pn];
+    dnf=float(par.nf2-par.nf1)/pn;
+
+    for(k=0;k<pn-1;k++)
+    {
+        pnf1=round(par.nf1+k*dnf);
+        pnf2=round(par.nf1+(k+1)*dnf);
+        pcal[k]=thread(linerradon_fthread,&par,pnf1,pnf2);
+    }
+    k=pn-1;
+    pnf1=round(par.nf1+k*dnf);
+    pnf2=par.nf2;
+    pcal[k]=thread(linerradon_fthread,&par,pnf1,pnf2);
+
+    for(k=0;k<pn;k++)
+    {
+        pcal[k].join();
+    }
+
     fp_to_tp3d(par);
     par.realdataTP=real(par.dataTP);
+    delete [] pcal;
 }
 
 //重建数据，重建之前可以对数据按倾角去噪等
-void rebuildsignal(struct linerradon3d & par)
+void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 {
     int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
     float w,pi(3.1415926);
-    float df(par.df),dx(par.dx),dy(par.dy),\
-        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
-        p0y(par.p0y),dz(par.dz);
-    int nx(par.nx),npx(par.npx),nf(par.nf),\
-        ny(par.ny),npy(par.npy);
+    float df(par->df),dx(par->dx),dy(par->dy),\
+        dpx(par->dpx),dpy(par->dpy),p0x(par->p0x),\
+        p0y(par->p0y),dz(par->dz);
+    int nx(par->nx),npx(par->npx),nf(par->nf),\
+        ny(par->ny),npy(par->npy);
 
     cx_fmat forA(npx,npy),A(npx,npy),a(1,1),B(npx,npy);
     forA.fill(0.0);
-    ofstream outf;
-    ifstream infreal,infimag;
 
-    for(kf=par.nf1;kf<par.nf2;kf++)  
+    for(kf=pnf1;kf<pnf2;kf++)  
     {
-        w=2.0*pi*par.df*kf; 
+        w=2.0*pi*par->df*kf; 
         cout<<"now is running kf = "<<kf<<endl;
-        B=par.datafP.slice(kf);
+        B=par->datafP.slice(kf);
         for(kx=0;kx<nx;kx++)
         {
             fx=kx*dx-(nx*dx)/2.0;
@@ -233,18 +261,45 @@ void rebuildsignal(struct linerradon3d & par)
                     for(kpy=0;kpy<npy;kpy++)
                     {
                         fpy=kpy*dpy+p0y;
-                        forA(kpx,kpy).imag(w*(fx*fpx+fy*fpy));
+                        forA(kpx,kpy).imag(-w*(fx*fpx+fy*fpy));
                     }
                 }
                 A=exp(forA);
                 a=cx_fmatmul(A,B);
-                par.rebuildfx(kx,ky,kf)=a(0,0);
+                par->rebuildfx(kx,ky,kf)=a(0,0);
             }
         }
-        
     }
+
+}
+
+void rebuildsignal(struct linerradon3d & par)
+{
+    int pn(par.numthread),pnf1,pnf2,k;
+    float dnf;
+    thread *pcal;
+    pcal=new thread[pn];
+    dnf=float(par.nf2-par.nf1)/pn;
+
+    for(k=0;k<pn-1;k++)
+    {
+        pnf1=round(par.nf1+k*dnf);
+        pnf2=round(par.nf1+(k+1)*dnf);
+        pcal[k]=thread(rebuildsignal_fthread,&par,pnf1,pnf2);
+    }
+    k=pn-1;
+    pnf1=round(par.nf1+k*dnf);
+    pnf2=par.nf2;
+    pcal[k]=thread(rebuildsignal_fthread,&par,pnf1,pnf2);
+
+    for(k=0;k<pn;k++)
+    {
+        pcal[k].join();
+    }
+   
     fx_to_tx3d(par);
     par.realrebuildtx=real(par.rebuildtx);
+    delete [] pcal;
 }
 
 /////////////
