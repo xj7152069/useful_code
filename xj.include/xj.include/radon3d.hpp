@@ -52,7 +52,7 @@ allAreal[99],allAimag[99]
 struct linerradon3d
 {
     int nz,nx,ny,nf,npx,npy,nf1,nf2,numthread;
-    float dz,dx,dy,df,dpx,dpy,p0x,p0y,px_center,py_center;
+    float dz,dx,dy,df,dpx,dpy,p0x,p0y,px_center,py_center,dig_n;
     fcube data,realdataTP,realrebuildtx,realdatafk;
     cx_fcube datafP,dataTP,rebuildfp,rebuildfx,\
         rebuildtx,datafx,datafk;
@@ -61,7 +61,6 @@ struct linerradon3d
 
     //cx_fmat Acol1,Arow1;
 };
-
 //设置一组常用的初始化参数
 void beamforming_parset(int nx, int ny, int nz, int nf,\
     struct linerradon3d & par)
@@ -75,6 +74,7 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.nf1=0;par.nf2=par.nf/2;
     par.numthread=1;
+    par.dig_n=(0.01);
     par.allAreal[0]='\0';
     strcat(par.allAreal,"./allAreal.bin");
     par.allAimag[0]='\0';
@@ -112,51 +112,280 @@ void beamforming_cleardata(struct linerradon3d & par)
     par.rebuildtx.fill(0.0);
     par.realrebuildtx.fill(0.0);
 }
-/*
-//预备计算变换需要的A矩阵，便于后续使用
-void linerandontransmat(struct linerradon3d & par)
-{
-    int i,j,k;
-    float w,pi(3.1415926),f,dx(par.dx),\
-        dp(par.dp),p1(par.p0);
-    int nx(par.nx),np(par.np);
-    fmat X(nx,1), P(1,np), forA(nx,np);
-    cx_fmat forAw(nx,np), A(nx,np);
-    ofstream outreal,outimag;
-    outreal.open(par.allAreal);
-    outimag.open(par.allAimag);
-    for(k=0;k<par.nf;k++)  
-    {
-        w=2.0*pi*par.df*k;  
-        for(i=0;i<nx;i++)
-        {
-            X(i,0)=(i)*dx-(nx*dx)/2.0;
-        }
-            
-        for(i=0;i<np;i++)
-        {
-            P(0,i)=i*dp+p1;
-        }
-        forA=X*P;   
+/////////////////////////////////////////////////////////
 
-        for(i=0;i<nx;i++)
+struct beamformingCG3d
+{
+    int nx,nz,npx,npz,numi;
+    fmat **base_fmatp2npxynxy, *fmatdigwnpxy;
+    cx_fmat ***RH_cxfmatp3ncpunpxynxy;
+    cx_fmat *b_cxfmatp1ncpunpxy;
+    cx_fmat *r_k1_cxfmatp1ncpunpxy;
+    cx_fmat *r_k2_cxfmatp1ncpunpxy;
+    cx_fmat *p_k1_cxfmatp1ncpunpxy;
+    cx_fmat *p_k2_cxfmatp1ncpunpxy;
+    cx_fmat *x_k1_cxfmatp1ncpunpxy;
+    cx_fmat *x_k2_cxfmatp1ncpunpxy;
+};
+struct Axdata
+{
+    int nx,nz,npx,npz;
+    fmat *fmatp1digwnpxy;
+    cx_fmat **cxfmatp2npxynxy,*cxfmatp1npxy;
+    cx_fmat *outcxfmatp1npxy;
+};
+void beamformingCG3d_parset(struct beamformingCG3d & cg,
+    struct linerradon3d & par)
+{
+    int i,j,k,ncpu(par.numthread);
+    int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
+    float fx,fy,fpx,fpy;
+    float w,pi(3.1415926);
+    float df(par.df),dx(par.dx),dy(par.dy),\
+        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
+        p0y(par.p0y),dz(par.dz);
+    int nx(par.nx),npx(par.npx),nf(par.nf),\
+        ny(par.ny),npy(par.npy);
+    cg.nz=(par.ny),cg.nx=(par.nx),cg.npx=(par.npx),cg.npz=(par.npy);
+    cg.numi=9;
+
+    cg.RH_cxfmatp3ncpunpxynxy=new cx_fmat**[ncpu]; 
+    for(i=0;i<ncpu;i++)
+    {
+        cg.RH_cxfmatp3ncpunpxynxy[i]=new cx_fmat*[npx];
+        for(j=0;j<npx;j++)
         {
-            for(j=0;j<np;j++)
+            cg.RH_cxfmatp3ncpunpxynxy[i][j]=new cx_fmat[npy];
+            for(k=0;k<npy;k++)
             {
-                (forAw(i,j).real(0.0));
-                (forAw(i,j).imag(0.0));
-                (forAw(i,j).imag(forA(i,j)*w));
-                //forAw(i,j)=forAw(i,j);
+                cg.RH_cxfmatp3ncpunpxynxy[i][j][k].zeros(nx,ny);
             }
         }
-        A=exp(forAw);
-        datawrite(forA=real(A),nx,np,outreal);
-        datawrite(forA=imag(A),nx,np,outimag);
     }
-    outreal.close(),outimag.close();
+    cg.base_fmatp2npxynxy=new fmat*[npx];
+    for(j=0;j<npx;j++)
+    {
+        cg.base_fmatp2npxynxy[j]=new fmat[npy];
+        for(k=0;k<npy;k++)
+        {
+            cg.base_fmatp2npxynxy[j][k].zeros(nx,ny);
+        }
+    }
+    for(kpx=0;kpx<npx;kpx++)
+    {
+        fpx=kpx*dpx+p0x;
+        for(kpy=0;kpy<npy;kpy++)
+        {
+            fpy=kpy*dpy+p0y;
+            for(kx=0;kx<nx;kx++)
+            {
+                fx=kx*dx-(nx*dx)/2.0;
+                for(ky=0;ky<ny;ky++)
+                {
+                    fy=ky*dy-(ny*dy)/2.0;
+                    cg.base_fmatp2npxynxy[kpx][kpy](kx,ky)=(fx*fpx+fy*fpy);
+                }
+            }
+        }
+    }
+
+    cg.fmatdigwnpxy=new fmat[1];
+    cg.fmatdigwnpxy[0].zeros(npx,npy);
+
+    cg.b_cxfmatp1ncpunpxy=new cx_fmat[ncpu];
+    cg.r_k1_cxfmatp1ncpunpxy=new cx_fmat[ncpu];
+    cg.r_k2_cxfmatp1ncpunpxy=new cx_fmat[ncpu];
+    cg.p_k1_cxfmatp1ncpunpxy=new cx_fmat[ncpu];
+    cg.p_k2_cxfmatp1ncpunpxy=new cx_fmat[ncpu];
+    cg.x_k1_cxfmatp1ncpunpxy=new cx_fmat[ncpu];
+    cg.x_k2_cxfmatp1ncpunpxy=new cx_fmat[ncpu];
+    for(i=0;i<ncpu;i++)
+    {
+        cg.b_cxfmatp1ncpunpxy[i].zeros(npx,npy);
+        cg.r_k1_cxfmatp1ncpunpxy[i].zeros(npx,npy);
+        cg.r_k2_cxfmatp1ncpunpxy[i].zeros(npx,npy);
+        cg.p_k1_cxfmatp1ncpunpxy[i].zeros(npx,npy);
+        cg.p_k2_cxfmatp1ncpunpxy[i].zeros(npx,npy);
+        cg.x_k1_cxfmatp1ncpunpxy[i].zeros(npx,npy);
+        cg.x_k2_cxfmatp1ncpunpxy[i].zeros(npx,npy);
+    }
 }
-*/
-//线性Radon变换
+
+void cxfmatget_Ap(struct Axdata & p)
+{
+    int nz(p.nz),nx(p.nx),npx(p.npx),npz(p.npz);
+    int knpx2,knpz2,knpx,knpz;
+    cx_fmat a(1,1),b(1,1),cxfmatnxy(nx,nz);
+
+    for(knpx=0;knpx<npx;knpx++)
+    {
+    for(knpz=0;knpz<npz;knpz++)
+    {
+        b.fill(0.0);
+        for(knpx2=0;knpx2<npx;knpx2++)
+        {
+        for(knpz2=0;knpz2<npz;knpz2++)
+        {
+            cxfmatnxy.set_real(real(p.cxfmatp2npxynxy[knpx2][knpz2]));
+            cxfmatnxy.set_imag(-imag(p.cxfmatp2npxynxy[knpx2][knpz2]));
+            a=cx_fmatmul(p.cxfmatp2npxynxy[knpx][knpz],cxfmatnxy); 
+            if(knpx==knpx2 && knpz==knpz2)
+            {
+                a+=p.fmatp1digwnpxy[0](knpx,knpz);
+            }
+            b(0,0)=b(0,0)+a(0,0)*p.cxfmatp1npxy[0](knpx2,knpz2);
+        }
+        }
+        p.outcxfmatp1npxy[0](knpx,knpz)=b(0,0);
+    }
+    }
+}
+
+int beamformingCG3d_once(struct beamformingCG3d & cg, int kcpu)
+{
+    struct Axdata Ax;
+    float bc;
+    Ax.nz=cg.nz,Ax.nx=cg.nx,Ax.npx=cg.npx,Ax.npz=cg.npz;
+    cx_fmat me(1,1),ak(1,1),bk(1,1),an(1,1),me_cxfmatnpxy;
+    me_cxfmatnpxy.copy_size(cg.b_cxfmatp1ncpunpxy[kcpu]); 
+    Ax.outcxfmatp1npxy=&me_cxfmatnpxy; //!!!!!
+    Ax.fmatp1digwnpxy=cg.fmatdigwnpxy;
+    Ax.cxfmatp2npxynxy=cg.RH_cxfmatp3ncpunpxynxy[kcpu];
+
+//cal_ak || bc
+    me_cxfmatnpxy.set_real(real(cg.r_k1_cxfmatp1ncpunpxy[kcpu]));
+    me_cxfmatnpxy.set_imag(-imag(cg.r_k1_cxfmatp1ncpunpxy[kcpu]));
+    ak=cx_fmatmul(cg.r_k1_cxfmatp1ncpunpxy[kcpu],me_cxfmatnpxy);
+    Ax.cxfmatp1npxy=cg.p_k1_cxfmatp1ncpunpxy; 
+    cxfmatget_Ap(Ax);
+    me_cxfmatnpxy.set_imag(-imag(me_cxfmatnpxy)); 
+    me=cx_fmatmul(cg.p_k1_cxfmatp1ncpunpxy[kcpu],me_cxfmatnpxy);
+    if(real(me(0,0))==0)
+    {return 1;}
+    bc=real(ak(0,0))/real(me(0,0));
+//cal_xk2
+    cg.x_k2_cxfmatp1ncpunpxy[kcpu]=cg.x_k1_cxfmatp1ncpunpxy[kcpu]\
+        +bc*cg.p_k1_cxfmatp1ncpunpxy[kcpu];
+//cal_rk2
+    me_cxfmatnpxy.set_imag(-imag(me_cxfmatnpxy)); 
+    cg.r_k2_cxfmatp1ncpunpxy[kcpu]=cg.r_k1_cxfmatp1ncpunpxy[kcpu]\
+        +bc*me_cxfmatnpxy[kcpu];
+    if(sum(sum(abs(cg.r_k2_cxfmatp1ncpunpxy[kcpu])))==0)
+    {return 1;}
+//cal_bk || bc
+    me_cxfmatnpxy.set_real(real(cg.r_k2_cxfmatp1ncpunpxy[kcpu]));
+    me_cxfmatnpxy.set_imag(-imag(cg.r_k2_cxfmatp1ncpunpxy[kcpu]));
+    bk=cx_fmatmul(cg.r_k2_cxfmatp1ncpunpxy[kcpu],me_cxfmatnpxy);
+    me_cxfmatnpxy.set_real(real(cg.r_k1_cxfmatp1ncpunpxy[kcpu]));
+    me_cxfmatnpxy.set_imag(-imag(cg.r_k1_cxfmatp1ncpunpxy[kcpu]));
+    me=cx_fmatmul(cg.r_k1_cxfmatp1ncpunpxy[kcpu],me_cxfmatnpxy);
+    bc=real(bk(0,0))/real(me(0,0));
+//cal_pk2
+    cg.p_k2_cxfmatp1ncpunpxy[kcpu]=cg.r_k2_cxfmatp1ncpunpxy[kcpu]\
+        +bc*cg.p_k1_cxfmatp1ncpunpxy[kcpu];
+//swap:
+    cg.p_k1_cxfmatp1ncpunpxy[kcpu]=cg.p_k2_cxfmatp1ncpunpxy[kcpu];
+    cg.r_k1_cxfmatp1ncpunpxy[kcpu]=cg.r_k2_cxfmatp1ncpunpxy[kcpu];
+    cg.x_k1_cxfmatp1ncpunpxy[kcpu]=cg.x_k2_cxfmatp1ncpunpxy[kcpu];
+
+    return 0;
+}
+
+void beamformingCG3d_fthread(struct beamformingCG3d * cg, \
+    struct linerradon3d * par, int pnf1, int pnf2, int kcpu)
+{
+    int kf,kpx,kpy,kx,ky,i;//cout<<"ok"<<endl;
+    float fx,fy,fpx,fpy;
+    float w,pi(3.1415926);
+    float df(par->df),dx(par->dx),dy(par->dy),\
+        dpx(par->dpx),dpy(par->dpy),p0x(par->p0x),\
+        p0y(par->p0y),dz(par->dz);
+    int nx(par->nx),npx(par->npx),nf(par->nf),\
+        ny(par->ny),npy(par->npy),cgstop;
+
+    cx_fmat a(1,1),B(nx,ny),A(npx,npy);
+    struct Axdata Ax;
+    Ax.nz=cg->nz,Ax.nx=cg->nx,Ax.npx=cg->npx,Ax.npz=cg->npz;
+    Ax.outcxfmatp1npxy=&A; //!!!!!
+
+    for(kf=pnf1;kf<pnf2;kf++)  
+    {
+        w=2.0*pi*par->df*kf; 
+        cout<<"now is running kf = "<<kf<<endl;
+        B=par->datafx.slice(kf);
+        for(kpx=0;kpx<npx;kpx++)
+        {
+        for(kpy=0;kpy<npy;kpy++)
+        {
+            cg->RH_cxfmatp3ncpunpxynxy[kcpu][kpx][kpy]\
+                .set_imag(w*cg->base_fmatp2npxynxy[kpx][kpy]);
+            cg->RH_cxfmatp3ncpunpxynxy[kcpu][kpx][kpy]\
+                =exp(cg->RH_cxfmatp3ncpunpxynxy[kcpu][kpx][kpy]);
+            a=cx_fmatmul(cg->RH_cxfmatp3ncpunpxynxy[kcpu][kpx][kpy],B);
+            cg->b_cxfmatp1ncpunpxy[kcpu](kpx,kpy)=a(0,0);
+        }
+        }
+        cg->x_k1_cxfmatp1ncpunpxy[kcpu]=cg->b_cxfmatp1ncpunpxy[kcpu];
+        Ax.fmatp1digwnpxy=cg->fmatdigwnpxy;
+        Ax.cxfmatp2npxynxy=cg->RH_cxfmatp3ncpunpxynxy[kcpu];
+        Ax.cxfmatp1npxy=cg->x_k1_cxfmatp1ncpunpxy;
+        cxfmatget_Ap(Ax); 
+        cg->r_k1_cxfmatp1ncpunpxy[kcpu]=cg->b_cxfmatp1ncpunpxy[kcpu]-A;
+        for(i=0;i<cg->numi;i++)
+        {
+            cout<<"CG times:"<<i<<endl;
+            cgstop=beamformingCG3d_once(cg[0],kcpu);
+            if(cgstop==1)
+            {break;} 
+        }
+        par->datafP.slice(kf)=cg->x_k2_cxfmatp1ncpunpxy[kcpu];
+    }
+}
+
+void beamformingCG3d(struct linerradon3d & par, int numi=9)
+{
+    tx_to_fx3d(par);
+    fmat wmat(par.npx,par.npy); 
+    struct beamformingCG3d cg;
+    struct linerradon3d * ppar;
+    ppar=&par;
+    beamformingCG3d_parset(cg, ppar[0]);
+    wmat=par.p_power/max(max(par.p_power));
+    wmat+=par.dig_n;
+    wmat=1.0/wmat;
+    cg.fmatdigwnpxy[0]=wmat;
+    cg.numi=numi;
+
+    int pn(par.numthread),pnf1,pnf2,k;
+    float dnf;
+    thread *pcal;
+    pcal=new thread[pn];
+    dnf=float(par.nf2-par.nf1)/pn;
+
+    for(k=0;k<pn-1;k++)
+    {
+        pnf1=round(par.nf1+k*dnf);
+        pnf2=round(par.nf1+(k+1)*dnf);
+        pcal[k]=thread(beamformingCG3d_fthread,&cg,&par,pnf1,pnf2,k);
+    }
+    k=pn-1;
+    pnf1=round(par.nf1+k*dnf);
+    pnf2=par.nf2;
+    pcal[k]=thread(beamformingCG3d_fthread,&cg,&par,pnf1,pnf2,k);
+
+    for(k=0;k<pn;k++)
+    {
+        pcal[k].join();
+    }
+
+    fp_to_tp3d(par);
+    par.realdataTP=real(par.dataTP);
+    delete [] pcal;
+}
+
+
+////////////////////linerradon 3D transform/////////////////////////
+//线性Radon变换，无反演
 void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 {
     int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
@@ -229,6 +458,7 @@ void linerradon(struct linerradon3d & par)
     delete [] pcal;
 }
 
+////////////////////rebuild 3D data/////////////////////////
 //重建数据，重建之前可以对数据按倾角去噪等
 void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 {
