@@ -24,6 +24,7 @@ using namespace arma;
 
 void cal_p_power_3d(struct linerradon3d & par);
 void tx_to_fx3d(struct linerradon3d & par);
+void tp_to_fp3d(struct linerradon3d & par);
 void tx_to_fx2d(cx_fmat & datafx, fmat & data, int ny, int nf);
 void fx_to_tx3d(struct linerradon3d & par);
 void fx_to_tx2d(cx_fmat & data, cx_fmat & datafx, int ny, int nz);
@@ -353,6 +354,8 @@ void beamformingCG3d(struct linerradon3d & par, int numi=9)
     wmat=par.p_power/max(max(par.p_power));
     wmat+=par.dig_n;
     wmat=1.0/wmat;
+    wmat=wmat/max(max(wmat));
+    wmat*=par.dig_n;
     cg.fmatdigwnpxy[0]=wmat;
     cg.numi=numi;
 
@@ -402,7 +405,7 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
     for(kf=pnf1;kf<pnf2;kf++)  
     {
         w=2.0*pi*par->df*kf; 
-        cout<<"now is running kf = "<<kf<<endl;
+        //cout<<"now is running kf = "<<kf<<endl;
         B=par->datafx.slice(kf);
         for(kpx=0;kpx<npx;kpx++)
         {
@@ -477,7 +480,7 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
     for(kf=pnf1;kf<pnf2;kf++)  
     {
         w=2.0*pi*par->df*kf; 
-        cout<<"now is running kf = "<<kf<<endl;
+        //cout<<"now is running kf = "<<kf<<endl;
         B=par->datafP.slice(kf);
         for(kx=0;kx<nx;kx++)
         {
@@ -491,10 +494,11 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
                     for(kpy=0;kpy<npy;kpy++)
                     {
                         fpy=kpy*dpy+p0y;
-                        forA(kpx,kpy).imag(-w*(fx*fpx+fy*fpy));
+                        forA(kpx,kpy).imag(w*(fx*fpx+fy*fpy));
                     }
                 }
                 A=exp(forA);
+                A.set_imag(-imag(A));
                 a=cx_fmatmul(A,B);
                 par->rebuildfx(kx,ky,kf)=a(0,0);
             }
@@ -505,6 +509,8 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 
 void rebuildsignal(struct linerradon3d & par)
 {
+    tp_to_fp3d(par);
+
     int pn(par.numthread),pnf1,pnf2,k;
     float dnf;
     thread *pcal;
@@ -549,6 +555,20 @@ void cal_p_power_3d(struct linerradon3d & par)
             }
         }
     }
+}
+
+void tp_to_fp3d(struct linerradon3d & par)
+{
+    int i;
+    fmat data(par.npy,par.nz);
+    cx_fmat datafp(par.npy,par.nf);
+
+    for(i=0;i<par.npx;i++)
+    {
+        tx_to_fx2d(datafp, data=par.realdataTP.row(i),\
+            par.npy, par.nf);
+        par.datafP.row(i)=datafp;
+    } 
 }
 
 void tx_to_fx3d(struct linerradon3d & par)
