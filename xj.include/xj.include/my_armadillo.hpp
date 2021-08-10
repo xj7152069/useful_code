@@ -102,7 +102,8 @@ cx_fmat cx_fmatmul(cx_fmat & mat1, cx_fmat & mat2)
     nz=mat1.n_rows;
     nx=mat1.n_cols;
     cx_fmat a(1,1);
-    a.fill(0.0);
+    a(0,0).real(0.0);
+    a(0,0).imag(0.0);
     int i,j;
 
     for(i=0;i<nz;i++)

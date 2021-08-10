@@ -1,8 +1,8 @@
 /************update in 2021.01.07**************/
-/*
+
     
     
-***********************************************/
+/*********************************************/
 
 #ifndef RADON_BEAMFORMING_HPP
 #define RADON_BEAMFORMING_HPP
@@ -16,8 +16,9 @@
 #include <math.h>
 
 using namespace std;
-#include "../xjc.h"
 using namespace arma;
+#include "../xjc.h"
+
 
 void tx_to_fk2d(fmat realdatafk, cx_fmat datafk, fmat data);
 void tx_to_fk2d(struct linerradon2d & par);
@@ -241,7 +242,7 @@ void rebuildsignal(struct linerradon2d & par)
 }
 
 //RLS_beamforming变换函数
-void beamforming(struct linerradon2d & par)
+void beamforming_radon(struct linerradon2d & par)
 {
     //linerradon(par);
     int i,j,k,k2;
@@ -256,10 +257,12 @@ void beamforming(struct linerradon2d & par)
     cx_fmat digA(np,np);
     fmat realdigA(np,np);
     ifstream infreal,infimag;
-    
-//for(k2=0;k2<par.par4;k2++)
+
+    linerradon(par);
+
+for(k2=0;k2<par.par4;k2++)
 {
-/*
+
     for(j=0;j<np;j++)
     {
         for(i=0;i<nf;i++)
@@ -268,12 +271,11 @@ void beamforming(struct linerradon2d & par)
                 *real(par.dataTP(i,j));
         }
     }
-*/
+
     digA.fill(0.0);
     radon.fill(0.0);
     
 //根据前一次迭代结果调整获取对角权重
-/*
     for(i=0;i<np;i++)
     {
         radon(i,0)=sum(realTP.col(i));
@@ -295,9 +297,66 @@ void beamforming(struct linerradon2d & par)
     { 
         radon(i,0)=radon(i,0)/maxpower;
         digA(i,i).real(par.par3*dig_n/(radon(i,0)+par.par5));
+        digA(i,i).real(dig_n);
     }
-*/
+
 ///////////////////////////
+
+    infreal.open(par.allAreal);
+    infimag.open(par.allAimag);
+    infimag.seekg(nx*np*par.nf1*sizeof(float),ios::beg);
+    infreal.seekg(nx*np*par.nf1*sizeof(float),ios::beg);
+    for(k=par.nf1;k<par.nf2;k++)
+    {
+        A.set_real(dataread(nx,np,infreal));
+        A.set_imag(dataread(nx,np,infimag));
+
+        //反演求解
+        //S=inv_sympd(A.t()*A+digA)*A.t()*par.datafx.row(k).st();
+        S=inv(A.t()*A+digA)*A.t()*par.datafx.row(k).st();
+        par.datafP.row(k)=S.col(0).st(); 
+
+        for(i=0;i<np;i++)
+        {
+            radon(i,0)+=abs(par.datafP(k,i));
+            if(i<np*par.par1)
+            radon(i,0)=radon(i,0)*exp(-par.par2*(np*par.par1-i));
+            if(i>np*(1-par.par1))
+            radon(i,0)=radon(i,0)*exp(-par.par2*(i-np*(1-par.par1)));
+        }
+    }
+    infimag.close();
+    infreal.close();
+    //datawrite(radon/=max(radon.col(0)),np,1,"dig.low.bin");
+
+    for(i=0;i<np;i++)
+    {
+        par.dataTP.col(i)=ifft(par.datafP.col(i),par.nz);
+    }            
+    par.realdataTP=real(par.dataTP);
+}  
+}
+/////////////////////////
+void beamforming_lowanti(struct linerradon2d & par)
+{
+    //linerradon(par);
+    int i,j,k,k2;
+    float w,pi(3.1415926),maxpower;
+    float df(par.df),dx(par.dx),dig_n(par.dig_n),\
+        dp(par.dp),p1(par.p0),dz(par.dz);
+    int nx(par.nx),np(par.np),nf(par.nf);
+
+    fmat radon(np,1),realTP(nf,np);
+    cx_fmat S(np,1);
+    cx_fmat A(nx,np);
+    cx_fmat digA(np,np);
+    fmat realdigA(np,np);
+    ifstream infreal,infimag;
+    
+{
+    digA.fill(0.0);
+    radon.fill(0.0);
+//由低频到高频反演
     tx_to_fx2d(par);
 
     infreal.open(par.allAreal);
@@ -312,7 +371,6 @@ void beamforming(struct linerradon2d & par)
             digA(i,i).real(par.par3*dig_n/\
                 ((radon(i,0)/(maxpower+par.par5))+par.par5));
         }
-
 
         A.set_real(dataread(nx,np,infreal));
         A.set_imag(dataread(nx,np,infimag));
@@ -333,7 +391,7 @@ void beamforming(struct linerradon2d & par)
     }
     infimag.close();
     infreal.close();
-    datawrite(radon/=max(radon.col(0)),np,1,"dig.low.bin");
+    //datawrite(radon/=max(radon.col(0)),np,1,"dig.low.bin");
 
     for(i=0;i<np;i++)
     {

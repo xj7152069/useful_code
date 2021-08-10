@@ -31,6 +31,8 @@ void fx_to_tx2d(cx_fmat & data, cx_fmat & datafx, int ny, int nz);
 void fp_to_tp3d(struct linerradon3d & par);
 void fp_to_tp2d(cx_fmat & data, cx_fmat & datafx, int ny, int nz);
 
+void linerradon(struct linerradon3d & par);
+
 /*beamforming/liner_radon变换 传递的参数：
 nz（处理数据体Z方向采样点）、nx（处理数据体X方向采样点）、
 nf（数据体频率域变换的频率采样）、np（Radon变换倾角采样点）、
@@ -75,7 +77,7 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.nf1=0;par.nf2=par.nf/2;
     par.numthread=1;
-    par.dig_n=(0.01);
+    par.dig_n=(1);
     par.allAreal[0]='\0';
     strcat(par.allAreal,"./allAreal.bin");
     par.allAimag[0]='\0';
@@ -113,8 +115,154 @@ void beamforming_cleardata(struct linerradon3d & par)
     par.rebuildtx.fill(0.0);
     par.realrebuildtx.fill(0.0);
 }
-/////////////////////////////////////////////////////////
+/////////////////////////beamforminginv3d///////////////////////////
+struct beamforminginv3d
+{
+    fmat digw_fmat_npxnpy;
+    cx_fmat *hessianinv_cxfmat_p1nf_npxynpxy;
+};
 
+void beamforminginv3d_parset(struct linerradon3d & par,\
+ struct beamforminginv3d & parinv)
+{
+    parinv.digw_fmat_npxnpy.zeros(par.npx,par.npy);
+    int numf(par.nf2-par.nf1);
+    parinv.hessianinv_cxfmat_p1nf_npxynpxy=new cx_fmat[numf];
+    int k,n;
+    n=par.npx*par.npy;
+    for(k=0;k<numf;k++)
+    {
+        parinv.hessianinv_cxfmat_p1nf_npxynpxy[k].zeros(n,n);
+    }
+}
+
+void beamforminginv3d_hessianinv(struct linerradon3d & par,\
+ struct beamforminginv3d & par2)
+{
+    int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
+    float fx,fy,fpx,fpy;
+    float w,pi(3.1415926);
+    int numf(par.nf2-par.nf1);
+    float df(par.df),dx(par.dx),dy(par.dy),\
+        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
+        p0y(par.p0y),dz(par.dz);
+    int nx(par.nx),npx(par.npx),nf(par.nf),\
+        ny(par.ny),npy(par.npy);
+
+    cx_fmat B(nx,ny),a(1,1);
+    cx_fmat **A;
+    A=new cx_fmat*[npx];
+    for(j=0;j<npx;j++)
+    {
+        A[j]=new cx_fmat[npy];
+        for(i=0;i<npy;i++)
+        {
+            A[j][i].zeros(nx,ny);
+        }
+    }
+    for(kf=0;kf<numf;kf++)  
+    {
+        w=2.0*pi*df*(kf+par.nf1); 
+        cout<<"now is running kf = "<<kf<<endl;
+        for(kpx=0;kpx<npx;kpx++)
+        {
+            fpx=kpx*dpx+p0x;
+            for(kpy=0;kpy<npy;kpy++)
+            {
+                A[kpx][kpy].fill(0.0); 
+                fpy=kpy*dpy+p0y;
+                for(kx=0;kx<nx;kx++)
+                {
+                    fx=kx*dx-(nx*dx)/2.0;
+                    for(ky=0;ky<ny;ky++)
+                    {
+                        fy=ky*dy-(ny*dy)/2.0;
+                        A[kpx][kpy](kx,ky).imag(w*(fx*fpx+fy*fpy));
+                    }
+                }
+                A[kpx][kpy]=exp(A[kpx][kpy]);
+            }
+        }
+        for(kpx=0;kpx<npx;kpx++)
+        {
+        for(kpy=0;kpy<npy;kpy++)
+        {
+            i=kpx*npy+kpy;
+            for(kpx2=0;kpx2<npx;kpx2++)
+            {
+            for(kpy2=0;kpy2<npy;kpy2++)
+            {
+                j=kpx2*npy+kpy2;
+                //if(abs(j-i)<npx)
+                {
+                    B=A[kpx2][kpy2];
+                    B.set_imag(-imag(B));
+                    a=cx_fmatmul(A[kpx][kpy],B);
+                    par2.hessianinv_cxfmat_p1nf_npxynpxy[kf](i,j)=a(0,0);
+                    if(i==j)
+                    {
+                        par2.hessianinv_cxfmat_p1nf_npxynpxy[kf](i,j)*=2;
+                    }
+                }
+            }
+            }
+        }
+        }
+        par2.hessianinv_cxfmat_p1nf_npxynpxy[kf]=\
+            inv(par2.hessianinv_cxfmat_p1nf_npxynpxy[kf]);
+    }
+}
+
+void beamforminginv3d(struct linerradon3d & par)
+{
+    struct beamforminginv3d par2;
+    struct linerradon3d * ppar;
+    ppar=&par;
+    linerradon(ppar[0]);
+    beamforminginv3d_parset(ppar[0], par2);
+    cout<<"now is running hessian_inv : "<<endl;
+    beamforminginv3d_hessianinv(ppar[0], par2);
+
+    int numf(par.nf2-par.nf1);
+    int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
+    float fx,fy,fpx,fpy;
+    float w,pi(3.1415926);
+    float df(par.df),dx(par.dx),dy(par.dy),\
+        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
+        p0y(par.p0y),dz(par.dz);
+    int nx(par.nx),npx(par.npx),nf(par.nf),\
+        ny(par.ny),npy(par.npy);
+    cx_fmat datafp(npx,npy),a(1,1);
+
+    for(kf=0;kf<numf;kf++)  
+    {
+        for(kpx=0;kpx<npx;kpx++)
+        {
+        for(kpy=0;kpy<npy;kpy++)
+        {
+            i=kpx*npy+kpy;
+            a(0,0).real(0.0);
+            a(0,0).imag(0.0);
+            for(kpx2=0;kpx2<npx;kpx2++)
+            {
+            for(kpy2=0;kpy2<npy;kpy2++)
+            {
+                j=kpx2*npy+kpy2;
+                a(0,0)+=par2.hessianinv_cxfmat_p1nf_npxynpxy[kf](i,j)\
+                    *par.datafP(kpx2,kpy2,kf);
+            }
+            }
+            datafp(kpx,kpy)=a(0,0);
+        }
+        }
+        par.datafP.slice(kf)=datafp;
+    }
+    fp_to_tp3d(par);
+    par.realdataTP=real(par.dataTP);
+}
+
+/////////////////////////beamformingCG3d///////////////////////////
+/*
 struct beamformingCG3d
 {
     int nx,nz,npx,npz,numi;
@@ -385,7 +533,7 @@ void beamformingCG3d(struct linerradon3d & par, int numi=9)
     par.realdataTP=real(par.dataTP);
     delete [] pcal;
 }
-
+*/
 
 ////////////////////linerradon 3D transform/////////////////////////
 //线性Radon变换，无反演
