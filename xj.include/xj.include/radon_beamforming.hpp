@@ -86,7 +86,7 @@ void beamforming_parset(int nz,int nx, int nf,\
     par.df=1.0/par.dz/par.nf;
     par.np=par.nz,par.dp=2*par.dz/par.nx/par.dx;
     par.p0=-par.dp*int(par.np/2)+par.pcenter;
-    par.dig_n=(0.01),par.par1=(0.05),par.par2=(0.03);
+    par.dig_n=(1),par.par1=(0.05),par.par2=(0.03);
     par.par5=(0.01);
     par.nf1=0;par.nf2=par.nf/2;
     par.allAreal[0]='\0';
@@ -136,7 +136,7 @@ void linerandontransmat(struct linerradon2d & par)
     ofstream outreal,outimag;
     outreal.open(par.allAreal);
     outimag.open(par.allAimag);
-    for(k=0;k<par.nf;k++)  
+    for(k=0;k<par.nf2;k++)  
     {
         w=2.0*pi*par.df*k;  
         for(i=0;i<nx;i++)
@@ -220,7 +220,7 @@ void rebuildsignal(struct linerradon2d & par)
 
     for(i=0;i<np;i++)
     {
-        par.rebuildfp.col(i)=fft(par.dataTP.col(i),par.nf);
+        par.rebuildfp.col(i)=fft(par.realdataTP.col(i),par.nf);
     } 
     
     infimag.seekg(nx*np*par.nf1*sizeof(float),ios::beg);
@@ -247,7 +247,7 @@ void beamforming_radon(struct linerradon2d & par)
     //linerradon(par);
     int i,j,k,k2;
     float w,pi(3.1415926),maxpower;
-    float df(par.df),dx(par.dx),dig_n(par.dig_n),\
+    float df(par.df),dx(par.dx),dig_n(par.dig_n*par.nx),\
         dp(par.dp),p1(par.p0),dz(par.dz);
     int nx(par.nx),np(par.np),nf(par.nf);
 
@@ -258,7 +258,7 @@ void beamforming_radon(struct linerradon2d & par)
     fmat realdigA(np,np);
     ifstream infreal,infimag;
 
-    linerradon(par);
+    //linerradon(par);
 
 for(k2=0;k2<par.par4;k2++)
 {

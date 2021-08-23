@@ -1,0 +1,3 @@
+
+segyread tape="" verbose=1 endian=0>data.su
+
