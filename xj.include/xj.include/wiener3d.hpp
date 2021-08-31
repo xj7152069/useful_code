@@ -35,7 +35,9 @@ void wiener3d_parset(int nx, int ny, int nz,\
 {
     par.nx=nx,par.ny=ny,par.nz=nz;
     par.dx=10,par.dy=10,par.dz=0.001;
-    par.dig_n=0.01;par.dig_n2=0.001;
+    par.dig_n=0.001;par.dig_n2=0.00;
+    par.nwx=nx/2;par.nwy=ny/2;          
+    par.narx=nx/4;par.nary=ny/4;
     par.nmovex=1;par.nmovey=1;
     //par.datafx.zeros(par.nx,par.ny,par.nf);
     par.data.zeros(par.nx,par.ny,par.nz);
@@ -43,6 +45,11 @@ void wiener3d_parset(int nx, int ny, int nz,\
     par.rebuildtx.zeros(par.nx,par.ny,par.nz);
     par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
     par.ncpu=1;par.nf=1;
+    par.df=1.0/par.dz/par.nf;
+    par.halfnarx=int(par.narx/2);
+    par.narx=2*par.halfnarx+1;
+    par.halfnary=int(par.nary/2);
+    par.nary=2*par.halfnary+1;
     while (par.nf<par.nz)
     {
         par.nf*=2;
@@ -59,8 +66,6 @@ void wiener3d_parupdate(struct wiener3d & par)
     par.narx=2*par.halfnarx+1;
     par.halfnary=int(par.nary/2);
     par.nary=2*par.halfnary+1;
-    //par.nmovex=par.halfnarx;
-    //par.nmovey=par.halfnary;
     par.datafx.zeros(par.nx,par.ny,par.nf);
     par.rebuildfx.zeros(par.nx,par.ny,par.nf);
 }
@@ -139,14 +144,14 @@ void wiener3d_mid(struct wiener3d & par)
         {
             for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
             {
-                //filter_mid(kwinx,kwiny,kf,ppar[0],ar_weight);
-                filter_forword_back(kwinx,kwiny,kf,ppar[0],ar_weight);
+                filter_mid(kwinx,kwiny,kf,ppar[0],ar_weight);
+                //filter_forword_back(kwinx,kwiny,kf,ppar[0],ar_weight);
             }
-            //filter_mid(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
-            filter_forword_back(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+            filter_mid(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+            //filter_forword_back(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
         }
-        //filter_mid(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
-        filter_forword_back(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+        filter_mid(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+        //filter_forword_back(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
 
         for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
         {
@@ -164,10 +169,10 @@ void wiener3d_mid(struct wiener3d & par)
         {
         for(j=0;j<ny;j++)  
         {
-            par.rebuildfx(i,j,kf).imag(imag(par.rebuildfx(i,j,kf))\
-                /(ar_weight(i,j)+0.001));
-            par.rebuildfx(i,j,kf).real(real(par.rebuildfx(i,j,kf))\
-                /(ar_weight(i,j)+0.001));
+            par.rebuildfx(i,j,kf).imag(2*imag(par.rebuildfx(i,j,kf))\
+                /(ar_weight(i,j)+0.000001));
+            par.rebuildfx(i,j,kf).real(2*real(par.rebuildfx(i,j,kf))\
+                /(ar_weight(i,j)+0.000001));
         }
         }
     }
@@ -390,12 +395,16 @@ void filter_xboundary(int kwiny, int kf,\
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
-    for(i=nx-halfarx;i<nx;i++)
+    for(i=nx-nwx;i<nx;i++)
     {
     for(j=kwiny;j<kwiny+nwy;j++)  
     {
-        par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
-        weightmat(i,j)+=1;
+        //if(i>=(nx-halfarx))
+        if(weightmat(i,j)<1)
+        {
+            par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
+            weightmat(i,j)+=1;
+        }
         kw++;
     }
     }
@@ -406,12 +415,16 @@ void filter_xboundary(int kwiny, int kf,\
     filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
     ar_Sb=hankel_Db*filter_Ab;
     kw=0;
-    for(i=0;i<halfarx;i++)
+    for(i=0;i<nwx;i++)
     {
     for(j=kwiny;j<kwiny+nwy;j++)  
     {
-        par.rebuildfx(i,j,kf)+=ar_Sb(kw,0);
-        weightmat(i,j)+=1;
+        //if(i<halfarx)
+        if(weightmat(i,j)<1)
+        {
+            par.rebuildfx(i,j,kf)+=ar_Sb(kw,0);
+            weightmat(i,j)+=1;
+        }
         kw++;
     }
     }
@@ -468,7 +481,7 @@ void filter_yboundary(int kwinx, int kf,\
         kar=0;
         for(kax=i-halfarx;kax<=i+halfarx;kax++)
         {
-        for(kay=j;kay<=2*halfary;kay++) 
+        for(kay=j;kay<=j+2*halfary;kay++) 
         {
             if((kax!=i) || (kay!=j))
             {
@@ -489,10 +502,14 @@ void filter_yboundary(int kwinx, int kf,\
     kw=0;
     for(i=kwinx;i<kwinx+nwx;i++)
     {
-    for(j=ny-halfary;j<ny;j++)
+    for(j=ny-nwy;j<ny;j++)
     {
-        par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
-        weightmat(i,j)+=1;
+        //if(j>=ny-halfary)
+        if(weightmat(i,j)<1)
+        {
+            par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
+            weightmat(i,j)+=1;
+        }
         kw++;
     }
     }
@@ -503,12 +520,16 @@ void filter_yboundary(int kwinx, int kf,\
     filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
     ar_Sb=hankel_Db*filter_Ab;
     kw=0;
-     for(i=kwinx;i<kwinx+nwx;i++)
+    for(i=kwinx;i<kwinx+nwx;i++)
     {
-    for(j=0;j<halfary;j++)
+    for(j=0;j<nwy;j++)
     {
-        par.rebuildfx(i,j,kf)+=ar_Sb(kw,0);
-        weightmat(i,j)+=1;
+        //if(j<halfary)
+        if(weightmat(i,j)<1)
+        {
+            par.rebuildfx(i,j,kf)+=ar_Sb(kw,0);
+            weightmat(i,j)+=1;
+        }
         kw++;
     }
     }
