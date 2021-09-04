@@ -15,6 +15,8 @@
 #include <iomanip>
 #include <math.h>
 
+#include <thread>
+#include <future>
 using namespace std;
 using namespace arma;
 #include "../xjc.h"
@@ -62,6 +64,11 @@ void wiener3d_parset(int nx, int ny, int nz,\
     cout<<"nf = "<<par.nf<<endl;;
     par.nf1=0,par.nf2=par.nf/2;
     par.df=1.0/par.dz/par.nf;
+    if(par.nx<par.ny)
+    {
+        cout<<"error in wiener3d: find {nx < ny};\
+         the data size {nx should >= ny}"<<endl;
+    }
 }
 
 void wiener3d_parupdate(struct wiener3d & par)
@@ -118,6 +125,94 @@ void fx_to_tx3d_wiener3d(struct wiener3d & par)
     } 
 }
 
+void tx_to_fx3d_wiener3d_pthread(int i, struct wiener3d * par)
+{
+    int j;
+    cx_fmat datafx(par[0].ny,par[0].nf);
+    fmat data(par[0].ny,par[0].nz);
+    data=par[0].data.row(i);
+    for(j=0;j<par[0].ny;j++)
+    {
+        datafx.row(j)=fft(data.row(j),par[0].nf);
+    }
+    par[0].datafx.row(i)=datafx;
+}
+void tx_to_fx3d_wiener3d_thread(struct wiener3d & par)
+{
+    int i,k;
+    thread *pcal;
+    pcal=new thread[par.ncpu];
+    
+    for(i=0;i<(par.nx-par.ncpu);i+=par.ncpu)
+    {
+        for(k=0;k<par.ncpu;k++)
+        {
+            pcal[k]=thread(tx_to_fx3d_wiener3d_pthread,i+k,&par);
+        }
+        for(k=0;k<par.ncpu;k++)
+        {
+            pcal[k].join();
+        }
+    } 
+    for(i=(par.nx-par.ncpu);i<(par.nx);i++)
+    {
+        k=i-(par.nx-par.ncpu);
+        pcal[k]=thread(tx_to_fx3d_wiener3d_pthread,i,&par);
+    }
+    for(i=(par.nx-par.ncpu);i<(par.nx);i++)
+    {
+        k=i-(par.nx-par.ncpu);
+        pcal[k].join();
+    }
+}
+
+void fx_to_tx3d_wiener3d_pthread(int i, struct wiener3d * par)
+{
+    cx_fmat data(par[0].ny,par[0].nf),datafx(par[0].ny,par[0].nf),\
+        data2(par[0].ny,par[0].nz);
+    int j;
+    datafx=par[0].rebuildfx.row(i);
+    for(j=0;j<par[0].ny;j++)
+    {
+        data.row(j)=ifft(datafx.row(j),par[0].nf);
+    }
+    for(j=0;j<par[0].nz;j++)
+    {
+        data2.col(j)=data.col(j);
+    }
+    par[0].rebuildtx.row(i)=data2;
+    par[0].realrebuildtx.row(i)=real(data2);
+}
+
+void fx_to_tx3d_wiener3d_thread(struct wiener3d & par)
+{
+    int i,k;
+    thread *pcal;
+    pcal=new thread[par.ncpu];
+    
+    for(i=0;i<(par.nx-par.ncpu);i+=par.ncpu)
+    {
+        for(k=0;k<par.ncpu;k++)
+        {
+            pcal[k]=thread(fx_to_tx3d_wiener3d_pthread,i+k,&par);
+        }
+        for(k=0;k<par.ncpu;k++)
+        {
+            pcal[k].join();
+        }
+    } 
+    for(i=(par.nx-par.ncpu);i<(par.nx);i++)
+    {
+        k=i-(par.nx-par.ncpu);
+        pcal[k]=thread(fx_to_tx3d_wiener3d_pthread,i,&par);
+    }
+    for(i=(par.nx-par.ncpu);i<(par.nx);i++)
+    {
+        k=i-(par.nx-par.ncpu);
+        pcal[k].join();
+    }
+}
+
 void filter_mid(int kwinx, int kwiny, int kf,\
     struct wiener3d & par, fmat & weightmat);
 void filter_forword_back(int kwinx, int kwiny, int kf,\
@@ -128,12 +223,14 @@ void filter_yboundary(int kwinx, int kf,\
     struct wiener3d & par, fmat & weightmat);
 void filter_xpoint(int kf,\
     struct wiener3d & par, fmat & weightmat);
-
+//////////////////////////////////////////////
 void wiener3d_mid(struct wiener3d & par)
 {
     struct wiener3d * ppar;
     ppar=&par;
-    tx_to_fx3d_wiener3d(ppar[0]);
+    //tx_to_fx3d_wiener3d(ppar[0]);
+    tx_to_fx3d_wiener3d_thread(ppar[0]);
+
     int i,j,k;//cout<<"ok"<<endl;
     int nx(par.nx),nz(par.nz),ny(par.ny),nf(par.nf),\
         halfarx(par.halfnarx),halfary(par.halfnary),\
@@ -189,7 +286,8 @@ void wiener3d_mid(struct wiener3d & par)
         }
         }
     }
-    fx_to_tx3d_wiener3d(ppar[0]);
+    //fx_to_tx3d_wiener3d(ppar[0]);
+    fx_to_tx3d_wiener3d_thread(ppar[0]);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -758,6 +856,98 @@ void filter_yboundary(int kwinx, int kf,\
         kw++;
     }
     }
+}
+
+///////////////////not very good, don't use//////////////////
+void wiener3d_mid_pthread(struct wiener3d * par,\
+    int pnf1, int pnf2)
+{
+    int i,j,k;//cout<<"ok"<<endl;
+    int nx(par[0].nx),nz(par[0].nz),ny(par[0].ny),nf(par[0].nf),\
+        halfarx(par[0].halfnarx),halfary(par[0].halfnary),\
+        nwx(par[0].nwx),nwy(par[0].nwy),movex(par[0].nmovex),\
+        movey(par[0].nmovey),narx(par[0].narx),nary(par[0].nary);
+    int nar(narx*nary),nw(nwx*nwy);
+    fmat ar_weight(nx,ny);
+    int kwinx,kwiny,kf;
+    for(kf=pnf1;kf<pnf2;kf++)  
+    {
+        ar_weight.fill(0.0);
+        cout<<"now is run kf = "<<kf<<endl;
+        for(kwinx=halfarx;kwinx<nx-halfarx-nwx;kwinx+=movex)
+        {
+            for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
+            {
+                filter_mid(kwinx,kwiny,kf,par[0],ar_weight);
+                //filter_forword_back(kwinx,kwiny,kf,ppar[0],ar_weight);
+            }
+            filter_mid(kwinx,ny-halfary-nwy,kf,par[0],ar_weight);
+            //filter_forword_back(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+        }
+        for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
+        {
+            filter_mid(nx-halfarx-nwx,kwiny,kf,par[0],ar_weight);
+            //filter_forword_back(nx-halfarx-nwx,kwiny,kf,ppar[0],ar_weight);
+        }
+        filter_mid(nx-halfarx-nwx,ny-halfary-nwy,kf,par[0],ar_weight);
+        //filter_forword_back(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+
+        for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
+        {
+            filter_xboundary(kwiny,kf,par[0],ar_weight);
+        }
+        filter_xboundary(ny-halfary-nwy,kf,par[0],ar_weight);
+        
+        for(kwinx=halfarx;kwinx<nx-halfarx-nwx;kwinx+=movex)
+        {
+            filter_yboundary(kwinx,kf,par[0],ar_weight);
+        }
+        filter_yboundary(nx-halfarx-nwx,kf,par[0],ar_weight);
+        filter_xpoint(kf,par[0],ar_weight);
+
+        for(i=0;i<nx;i++)
+        {
+        for(j=0;j<ny;j++)  
+        {
+            par[0].rebuildfx(i,j,kf).imag(2*imag(par[0].rebuildfx(i,j,kf))\
+                /(ar_weight(i,j)+0.000000001));
+            par[0].rebuildfx(i,j,kf).real(2*real(par[0].rebuildfx(i,j,kf))\
+                /(ar_weight(i,j)+0.000000001));
+        }
+        }
+    }
+}
+
+void wiener3d_mid_thread(struct wiener3d & par)
+{
+    struct wiener3d * ppar;
+    ppar=&par;
+    tx_to_fx3d_wiener3d_thread(ppar[0]);
+
+    int numf(par.nf2-par.nf1);
+    int pn(par.ncpu),pnf1,pnf2,k,kf;
+    float dnf;
+    thread *pcal;
+    pcal=new thread[pn];
+    dnf=float(par.nf2-par.nf1)/pn;
+
+    for(k=0;k<pn-1;k++)
+    {
+        pnf1=round(par.nf1+k*dnf);
+        pnf2=round(par.nf1+(k+1)*dnf);
+        pcal[k]=thread(wiener3d_mid_pthread,&par,pnf1,pnf2);
+    }
+    k=pn-1;
+    pnf1=round(par.nf1+k*dnf);
+    pnf2=par.nf2;
+    pcal[k]=thread(wiener3d_mid_pthread,&par,pnf1,pnf2);
+
+    for(k=0;k<pn;k++)
+    {
+        pcal[k].join();
+    }
+
+    fx_to_tx3d_wiener3d_thread(ppar[0]);
 }
 
 #endif
