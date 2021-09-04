@@ -22,7 +22,7 @@ using namespace arma;
 struct wiener3d
 {
     int nz,nx,ny,nf,nf1,nf2,nwx,nwy,narx,nary,\
-        halfnarx,halfnary,nmovex,nmovey,ncpu;
+        halfnarx,halfnary,nmovex,nmovey,ncpu,covermax;
     float dz,dy,dx,df,dig_n,dig_n2;
     fcube data,realrebuildtx;
     cx_fcube rebuildfx,rebuildtx,datafx;
@@ -38,7 +38,12 @@ void wiener3d_parset(int nx, int ny, int nz,\
     par.dig_n=0.001;par.dig_n2=0.00;
     par.nwx=nx/2;par.nwy=ny/2;          
     par.narx=nx/4;par.nary=ny/4;
-    par.nmovex=1;par.nmovey=1;
+    if(par.nwx>21){par.nwx=21;}
+    if(par.nwy>21){par.nwy=21;}
+    if(par.narx>9){par.narx=9;}
+    if(par.nary>9){par.nary=9;}
+    par.nmovex=par.nwx;par.nmovey=par.nwy;
+    par.covermax=1;
     //par.datafx.zeros(par.nx,par.ny,par.nf);
     par.data.zeros(par.nx,par.ny,par.nz);
     //par.rebuildfx.zeros(par.nx,par.ny,par.nf);
@@ -72,9 +77,9 @@ void wiener3d_parupdate(struct wiener3d & par)
 
 void wiener3d_cleardata(struct wiener3d & par)
 {
-    par.data.zeros(par.nx,par.ny,par.nz);
-    par.rebuildtx.zeros(par.nx,par.ny,par.nf);
-    par.realrebuildtx.zeros(par.nx,par.ny,par.nf);
+    par.datafx.zeros(par.nx,par.ny,par.nf);
+    par.rebuildfx.zeros(par.nx,par.ny,par.nf);
+
 }
 
 void tx_to_fx3d_wiener3d(struct wiener3d & par)
@@ -147,13 +152,18 @@ void wiener3d_mid(struct wiener3d & par)
             for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
             {
                 filter_mid(kwinx,kwiny,kf,ppar[0],ar_weight);
-                filter_forword_back(kwinx,kwiny,kf,ppar[0],ar_weight);
+                //filter_forword_back(kwinx,kwiny,kf,ppar[0],ar_weight);
             }
             filter_mid(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
-            filter_forword_back(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+            //filter_forword_back(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+        }
+        for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
+        {
+            filter_mid(nx-halfarx-nwx,kwiny,kf,ppar[0],ar_weight);
+            //filter_forword_back(nx-halfarx-nwx,kwiny,kf,ppar[0],ar_weight);
         }
         filter_mid(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
-        filter_forword_back(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+        //filter_forword_back(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
 
         for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
         {
@@ -173,9 +183,9 @@ void wiener3d_mid(struct wiener3d & par)
         for(j=0;j<ny;j++)  
         {
             par.rebuildfx(i,j,kf).imag(2*imag(par.rebuildfx(i,j,kf))\
-                /(ar_weight(i,j)+0.000001));
+                /(ar_weight(i,j)+0.000000001));
             par.rebuildfx(i,j,kf).real(2*real(par.rebuildfx(i,j,kf))\
-                /(ar_weight(i,j)+0.000001));
+                /(ar_weight(i,j)+0.000000001));
         }
         }
     }
@@ -200,6 +210,8 @@ void filter_mid(int kwinx, int kwiny, int kf,\
     digw.diag()+=1; digw2.diag(par.dig_n2); 
     datafx=par.datafx.slice(kf);
     
+    hankel_D.zeros(nw,nar),ar_S.zeros(nw,1),\
+    filter_A.zeros(nar,1),R.zeros(nar,nar);
     kw=0;
     for(i=kwinx;i<kwinx+nwx;i++)
     {
@@ -235,8 +247,11 @@ void filter_mid(int kwinx, int kwiny, int kf,\
     {
     for(j=kwiny;j<kwiny+nwy;j++)  
     {
+        if(weightmat(i,j)<par.covermax)
+        {
         par.rebuildfx(i,j,kf)+=ar_S(kw,0);
         weightmat(i,j)+=1;
+        }
         kw++;
     }
     }
@@ -253,10 +268,10 @@ void filter_forword_back(int kwinx, int kwiny, int kf,\
     int narf(halfarx*nary),narb((halfarx+1)*nary-1),nw(nwx*nwy);
     float dig_n(par.dig_n);
     cx_fmat datafx(nx,ny);
-    cx_fmat hankel_Df(nw,narf),ar_Sf(nw,1),\
-        filter_Af(narf,1),Rf(narf,narf);
-    cx_fmat hankel_Db(nw,narb),ar_Sb(nw,1),\
-        filter_Ab(narb,1),Rb(narb,narb);
+    cx_fmat hankel_Df(nw,narf,fill::zeros),ar_Sf(nw,1,fill::zeros),\
+        filter_Af(narf,1,fill::zeros),Rf(narf,narf,fill::zeros);
+    cx_fmat hankel_Db(nw,narb,fill::zeros),ar_Sb(nw,1,fill::zeros),\
+        filter_Ab(narb,1,fill::zeros),Rb(narb,narb,fill::zeros);
     fmat digwf(narf,narf,fill::zeros),digw2f(narf,narf,fill::zeros);
     digwf.diag()+=1;digw2f.diag(par.dig_n2); 
     fmat digwb(narb,narb,fill::zeros),digw2b(narb,narb,fill::zeros);
@@ -305,8 +320,11 @@ void filter_forword_back(int kwinx, int kwiny, int kf,\
     {
     for(j=kwiny;j<kwiny+nwy;j++)  
     {
+        if(weightmat(i,j)<par.covermax)
+        {
         par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
         weightmat(i,j)+=1;
+        }
         kw++;
     }
     }
@@ -321,9 +339,12 @@ void filter_forword_back(int kwinx, int kwiny, int kf,\
     for(i=kwinx;i<kwinx+nwx;i++)
     {
     for(j=kwiny;j<kwiny+nwy;j++)  
-    {
+    {   
+        if(weightmat(i,j)<par.covermax)
+        {
         par.rebuildfx(i,j,kf)+=ar_Sb(kw,0);
         weightmat(i,j)+=1;
+        }
         kw++;
     }
     }
@@ -343,14 +364,13 @@ void filter_xpoint(int kf,\
     cx_fmat datafx(nx,ny);
     cx_fmat hankel_Df(nw,narf),ar_Sf(nw,1),\
         filter_Af(narf,1),Rf(narf,narf);
-    cx_fmat hankel_Db(nw,narb),ar_Sb(nw,1),\
-        filter_Ab(narb,1),Rb(narb,narb);
+
     fmat digwf(narf,narf,fill::zeros),digw2f(narf,narf,fill::zeros);
     digwf.diag()+=1;digw2f.diag(par.dig_n2); 
-    fmat digwb(narb,narb,fill::zeros),digw2b(narb,narb,fill::zeros);
-    digwb.diag()+=1;digw2b.diag(par.dig_n2); 
     datafx=par.datafx.slice(kf);
 
+    hankel_Df.zeros(nw,narf),ar_Sf.zeros(nw,1),\
+    filter_Af.zeros(narf,1),Rf.zeros(narf,narf);
     kw=0;
     for(i=nx-nwx;i<nx;i++)
     {
@@ -383,7 +403,7 @@ void filter_xpoint(int kf,\
     for(j=ny-nwy;j<ny;j++) 
     {
         //if(i>=(nx-halfarx))
-        if(weightmat(i,j)<1)
+        if(weightmat(i,j)<par.covermax)
         {
             par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
             weightmat(i,j)+=1;
@@ -392,6 +412,8 @@ void filter_xpoint(int kf,\
     }
     }
 
+    hankel_Df.zeros(nw,narf),ar_Sf.zeros(nw,1),\
+    filter_Af.zeros(narf,1),Rf.zeros(narf,narf);
     kw=0;
     for(i=nx-nwx;i<nx;i++)
     {
@@ -414,6 +436,8 @@ void filter_xpoint(int kf,\
     }}
     Rf=hankel_Df.t()*hankel_Df;
     dig_nf=(dig_n*max(max(abs(Rf))));
+    digwf.fill(0.0);
+    digwf.diag()+=1;
     digwf=digwf*dig_nf;
     filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
@@ -424,7 +448,7 @@ void filter_xpoint(int kf,\
     for(j=0;j<nwy;j++)  
     {
         //if(i>=(nx-halfarx))
-        if(weightmat(i,j)<1)
+        if(weightmat(i,j)<par.covermax)
         {
             par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
             weightmat(i,j)+=1;
@@ -433,6 +457,8 @@ void filter_xpoint(int kf,\
     }
     }
 
+    hankel_Df.zeros(nw,narf),ar_Sf.zeros(nw,1),\
+    filter_Af.zeros(narf,1),Rf.zeros(narf,narf);
     kw=0;
     for(i=0;i<nwx;i++)
     {
@@ -455,6 +481,8 @@ void filter_xpoint(int kf,\
     }}
     Rf=hankel_Df.t()*hankel_Df;
     dig_nf=(dig_n*max(max(abs(Rf))));
+    digwf.fill(0.0);
+    digwf.diag()+=1;
     digwf=digwf*dig_nf;
     filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
@@ -465,7 +493,7 @@ void filter_xpoint(int kf,\
     for(j=ny-nwy;j<ny;j++) 
     {
         //if(i>=(nx-halfarx))
-        if(weightmat(i,j)<1)
+        if(weightmat(i,j)<par.covermax)
         {
             par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
             weightmat(i,j)+=1;
@@ -474,6 +502,8 @@ void filter_xpoint(int kf,\
     }
     }
 
+    hankel_Df.zeros(nw,narf),ar_Sf.zeros(nw,1),\
+    filter_Af.zeros(narf,1),Rf.zeros(narf,narf);
     kw=0;
     for(i=0;i<nwx;i++)
     {
@@ -496,6 +526,8 @@ void filter_xpoint(int kf,\
     }}
     Rf=hankel_Df.t()*hankel_Df;
     dig_nf=(dig_n*max(max(abs(Rf))));
+    digwf.fill(0.0);
+    digwf.diag()+=1;
     digwf=digwf*dig_nf;
     filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
@@ -506,7 +538,7 @@ void filter_xpoint(int kf,\
     for(j=0;j<nwy;j++)  
     {
         //if(i>=(nx-halfarx))
-        if(weightmat(i,j)<1)
+        if(weightmat(i,j)<par.covermax)
         {
             par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
             weightmat(i,j)+=1;
@@ -528,10 +560,10 @@ void filter_xboundary(int kwiny, int kf,\
         narb((2*halfarx+1)*nary-1),nw(nwx*nwy);
     float dig_n(par.dig_n);
     cx_fmat datafx(nx,ny);
-    cx_fmat hankel_Df(nw,narf),ar_Sf(nw,1),\
-        filter_Af(narf,1),Rf(narf,narf);
-    cx_fmat hankel_Db(nw,narb),ar_Sb(nw,1),\
-        filter_Ab(narb,1),Rb(narb,narb);
+    cx_fmat hankel_Df(nw,narf,fill::zeros),ar_Sf(nw,1,fill::zeros),\
+        filter_Af(narf,1,fill::zeros),Rf(narf,narf,fill::zeros);
+    cx_fmat hankel_Db(nw,narb,fill::zeros),ar_Sb(nw,1,fill::zeros),\
+        filter_Ab(narb,1,fill::zeros),Rb(narb,narb,fill::zeros);
     fmat digwf(narf,narf,fill::zeros),digw2f(narf,narf,fill::zeros);
     digwf.diag()+=1;digw2f.diag(par.dig_n2); 
     fmat digwb(narb,narb,fill::zeros),digw2b(narb,narb,fill::zeros);
@@ -591,7 +623,7 @@ void filter_xboundary(int kwiny, int kf,\
     for(j=kwiny;j<kwiny+nwy;j++)  
     {
         //if(i>=(nx-halfarx))
-        if(weightmat(i,j)<1)
+        if(weightmat(i,j)<par.covermax)
         {
             par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
             weightmat(i,j)+=1;
@@ -612,7 +644,7 @@ void filter_xboundary(int kwiny, int kf,\
     for(j=kwiny;j<kwiny+nwy;j++)  
     {
         //if(i<halfarx)
-        if(weightmat(i,j)<1)
+        if(weightmat(i,j)<par.covermax)
         {
             par.rebuildfx(i,j,kf)+=ar_Sb(kw,0);
             weightmat(i,j)+=1;
@@ -634,10 +666,10 @@ void filter_yboundary(int kwinx, int kf,\
         narb((2*halfary+1)*narx-1),nw(nwy*nwx);
     float dig_n(par.dig_n);
     cx_fmat datafx(nx,ny);
-    cx_fmat hankel_Df(nw,narf),ar_Sf(nw,1),\
-        filter_Af(narf,1),Rf(narf,narf);
-    cx_fmat hankel_Db(nw,narb),ar_Sb(nw,1),\
-        filter_Ab(narb,1),Rb(narb,narb);
+    cx_fmat hankel_Df(nw,narf,fill::zeros),ar_Sf(nw,1,fill::zeros),\
+        filter_Af(narf,1,fill::zeros),Rf(narf,narf,fill::zeros);
+    cx_fmat hankel_Db(nw,narb,fill::zeros),ar_Sb(nw,1,fill::zeros),\
+        filter_Ab(narb,1,fill::zeros),Rb(narb,narb,fill::zeros);
     fmat digwf(narf,narf,fill::zeros),digw2f(narf,narf,fill::zeros);
     digwf.diag()+=1;digw2f.diag(par.dig_n2); 
     fmat digwb(narb,narb,fill::zeros),digw2b(narb,narb,fill::zeros);
@@ -697,7 +729,7 @@ void filter_yboundary(int kwinx, int kf,\
     for(j=ny-nwy;j<ny;j++)
     {
         //if(j>=ny-halfary)
-        if(weightmat(i,j)<1)
+        if(weightmat(i,j)<par.covermax)
         {
             par.rebuildfx(i,j,kf)+=ar_Sf(kw,0);
             weightmat(i,j)+=1;
@@ -718,7 +750,7 @@ void filter_yboundary(int kwinx, int kf,\
     for(j=0;j<nwy;j++)
     {
         //if(j<halfary)
-        if(weightmat(i,j)<1)
+        if(weightmat(i,j)<par.covermax)
         {
             par.rebuildfx(i,j,kf)+=ar_Sb(kw,0);
             weightmat(i,j)+=1;
