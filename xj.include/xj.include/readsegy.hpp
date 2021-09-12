@@ -37,7 +37,6 @@ void segyhead_readoneline_tofmat(segyhead & head, fmat & data)
         data.col(k)=trace.col(0);
     }
     }
-    fmatendianchange(data,nz,nx);
     //head.infile.read((char *)(&head.head0), sizeof(head.head0));
     //head.infile.read((char *)(&head.head1), sizeof(head.head1));
 }

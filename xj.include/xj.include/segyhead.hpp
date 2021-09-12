@@ -448,97 +448,7 @@ struct  segyhead2
 #endif
 //	float  data[SU_NFLTS];
 };
-/*
-typedef struct
-{
-    int tracl;
-    int tracr;
-    int tr_h_9_12;
-    int tr_h_13_16;
-    int tr_h_17_20;
-    int cdp;
-    int tr_h_25_28;
-    short tr_h_29_30;
-    short tr_h_31_32;
-    short tr_h_33_34;
-    short tr_h_35_36;
-    int tr_h_37_40;
-    int tr_h_41_44;
-    int tr_h_45_48;
-    int tr_h_49_52;
-    int tr_h_53_56;
-    int tr_h_57_60;
-    int tr_h_61_64;
-    int tr_h_65_68;
-    short tr_h_69_70;
-    short tr_h_71_72;
-    int tr_h_73_76;
-    int tr_h_77_80;
-    int tr_h_81_84;
-    int tr_h_85_88;
-    short tr_h_89_90;
-    short tr_h_91_92;
-    short tr_h_93_94;
-    short tr_h_95_96;
-    short tr_h_97_98;
-    short tr_h_99_100;
-    short tr_h_101_102;
-    short tr_h_103_104;
-    short tr_h_105_106;
-    short tr_h_107_108;
-    short tr_h_109_110;
-    short tr_h_111_112;
-    short tr_h_113_114;
-    unsigned short ns;
-    unsigned short dt;
-    short tr_h_119_120;
-    short tr_h_121_122;
-    short tr_h_123_124;
-    short tr_h_125_126;
-    short tr_h_127_128;
-    short tr_h_129_130;
-    short tr_h_131_132;
-    short tr_h_133_134;
-    short tr_h_135_136;
-    short tr_h_137_138;
-    short tr_h_139_140;
-    short tr_h_141_142;
-    short tr_h_143_144;
-    short tr_h_145_146;
-    short tr_h_147_148;
-    short tr_h_149_150;
-    short tr_h_151_152;
-    short tr_h_153_154;
-    short tr_h_155_156;
-    short tr_h_157_158;
-    short tr_h_159_160;
-    short tr_h_161_162;
-    short tr_h_163_164;
-    short tr_h_165_166;
-    short tr_h_167_168;
-    short tr_h_169_170;
-    short tr_h_171_172;
-    short tr_h_173_174;
-    short tr_h_175_176;
-    short tr_h_177_178;
-    short tr_h_179_180;
-    int tr_h_181_184;
-    int tr_h_185_188;
-    int tr_h_189_192;
-    int tr_h_193_196;
-    int tr_h_197_200;
-    int tr_h_201_204;
-    int tr_h_205_208;
-    int tr_h_209_212;
-    int tr_h_213_216;
-    int tr_h_217_220;
-    int tr_h_221_224;
-    int tr_h_225_228;
-    int tr_h_229_232;
-    int tr_h_233_236;
-    int tr_h_237_240;
-} segy_header;
-*/
+
 /**----------------------卷头信息---------------------**/
 struct segyhead0
 {
@@ -593,27 +503,6 @@ struct segyhead
 	char filename[1024];
 	ifstream infile;
 };
-
-
-void samp_trac_num(char *seis_name, int endian_flag, short format, int *iTrace_num, short int *iSample_num);
-
-void samp_trac_num2(char *seis_name, int endian_flag, short format, int *iTrace_num, short int *iSample_num, float *sampint);
-
-// int get_file_size(char *filename, long long *a);
-
-void Bubble_sort(float *data, int n);
-
-float find_data_max(char *seis_name, int endian_flag, short format, int *iTrace_num, short *iSample_num);
-
-void get_format_data(char *filename, int *endian_flag, short *format);
-
-int bytes_change(short *a, int bit_num);
-
-int bytes_change4(int *a, int bit_num);
-
-void swap_float_4(float *tnf4);
-
-float efloat(float value);
 
 void ibm_to_float(int from[], int to[], int n, int endian);
 /***********************************************************************
