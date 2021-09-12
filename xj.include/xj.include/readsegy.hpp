@@ -14,6 +14,7 @@ void segyhead_endianget(segyhead & head);
 void segyhead_initialize(segyhead & head);
 template <typename T1> inline void endianchange(T1 & a);
 template <typename T1> inline float getendianchange(T1 a);
+inline float floatendianchange(float a);
 void segyhead_open(segyhead & head);
 void fmatendianchange(fmat & data,int n1,int n2);
 void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace);
@@ -40,6 +41,7 @@ void segyhead_readoneline_tofmat(segyhead & head, fmat & data)
     //head.infile.read((char *)(&head.head0), sizeof(head.head0));
     //head.infile.read((char *)(&head.head1), sizeof(head.head1));
 }
+
 void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
 {
     int nz;
@@ -113,13 +115,30 @@ inline void endianchange(T1 & a)
 void fmatendianchange(fmat & data,int n1,int n2)
 {
     int i,j;
+    float a;
     for(i=0;i<n1;i++)
     {
         for(j=0;j<n2;j++)
         {
-            data(i,j)=getendianchange(data(i,j));
+            a=data(i,j);
+            data(i,j)=floatendianchange(a);
         }
     }
+}
+
+inline float floatendianchange(float a)
+{
+    typedef union SWAP_UNION{
+        float f;
+        char  c[4];
+        }SWAP_UNION;
+    SWAP_UNION d1,d2;
+    d1.f=a;
+    d2.c[0]=d1.c[3];
+    d2.c[1]=d1.c[2];
+    d2.c[2]=d1.c[1];
+    d2.c[3]=d1.c[0];
+    return d2.f;
 }
 
 template <typename T1> 
@@ -139,6 +158,7 @@ inline float getendianchange(T1 a)
     b=float(a);
     return b;
 }
+
 
 ////////////////////////////////////////////////
 void Bubble_sort(float *data, int n)
