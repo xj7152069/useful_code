@@ -371,7 +371,6 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 void linerradon(struct linerradon3d & par)
 {
     tx_to_fx3d_linerradon3d(par);
-
     int pn(par.numthread),pnf1,pnf2,k;
     float dnf;
     thread *pcal;
@@ -786,12 +785,11 @@ void beamforminginv3d_hessianinv_old(struct linerradon3d & par,\
 }
 */
 /////////////////////////beamformingCG3d///////////////////////////
-/*
+
 struct beamformingCG3d
 {
     int nx,nz,npx,npz,numi;
-    fmat **base_fmatp2npxynxy, *fmatdigwnpxy;
-    cx_fmat ***RH_cxfmatp3ncpunpxynxy;
+    fmat *fmatdigwnpxy;
     cx_fmat *b_cxfmatp1ncpunpxy;
     cx_fmat *r_k1_cxfmatp1ncpunpxy;
     cx_fmat *r_k2_cxfmatp1ncpunpxy;
@@ -799,17 +797,15 @@ struct beamformingCG3d
     cx_fmat *p_k2_cxfmatp1ncpunpxy;
     cx_fmat *x_k1_cxfmatp1ncpunpxy;
     cx_fmat *x_k2_cxfmatp1ncpunpxy;
+    struct linerradon3d * radon3d_par;
+    struct beamforminginv3d * inv3d_par;
 };
-struct Axdata
-{
-    int nx,nz,npx,npz;
-    fmat *fmatp1digwnpxy;
-    cx_fmat **cxfmatp2npxynxy,*cxfmatp1npxy;
-    cx_fmat *outcxfmatp1npxy;
-};
+
 void beamformingCG3d_parset(struct beamformingCG3d & cg,
-    struct linerradon3d & par)
+    struct linerradon3d & par, struct beamforminginv3d & par2)
 {
+    cg.radon3d_par=&par;
+    cg.inv3d_par=&par2;
     int i,j,k,ncpu(par.numthread);
     int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
@@ -820,47 +816,7 @@ void beamformingCG3d_parset(struct beamformingCG3d & cg,
     int nx(par.nx),npx(par.npx),nf(par.nf),\
         ny(par.ny),npy(par.npy);
     cg.nz=(par.ny),cg.nx=(par.nx),cg.npx=(par.npx),cg.npz=(par.npy);
-    cg.numi=9;
-
-    cg.RH_cxfmatp3ncpunpxynxy=new cx_fmat**[ncpu]; 
-    for(i=0;i<ncpu;i++)
-    {
-        cg.RH_cxfmatp3ncpunpxynxy[i]=new cx_fmat*[npx];
-        for(j=0;j<npx;j++)
-        {
-            cg.RH_cxfmatp3ncpunpxynxy[i][j]=new cx_fmat[npy];
-            for(k=0;k<npy;k++)
-            {
-                cg.RH_cxfmatp3ncpunpxynxy[i][j][k].zeros(nx,ny);
-            }
-        }
-    }
-    cg.base_fmatp2npxynxy=new fmat*[npx];
-    for(j=0;j<npx;j++)
-    {
-        cg.base_fmatp2npxynxy[j]=new fmat[npy];
-        for(k=0;k<npy;k++)
-        {
-            cg.base_fmatp2npxynxy[j][k].zeros(nx,ny);
-        }
-    }
-    for(kpx=0;kpx<npx;kpx++)
-    {
-        fpx=kpx*dpx+p0x;
-        for(kpy=0;kpy<npy;kpy++)
-        {
-            fpy=kpy*dpy+p0y;
-            for(kx=0;kx<nx;kx++)
-            {
-                fx=kx*dx-(nx*dx)/2.0;
-                for(ky=0;ky<ny;ky++)
-                {
-                    fy=ky*dy-(ny*dy)/2.0;
-                    cg.base_fmatp2npxynxy[kpx][kpy](kx,ky)=(fx*fpx+fy*fpy);
-                }
-            }
-        }
-    }
+    cg.numi=5;
 
     cg.fmatdigwnpxy=new fmat[1];
     cg.fmatdigwnpxy[0].zeros(npx,npy);
@@ -884,67 +840,70 @@ void beamformingCG3d_parset(struct beamformingCG3d & cg,
     }
 }
 
-void cxfmatget_Ap(struct Axdata & p)
+void cxfmatget_Ap(cx_fmat & Ap,cx_fmat & A,cx_fmat & p)
 {
-    int nz(p.nz),nx(p.nx),npx(p.npx),npz(p.npz);
-    int knpx2,knpz2,knpx,knpz;
-    cx_fmat a(1,1),b(1,1),cxfmatnxy(nx,nz);
+    int npx(Ap.n_rows),npy(Ap.n_cols);
+    int i,j,kpx,kpx2,kpy,kpy2;
+    cx_fmat a(1,1),b(1,1);
 
-    for(knpx=0;knpx<npx;knpx++)
+    for(kpx=0;kpx<npx;kpx++)
     {
-    for(knpz=0;knpz<npz;knpz++)
+    for(kpy=0;kpy<npy;kpy++)
     {
-        b.fill(0.0);
-        for(knpx2=0;knpx2<npx;knpx2++)
+        i=kpx*npy+kpy;
+        a(0,0).real(0.0);
+        a(0,0).imag(0.0);
+        for(kpx2=0;kpx2<npx;kpx2++)
         {
-        for(knpz2=0;knpz2<npz;knpz2++)
+        for(kpy2=0;kpy2<npy;kpy2++)
         {
-            cxfmatnxy.set_real(real(p.cxfmatp2npxynxy[knpx2][knpz2]));
-            cxfmatnxy.set_imag(-imag(p.cxfmatp2npxynxy[knpx2][knpz2]));
-            a=cx_fmatmul(p.cxfmatp2npxynxy[knpx][knpz],cxfmatnxy); 
-            if(knpx==knpx2 && knpz==knpz2)
-            {
-                a+=p.fmatp1digwnpxy[0](knpx,knpz);
-            }
-            b(0,0)=b(0,0)+a(0,0)*p.cxfmatp1npxy[0](knpx2,knpz2);
+            j=kpx2*npy+kpy2;
+            a(0,0)+=A(i,j)*p(kpx2,kpy2);
         }
         }
-        p.outcxfmatp1npxy[0](knpx,knpz)=b(0,0);
+        Ap(kpx,kpy)=a(0,0);
     }
     }
 }
 
 int beamformingCG3d_once(struct beamformingCG3d & cg, int kcpu)
 {
-    struct Axdata Ax;
+    //struct Axdata Ax;
     float bc;
-    Ax.nz=cg.nz,Ax.nx=cg.nx,Ax.npx=cg.npx,Ax.npz=cg.npz;
+    //Ax.nz=cg.nz,Ax.nx=cg.nx,Ax.npx=cg.npx,Ax.npz=cg.npz;
     cx_fmat me(1,1),ak(1,1),bk(1,1),an(1,1),me_cxfmatnpxy;
     me_cxfmatnpxy.copy_size(cg.b_cxfmatp1ncpunpxy[kcpu]); 
-    Ax.outcxfmatp1npxy=&me_cxfmatnpxy; //!!!!!
-    Ax.fmatp1digwnpxy=cg.fmatdigwnpxy;
-    Ax.cxfmatp2npxynxy=cg.RH_cxfmatp3ncpunpxynxy[kcpu];
+    //Ax.outcxfmatp1npxy=&me_cxfmatnpxy; //!!!!!
+    //Ax.fmatp1digwnpxy=cg.fmatdigwnpxy;
+    //Ax.cxfmatp2npxynxy=cg.RH_cxfmatp3ncpunpxynxy[kcpu];
+    cx_fmat Ap(cg.npx,cg.npz);
+    //cx_float a(1,1);
+    float a;
 
 //cal_ak || bc
     me_cxfmatnpxy.set_real(real(cg.r_k1_cxfmatp1ncpunpxy[kcpu]));
     me_cxfmatnpxy.set_imag(-imag(cg.r_k1_cxfmatp1ncpunpxy[kcpu]));
     ak=cx_fmatmul(cg.r_k1_cxfmatp1ncpunpxy[kcpu],me_cxfmatnpxy);
-    Ax.cxfmatp1npxy=cg.p_k1_cxfmatp1ncpunpxy; 
-    cxfmatget_Ap(Ax);
-    me_cxfmatnpxy.set_imag(-imag(me_cxfmatnpxy)); 
+    cxfmatget_Ap(Ap,cg.inv3d_par->hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
+            cg.p_k1_cxfmatp1ncpunpxy[kcpu]);
+    me_cxfmatnpxy.set_real(real(Ap));
+    me_cxfmatnpxy.set_imag(-imag(Ap));
     me=cx_fmatmul(cg.p_k1_cxfmatp1ncpunpxy[kcpu],me_cxfmatnpxy);
     if(real(me(0,0))==0)
     {return 1;}
-    bc=real(ak(0,0))/real(me(0,0));
+    //a=-((ak(0,0))/(me(0,0)));
+    a=-real((ak(0,0))/(me(0,0)));
+    cout<<imag(ak(0,0))<<"||"<<imag(me(0,0))<<"||";
 //cal_xk2
     cg.x_k2_cxfmatp1ncpunpxy[kcpu]=cg.x_k1_cxfmatp1ncpunpxy[kcpu]\
-        +bc*cg.p_k1_cxfmatp1ncpunpxy[kcpu];
+        +a*cg.p_k1_cxfmatp1ncpunpxy[kcpu];
 //cal_rk2
-    me_cxfmatnpxy.set_imag(-imag(me_cxfmatnpxy)); 
+    //cg.r_k2_cxfmatp1ncpunpxy[kcpu]=cg.r_k1_cxfmatp1ncpunpxy[kcpu]\
+        +bc*Ap;
     cg.r_k2_cxfmatp1ncpunpxy[kcpu]=cg.r_k1_cxfmatp1ncpunpxy[kcpu]\
-        +bc*me_cxfmatnpxy[kcpu];
-    if(sum(sum(abs(cg.r_k2_cxfmatp1ncpunpxy[kcpu])))==0)
-    {return 1;}
+        +a*Ap;
+    //if(sum(sum(abs(cg.r_k2_cxfmatp1ncpunpxy[kcpu])))==0)
+    //{return 1;}
 //cal_bk || bc
     me_cxfmatnpxy.set_real(real(cg.r_k2_cxfmatp1ncpunpxy[kcpu]));
     me_cxfmatnpxy.set_imag(-imag(cg.r_k2_cxfmatp1ncpunpxy[kcpu]));
@@ -953,6 +912,7 @@ int beamformingCG3d_once(struct beamformingCG3d & cg, int kcpu)
     me_cxfmatnpxy.set_imag(-imag(cg.r_k1_cxfmatp1ncpunpxy[kcpu]));
     me=cx_fmatmul(cg.r_k1_cxfmatp1ncpunpxy[kcpu],me_cxfmatnpxy);
     bc=real(bk(0,0))/real(me(0,0));
+    cout<<imag(bk(0,0))<<"||"<<imag(me(0,0))<<"||";
 //cal_pk2
     cg.p_k2_cxfmatp1ncpunpxy[kcpu]=cg.r_k2_cxfmatp1ncpunpxy[kcpu]\
         +bc*cg.p_k1_cxfmatp1ncpunpxy[kcpu];
@@ -967,43 +927,54 @@ int beamformingCG3d_once(struct beamformingCG3d & cg, int kcpu)
 void beamformingCG3d_fthread(struct beamformingCG3d * cg, \
     struct linerradon3d * par, int pnf1, int pnf2, int kcpu)
 {
-    int kf,kpx,kpy,kx,ky,i;//cout<<"ok"<<endl;
-    float fx,fy,fpx,fpy;
+    int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j,k;//cout<<"ok"<<endl;
+    float fx,fy,fpx,fpy,dig_n(par->dig_n);
     float w,pi(3.1415926);
     float df(par->df),dx(par->dx),dy(par->dy),\
         dpx(par->dpx),dpy(par->dpy),p0x(par->p0x),\
         p0y(par->p0y),dz(par->dz);
     int nx(par->nx),npx(par->npx),nf(par->nf),\
         ny(par->ny),npy(par->npy),cgstop;
+    float ky1(-(ny*dy)/2.0);
+    float kx1(-(nx*dx)/2.0);
 
-    cx_fmat a(1,1),B(nx,ny),A(npx,npy);
-    struct Axdata Ax;
-    Ax.nz=cg->nz,Ax.nx=cg->nx,Ax.npx=cg->npx,Ax.npz=cg->npz;
-    Ax.outcxfmatp1npxy=&A; //!!!!!
+    cx_fmat a(1,1),Ap(npx,npy);
+    struct beamforminginv3d * par2;
+    par2=cg->inv3d_par;
 
     for(kf=pnf1;kf<pnf2;kf++)  
     {
         w=2.0*pi*par->df*kf; 
         cout<<"now is running kf = "<<kf<<endl;
-        B=par->datafx.slice(kf);
+        cg->b_cxfmatp1ncpunpxy[kcpu]=par->datafP.slice(kf); //b_cxfmat 
         for(kpx=0;kpx<npx;kpx++)
         {
         for(kpy=0;kpy<npy;kpy++)
         {
-            cg->RH_cxfmatp3ncpunpxynxy[kcpu][kpx][kpy]\
-                .set_imag(w*cg->base_fmatp2npxynxy[kpx][kpy]);
-            cg->RH_cxfmatp3ncpunpxynxy[kcpu][kpx][kpy]\
-                =exp(cg->RH_cxfmatp3ncpunpxynxy[kcpu][kpx][kpy]);
-            a=cx_fmatmul(cg->RH_cxfmatp3ncpunpxynxy[kcpu][kpx][kpy],B);
-            cg->b_cxfmatp1ncpunpxy[kcpu](kpx,kpy)=a(0,0);
+            i=kpx*npy+kpy;
+            float fpx1(kpx*dpx+p0x);
+            float fpy1(kpy*dpy+p0y);
+            for(kpx2=0;kpx2<npx;kpx2++)
+            {
+            for(kpy2=0;kpy2<npy;kpy2++)
+            {
+                j=kpx2*npy+kpy2;
+                float fpx2(kpx2*dpx+p0x);
+                float fpy2(kpy2*dpy+p0y);
+                a=cx_hessianelement2d(w,nx,kx1,dx,fpx1-fpx2,\
+                    ny,ky1,dy,fpy1-fpy2);
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu](i,j)=a(0,0);
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu](j,i)=a(0,0); 
+            }
+            }        
+            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu](i,i)+=dig_n; //hessian dig
         }
         }
         cg->x_k1_cxfmatp1ncpunpxy[kcpu]=cg->b_cxfmatp1ncpunpxy[kcpu];
-        Ax.fmatp1digwnpxy=cg->fmatdigwnpxy;
-        Ax.cxfmatp2npxynxy=cg->RH_cxfmatp3ncpunpxynxy[kcpu];
-        Ax.cxfmatp1npxy=cg->x_k1_cxfmatp1ncpunpxy;
-        cxfmatget_Ap(Ax); 
-        cg->r_k1_cxfmatp1ncpunpxy[kcpu]=cg->b_cxfmatp1ncpunpxy[kcpu]-A;
+        cxfmatget_Ap(Ap,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
+            cg->x_k1_cxfmatp1ncpunpxy[kcpu]);
+        cg->r_k1_cxfmatp1ncpunpxy[kcpu]=cg->b_cxfmatp1ncpunpxy[kcpu]-Ap;
+        cg->p_k1_cxfmatp1ncpunpxy[kcpu]=cg->r_k1_cxfmatp1ncpunpxy[kcpu];
         for(i=0;i<cg->numi;i++)
         {
             cout<<"CG times:"<<i<<endl;
@@ -1015,14 +986,20 @@ void beamformingCG3d_fthread(struct beamformingCG3d * cg, \
     }
 }
 
-void beamformingCG3d(struct linerradon3d & par, int numi=9)
+void beamformingCG3d(struct linerradon3d & par, int numi=5)
 {
-    tx_to_fx3d(par);
+    tx_to_fx3d_linerradon3d(par);
     fmat wmat(par.npx,par.npy); 
     struct beamformingCG3d cg;
-    struct linerradon3d * ppar;
-    ppar=&par;
-    beamformingCG3d_parset(cg, ppar[0]);
+    struct beamforminginv3d par2;
+    {
+        struct linerradon3d * ppar;
+        ppar=&par;
+        linerradon(ppar[0]);
+        beamforminginv3d_parset(ppar[0], par2);
+        beamformingCG3d_parset(cg, ppar[0], par2);
+    }
+    
     wmat=par.p_power/max(max(par.p_power));
     wmat+=par.dig_n;
     wmat=1.0/wmat;
@@ -1053,10 +1030,10 @@ void beamformingCG3d(struct linerradon3d & par, int numi=9)
         pcal[k].join();
     }
 
-    fp_to_tp3d(par);
+    fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
     delete [] pcal;
 }
-*/
+
 
 #endif
