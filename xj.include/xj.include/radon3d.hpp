@@ -6,7 +6,7 @@
 
 #ifndef RADON3D_HPP
 #define RADON3D_HPP
-
+#define ARMA_DONT_USE_BLAS //!!!!
 #include <armadillo>
 #include <iostream>
 #include <stdio.h>
@@ -23,12 +23,12 @@ using namespace arma;
 #include "../xjc.h"
 
 void cal_p_power_3d(struct linerradon3d & par);
-void tx_to_fx3d(struct linerradon3d & par);
-void tp_to_fp3d(struct linerradon3d & par);
+void tx_to_fx3d_linerradon3d(struct linerradon3d & par);
 void tx_to_fx2d(cx_fmat & datafx, fmat & data, int ny, int nf);
-void fx_to_tx3d(struct linerradon3d & par);
+void tp_to_fp3d_linerradon3d(struct linerradon3d & par);
+void fx_to_tx3d_linerradon3d(struct linerradon3d & par);
 void fx_to_tx2d(cx_fmat & data, cx_fmat & datafx, int ny, int nz);
-void fp_to_tp3d(struct linerradon3d & par);
+void fp_to_tp3d_linerradon3d(struct linerradon3d & par);
 void fp_to_tp2d(cx_fmat & data, cx_fmat & datafx, int ny, int nz);
 void linerradon(struct linerradon3d & par);
 
@@ -64,7 +64,7 @@ struct linerradon3d
     fcube data,realdataTP,realrebuildtx;
     cx_fcube datafx,rebuildfx,datafP,rebuildfp,dataTP,rebuildtx\
     ;
-    fmat p_power;
+    fmat p_power,py_coord,px_coord,x_coord,y_coord;
     char allAreal[99],allAimag[99];
 
     //cx_fmat Acol1,Arow1;
@@ -87,6 +87,19 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     strcat(par.allAreal,"./allAreal.bin");
     par.allAimag[0]='\0';
     strcat(par.allAimag,"./allAimag.bin");
+} 
+void beamforming_parset(int nx, int ny, int nz,\
+    struct linerradon3d & par)
+{
+    struct linerradon3d * ppar;
+    ppar=&par;
+    int nf(1);
+    while (nf<nz)
+    {
+        nf*=2;
+    }
+    cout<<"nf = "<<nf<<endl;
+    beamforming_parset(nx,ny,nz,nf,ppar[0]);
 }
 
 void beamforming_parupdate(struct linerradon3d & par)
@@ -105,6 +118,27 @@ void beamforming_parupdate(struct linerradon3d & par)
     par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
     par.p_power.zeros(par.npx,par.npy);
     par.dig_n*=par.nx*par.ny;
+    par.px_coord.zeros(par.npx,1);
+    par.py_coord.zeros(par.npy,1);
+    par.x_coord.zeros(par.nx,1);
+    par.y_coord.zeros(par.ny,1);
+    int k;
+    for(k=0;k<par.npx;k++)
+    {
+        par.px_coord(k,0)=k*par.dpx+par.p0x;
+    }
+    for(k=0;k<par.npy;k++)
+    {
+        par.py_coord(k,0)=k*par.dpy+par.p0y;
+    }
+    for(k=0;k<par.nx;k++)
+    {
+        par.x_coord(k,0)=k*par.dx-(par.nx*par.dx)/2.0;
+    }
+    for(k=0;k<par.ny;k++)
+    {
+        par.y_coord(k,0)=k*par.dy-(par.ny*par.dy)/2.0;
+    }
 }
 
 void beamforming_cleardata(struct linerradon3d & par)
@@ -281,11 +315,21 @@ for(kf=0;kf<numf;kf+=ncpu)
         pcal[kcpu].join();
     }
 }
-    fp_to_tp3d(par);
+    fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
 }
 
 ////////////////////linerradon 3D transform/////////////////////////
+void linerradon_getA(cx_fmat & A, cx_fmat & basex,\
+    cx_fmat & basey, int kpx, int kpy, int nx, int ny)
+{
+    int kx,ky;
+    for(kx=0;kx<nx;kx++)
+    {for(ky=0;ky<ny;ky++)
+    {
+        A(kx,ky)=basex(kx,kpx)*basey(ky,kpy);
+    }}
+}
 //线性Radon变换，无反演
 void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 {
@@ -299,28 +343,24 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
         ny(par->ny),npy(par->npy);
 
     cx_fmat forA(nx,ny),A(nx,ny),a(1,1),B(nx,ny);
+    cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros);
+
     forA.fill(0.0);
     for(kf=pnf1;kf<pnf2;kf++)  
     {
         w=2.0*pi*par->df*kf; 
-        //cout<<"now is running kf = "<<kf<<endl;
+        cout<<"now is running kf = "<<kf<<endl;
+        basey.zeros(ny,npy);basex.zeros(nx,npx);
+        basey.set_imag(w*(par->y_coord*par->py_coord.t()));  
+        basex.set_imag(w*(par->x_coord*par->px_coord.t()));  
+        basey=exp(basey);basex=exp(basex);
         B=par->datafx.slice(kf);
         for(kpx=0;kpx<npx;kpx++)
         {
-            fpx=kpx*dpx+p0x;
             for(kpy=0;kpy<npy;kpy++)
             {
-                fpy=kpy*dpy+p0y;
-                for(kx=0;kx<nx;kx++)
-                {
-                    fx=kx*dx-(nx*dx)/2.0;
-                    for(ky=0;ky<ny;ky++)
-                    {
-                        fy=ky*dy-(ny*dy)/2.0;
-                        forA(kx,ky).imag(w*(fx*fpx+fy*fpy));
-                    }
-                }
-                A=exp(forA);
+                A=basex.col(kpx)*basey.col(kpy).st();
+                //linerradon_getA(A,basex,basey,kpx,kpy,nx,ny);
                 a=cx_fmatmul(A,B);
                 par->datafP(kpx,kpy,kf)=a(0,0);
             }
@@ -330,7 +370,7 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 
 void linerradon(struct linerradon3d & par)
 {
-    tx_to_fx3d(par);
+    tx_to_fx3d_linerradon3d(par);
 
     int pn(par.numthread),pnf1,pnf2,k;
     float dnf;
@@ -354,13 +394,23 @@ void linerradon(struct linerradon3d & par)
         pcal[k].join();
     }
 
-    fp_to_tp3d(par);
+    fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
     delete [] pcal;
 }
 
 ////////////////////rebuild 3D data/////////////////////////
 //重建数据，重建之前可以对数据按倾角去噪等
+void rebuildsignal_getA(cx_fmat & A, cx_fmat & basex,\
+    cx_fmat & basey, int kx, int ky, int npx, int npy)
+{
+    int kpx,kpy;
+    for(kpx=0;kpx<npx;kpx++)
+    {for(kpy=0;kpy<npy;kpy++)
+    {
+        A(kpx,kpy)=basex(kx,kpx)*basey(ky,kpy);
+    }}
+}
 void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 {
     int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
@@ -373,29 +423,24 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
         ny(par->ny),npy(par->npy);
 
     cx_fmat forA(npx,npy),A(npx,npy),a(1,1),B(npx,npy);
-    forA.fill(0.0);
+    cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros);
 
+    forA.fill(0.0);
     for(kf=pnf1;kf<pnf2;kf++)  
     {
         w=2.0*pi*par->df*kf; 
+        basey.zeros(ny,npy);basex.zeros(nx,npx);
+        basey.set_imag(w*(par->y_coord*par->py_coord.t()));  
+        basex.set_imag(w*(par->x_coord*par->px_coord.t()));  
+        basey=exp(basey);basex=exp(basex);
         //cout<<"now is running kf = "<<kf<<endl;
         B=par->datafP.slice(kf);
         for(kx=0;kx<nx;kx++)
         {
-            fx=kx*dx-(nx*dx)/2.0;
             for(ky=0;ky<ny;ky++)
             {
-                fy=ky*dy-(ny*dy)/2.0;
-                for(kpx=0;kpx<npx;kpx++)
-                {
-                    fpx=kpx*dpx+p0x;
-                    for(kpy=0;kpy<npy;kpy++)
-                    {
-                        fpy=kpy*dpy+p0y;
-                        forA(kpx,kpy).imag(w*(fx*fpx+fy*fpy));
-                    }
-                }
-                A=exp(forA);
+                A=basex.row(kx).st()*basey.row(ky);
+                //rebuildsignal_getA(A,basex,basey,kx,ky,npx,npy);
                 A.set_imag(-imag(A));
                 a=cx_fmatmul(A,B);
                 par->rebuildfx(kx,ky,kf).real(4*real(a(0,0)));
@@ -408,7 +453,7 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 
 void rebuildsignal(struct linerradon3d & par)
 {
-    tp_to_fp3d(par);
+    tp_to_fp3d_linerradon3d(par);
 
     int pn(par.numthread),pnf1,pnf2,k;
     float dnf;
@@ -432,7 +477,7 @@ void rebuildsignal(struct linerradon3d & par)
         pcal[k].join();
     }
    
-    fx_to_tx3d(par);
+    fx_to_tx3d_linerradon3d(par);
     par.realrebuildtx=real(par.rebuildtx);
     delete [] pcal;
 }
@@ -456,7 +501,7 @@ void cal_p_power_3d(struct linerradon3d & par)
     }
 }
 
-void tp_to_fp3d(struct linerradon3d & par)
+void tp_to_fp3d_linerradon3d(struct linerradon3d & par)
 {
     int i;
     fmat data(par.npy,par.nz);
@@ -470,7 +515,7 @@ void tp_to_fp3d(struct linerradon3d & par)
     } 
 }
 
-void tx_to_fx3d(struct linerradon3d & par)
+void tx_to_fx3d_linerradon3d(struct linerradon3d & par)
 {
     int i;
     fmat data(par.ny,par.nz);
@@ -493,7 +538,7 @@ void tx_to_fx2d(cx_fmat & datafx, fmat & data, int ny, int nf)
     } 
 }
 
-void fx_to_tx3d(struct linerradon3d & par)
+void fx_to_tx3d_linerradon3d(struct linerradon3d & par)
 {
     int i;
     cx_fmat data(par.ny,par.nz);
@@ -516,7 +561,7 @@ void fx_to_tx2d(cx_fmat & data, cx_fmat & datafx, int ny, int nz)
     } 
 }
 
-void fp_to_tp3d(struct linerradon3d & par)
+void fp_to_tp3d_linerradon3d(struct linerradon3d & par)
 {
     int i;
     cx_fmat data(par.npy,par.nz);
