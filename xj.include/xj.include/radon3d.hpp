@@ -807,7 +807,7 @@ int beamformingCG3d_once(struct beamformingCG3d & cg, int kcpu, float aaa)
     a=((ak(0,0))/(me(0,0)));
     //a=real((ak(0,0))/(me(0,0)));
     //if(bc>aaa)
-    if(true)
+    if(false)
     {
     cg.x_k2_cxfmatp1ncpunpxy[kcpu][0]=cg.x_k1_cxfmatp1ncpunpxy[kcpu][0]\
         +a*cg.p_k1_cxfmatp1ncpunpxy[kcpu][0];
@@ -823,7 +823,7 @@ int beamformingCG3d_once(struct beamformingCG3d & cg, int kcpu, float aaa)
         +a*cg.p_k1_cxfmatp1ncpunpxy[kcpu][0];
 //cal_rk2
     cg.r_k2_cxfmatp1ncpunpxy[kcpu][0]=cg.r_k1_cxfmatp1ncpunpxy[kcpu][0]\
-        +a*Ap;
+        -a*Ap;
     //if(sum(sum(abs(cg.r_k2_cxfmatp1ncpunpxy[kcpu])))==0)
     //{return 1;}
 //cal_bk || bc
