@@ -86,9 +86,8 @@ void wiener3d_cleardata(struct wiener3d & par)
 {
     par.datafx.zeros(par.nx,par.ny,par.nf);
     par.rebuildfx.zeros(par.nx,par.ny,par.nf);
-
 }
-
+ 
 void tx_to_fx3d_wiener3d(struct wiener3d & par)
 {
     int i,j;
@@ -214,7 +213,9 @@ void fx_to_tx3d_wiener3d_thread(struct wiener3d & par)
 }
 
 void filter_mid(int kwinx, int kwiny, int kf,\
-    struct wiener3d & par, fmat & weightmat);
+    struct wiener3d & par, fmat & weightmat,\
+    ofstream & outfarreal,ofstream & outfarimag,\
+    ofstream & outfarr, int outar_flag);
 void filter_forword_back(int kwinx, int kwiny, int kf,\
     struct wiener3d & par, fmat & weightmat);
 void filter_xboundary(int kwiny, int kf,\
@@ -239,27 +240,37 @@ void wiener3d_mid(struct wiener3d & par)
     int nar(narx*nary),nw(nwx*nwy);
     fmat ar_weight(nx,ny);
 
-    int kwinx,kwiny,kf;
+    int kwinx,kwiny,kf,kout(0);
+    ofstream outfarreal,outfarimag,outfr;
+    outfr.open("ar.r.bin");
+    outfarreal.open("ar.real.bin");
+    outfarimag.open("ar.imag.bin");
     for(kf=par.nf1;kf<par.nf2;kf++)
     {
-        ar_weight.fill(0.0);
+        ar_weight.fill(0.0);kout=0;
         cout<<"now is run kf = "<<kf<<endl;
         for(kwinx=halfarx;kwinx<nx-halfarx-nwx;kwinx+=movex)
         {
             for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
             {
-                filter_mid(kwinx,kwiny,kf,ppar[0],ar_weight);
+                filter_mid(kwinx,kwiny,kf,ppar[0],ar_weight,\
+                    outfarreal,outfarimag,outfr,kout);
                 //filter_forword_back(kwinx,kwiny,kf,ppar[0],ar_weight);
+                kout++;
             }
-            filter_mid(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+            filter_mid(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight,\
+                outfarreal,outfarimag,outfr,kout);
+            kout++;
             //filter_forword_back(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight);
         }
         for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
         {
-            filter_mid(nx-halfarx-nwx,kwiny,kf,ppar[0],ar_weight);
+            filter_mid(nx-halfarx-nwx,kwiny,kf,ppar[0],ar_weight,\
+                outfarreal,outfarimag,outfr,kout);
             //filter_forword_back(nx-halfarx-nwx,kwiny,kf,ppar[0],ar_weight);
         }
-        filter_mid(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
+        filter_mid(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight,\
+            outfarreal,outfarimag,outfr,kout);
         //filter_forword_back(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight);
 
         for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
@@ -286,13 +297,18 @@ void wiener3d_mid(struct wiener3d & par)
         }
         }
     }
+    outfarimag.close();
+    outfarreal.close();
+    outfr.close();
     //fx_to_tx3d_wiener3d(ppar[0]);
     fx_to_tx3d_wiener3d_thread(ppar[0]);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 void filter_mid(int kwinx, int kwiny, int kf,\
-    struct wiener3d & par, fmat & weightmat)
+    struct wiener3d & par, fmat & weightmat,\
+    ofstream & outfarreal,ofstream & outfarimag,\
+    ofstream & outfarr,int outar_flag)
 {
     int i,j,kw(0),kar,kax,kay;//cout<<"ok"<<endl;
     int nx(par.nx),nz(par.nz),ny(par.ny),nf(par.nf),\
@@ -304,7 +320,8 @@ void filter_mid(int kwinx, int kwiny, int kf,\
     cx_fmat datafx(nx,ny);
     cx_fmat hankel_D(nw,nar),ar_S(nw,1),\
         filter_A(nar,1),R(nar,nar);
-    fmat digw(nar,nar,fill::zeros),digw2(nar,nar,fill::zeros);
+    fmat digw(nar,nar,fill::zeros),digw2(nar,nar,fill::zeros),\
+        ardata(nar,1),realR(nar,nar);
     digw.diag()+=1; digw2.diag(par.dig_n2); 
     datafx=par.datafx.slice(kf);
     
@@ -338,6 +355,15 @@ void filter_mid(int kwinx, int kwiny, int kf,\
     dig_n=dig_n*max(max(abs(R)));
     digw=digw*dig_n;
     filter_A=inv(R+digw+digw2)*hankel_D.t()*ar_S;
+    if(outar_flag==3)
+    {
+        outar_flag++;
+        ardata=real(filter_A);
+        datawrite(ardata,nar,1,outfarreal);
+        ardata=imag(filter_A);
+        datawrite(ardata,nar,1,outfarimag);
+        datawrite(realR=real(R),nar,nar,outfarr);
+    }
     //filter_A=solve(R+digw,hankel_D.t()*ar_S);
     ar_S=hankel_D*filter_A;
     kw=0;
@@ -859,6 +885,7 @@ void filter_yboundary(int kwinx, int kf,\
 }
 
 ///////////////////not very good, don't use//////////////////
+/*
 void wiener3d_mid_pthread(struct wiener3d * par,\
     int pnf1, int pnf2)
 {
@@ -949,5 +976,5 @@ void wiener3d_mid_thread(struct wiener3d & par)
 
     fx_to_tx3d_wiener3d_thread(ppar[0]);
 }
-
+*/
 #endif
