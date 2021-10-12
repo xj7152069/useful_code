@@ -23,6 +23,9 @@ using namespace arma;
 
 inline fmat invfmat(fmat mat1, int n);
 inline cx_fmat invcxfmat(cx_fmat mat1, int n);
+inline cx_fmat solvecxfmat(cx_fmat mata, cx_fmat matb, int n);
+inline fmat solvefmat(fmat mata, fmat matb, int n);
+
 struct wiener3d_arlistnode
 {
     struct wiener3d_arlistnode *back;
@@ -132,12 +135,12 @@ void wiener3d_parset(int nx, int ny, int nz,\
     par.nx=nx,par.ny=ny,par.nz=nz;
     par.dx=10,par.dy=10,par.dz=0.001;
     par.dig_n=0.001;par.dig_n2=0.00;
-    par.nwx=nx/2;par.nwy=ny/2;          
-    par.narx=nx/4;par.nary=ny/4;
+    par.nwx=1+nx/2;par.nwy=1+ny/2;          
+    par.narx=par.nwx/2;par.nary=par.nwy/2;
     if(par.nwx>21){par.nwx=21;}
     if(par.nwy>21){par.nwy=21;}
-    if(par.narx>9){par.narx=9;}
-    if(par.nary>9){par.nary=9;}
+    if(par.narx>5){par.narx=5;}
+    if(par.nary>5){par.nary=5;}
     par.nmovex=par.nwx;par.nmovey=par.nwy;
     par.covermax=1;
     //par.datafx.zeros(par.nx,par.ny,par.nf);
@@ -491,7 +494,8 @@ void filter_mid(int kwinx, int kwiny, int kf,\
     else
     {
         //filter_A=inv(R+digw+digw2)*hankel_D.t()*ar_S;        
-        filter_A=invcxfmat(R+digw+digw2,nar)*hankel_D.t()*ar_S;
+        filter_A=solvecxfmat((R+digw+digw2),hankel_D.t()*ar_S,nar);        
+        //filter_A=invcxfmat(R+digw+digw2,nar)*hankel_D.t()*ar_S;
     }
 
     if(outar_flag==0)
@@ -1972,6 +1976,148 @@ inline fmat invfmat(fmat mat1, int n)
         }
     }
     
+    return mat2;
+}
+
+inline cx_fmat solvecxfmat(cx_fmat mata, cx_fmat matb, int n)
+{
+    cx_fmat mat2(n,1,fill::zeros);
+    int k1,k2;
+    cx_float xs;
+    float max_mata_ele;
+    max_mata_ele=0.000001*abs(mata).max();
+
+    for(k2=0;k2<n;k2++)
+    {
+        for(k1=1+k2;k1<n;k1++)
+        {
+            if(abs(mata(k1,k2))>max_mata_ele)
+            {
+                xs=mata(k2,k2)/mata(k1,k2);
+                mata.row(k1)=xs*mata.row(k1)-mata.row(k2);
+                matb.row(k1)=xs*matb.row(k1)-matb.row(k2);
+            }
+        }
+    }
+
+    for(k2=0;k2<n;k2++)
+    {
+        if(isnan(abs(matb(k2,0))))
+        {
+            matb(k2,0).imag(0);
+            matb(k2,0).real(0);
+        }
+        if(isinf(abs(matb(k2,0))))
+        {
+            matb(k2,0).imag(0);
+            matb(k2,0).real(0);
+        }
+        for(k1=0;k1<n;k1++)
+        {
+            if(isnan(abs(mata(k1,k2))))
+            {
+                mata(k1,k2).imag(0);
+                mata(k1,k2).real(0);
+            }
+            if(isinf(abs(mata(k1,k2))))
+            {
+                mata(k1,k2).imag(0);
+                mata(k1,k2).real(0);
+            }
+        }
+    }
+
+    for(k2=n-1;k2>=0;k2--)
+    {
+        xs=matb(k2,0);
+        for(k1=n-1;k1>k2;k1--)
+        {
+            xs=xs-mat2(k1,0)*mata(k2,k1);
+        }
+        mat2(k2,0)=xs/mata(k2,k2);
+    }
+
+    for(k2=0;k2<n;k2++)
+    {
+        if(isnan(abs(mat2(k2,0))))
+        {
+            mat2(k2,0).imag(0);
+            mat2(k2,0).real(0);
+        }
+        if(isinf(abs(mat2(k2,0))))
+        {
+            mat2(k2,0).imag(0);
+            mat2(k2,0).real(0);
+        }
+    }
+    return mat2;
+}
+
+inline fmat solvefmat(fmat mata, fmat matb, int n)
+{
+    fmat mat2(n,1,fill::zeros);
+    int k1,k2;
+    float xs;
+    float max_mata_ele;
+    max_mata_ele=0.000001*abs(mata).max();
+
+    for(k2=0;k2<n;k2++)
+    {
+        for(k1=1+k2;k1<n;k1++)
+        {
+            if(abs(mata(k1,k2))>max_mata_ele)
+            {
+                xs=mata(k2,k2)/mata(k1,k2);
+                mata.row(k1)=xs*mata.row(k1)-mata.row(k2);
+                matb.row(k1)=xs*matb.row(k1)-matb.row(k2);
+            }
+        }
+    }
+
+    for(k2=0;k2<n;k2++)
+    {
+        if(isnan(abs(matb(k2,0))))
+        {
+            matb(k2,0)=(0);
+        }
+        if(isinf(abs(matb(k2,0))))
+        {
+            matb(k2,0)=(0);
+        }
+        for(k1=0;k1<n;k1++)
+        {
+            if(isnan(abs(mata(k1,k2))))
+            {
+                mata(k1,k2)=(0);
+            }
+            if(isinf(abs(mata(k1,k2))))
+            {
+                mata(k1,k2)=(0);
+            }
+        }
+    }
+
+    for(k2=n-1;k2>=0;k2--)
+    {
+        xs=matb(k2,0);
+        for(k1=n-1;k1>k2;k1--)
+        {
+            xs=xs-mat2(k1,0)*mata(k2,k1);
+        }
+        mat2(k2,0)=xs/mata(k2,k2);
+    }
+
+    for(k2=0;k2<n;k2++)
+    {
+        if(isnan(abs(mat2(k2,0))))
+        {
+            mat2(k2,0)=(0);
+        }
+        if(isinf(abs(mat2(k2,0))))
+        {
+            mat2(k2,0)=(0);
+        }
+    }
     return mat2;
 }
 
