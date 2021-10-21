@@ -13,7 +13,6 @@ my_armadillo.h
 #include <fstream>
 #include <iomanip>
 #include <math.h>
-
 #include "../xjc.h"
 using namespace std;
 using namespace arma;
@@ -96,26 +95,6 @@ fmat fmatmul(fmat mat1, fmat mat2)
     return a;
 }
 
-cx_fmat cx_fmatmul(cx_fmat & mat1, cx_fmat & mat2)
-{
-    int nz,nx;
-    nz=mat1.n_rows;
-    nx=mat1.n_cols;
-    cx_fmat a(1,1);
-    a(0,0).real(0.0);
-    a(0,0).imag(0.0);
-    int i,j;
-
-    for(i=0;i<nz;i++)
-    {
-        for(j=0;j<nx;j++)
-            {
-            a(0,0)=a(0,0)+mat1(i,j)*mat2(i,j);
-            }
-    }
-    return a;
-}
-
 fmat matdiv(fmat mat1, fmat mat2, int nz, int nx, float min)
 {
     fmat a(nz,nx);
@@ -173,6 +152,21 @@ fmat dataread(int nz, int nx, const char * filename)
          }
     infile.close();
     return data_mat;
+}
+
+void dataread(fmat & data_mat, int nz, int nx, ifstream &inf)
+{
+    int i,j;
+    float read_data;
+
+    for(j=0;j<nx;j++)
+    {
+        for(i=0;i<nz;i++)
+        {
+        inf.read((char *)&read_data, sizeof(read_data));  
+        data_mat(i,j)=read_data;
+        }
+    }
 }
 
 fmat dataread(int nz, int nx, ifstream &inf)
