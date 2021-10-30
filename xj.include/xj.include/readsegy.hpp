@@ -46,9 +46,18 @@ void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
 {
     int nz;
     head.infile.read((char *)(&head.head2), sizeof(head.head2));
-    nz=int(getendianchange(head.head2.ns));
+    if(head.endian=='l')
+        nz=int(getendianchange(head.head2.ns));
+    else
+        nz=int(head.head2.ns);
     trace.zeros(nz,1);
     trace=dataread(nz,1,head.infile);
+    if(head.endian=='l')
+    {
+        fmat * datap;
+        datap=&trace;
+        fmatendianchange(datap[0],nz,1);
+    }
 }
 
 void segyhead_open(segyhead & head)
@@ -75,6 +84,18 @@ void segyhead_endianget(segyhead & head)
         head.endian = 'b'; //大端(123456)，高位字节在前，低位字节在后
         cout<<"the format of the SEGY-data is Big-Endian: "<<\
             head.head1.format<<endl;
+        if(head.head1.format == 1)
+        {
+            head.isibm=true;
+            cout<<"the format of the SEGY-data is IBM: "<<\
+                head.head1.format<<endl;
+        }
+        else
+        {
+            head.isibm=false;
+            cout<<"the format of the SEGY-data is IEEE: "<<\
+                head.head1.format<<endl;
+        }
     }
     else if(1)
     {
@@ -87,6 +108,18 @@ void segyhead_endianget(segyhead & head)
             head.endian = 'l'; //小端(654321)，与大端相反，需要调整为大端
             cout<<"the format of the SEGY-data is Little-Endian: "<<\
                 head.head1.format<<endl;
+            if(head.head1.format == 1)
+            {
+                head.isibm=true;
+                cout<<"the format of the SEGY-data is IBM: "<<\
+                    head.head1.format<<endl;
+            }
+            else
+            {
+                head.isibm=false;
+                cout<<"the format of the SEGY-data is IEEE: "<<\
+                    head.head1.format<<endl;
+            }
         }
         endianchange(head.head1.format);
     } 
