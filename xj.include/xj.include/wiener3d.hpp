@@ -7,131 +7,44 @@
 #ifndef WIENER3D_HPP
 #define WIENER3D_HPP
 
-#include <armadillo>
+
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include <fstream>
 #include <iomanip>
 #include <math.h>
-
+#include "../xjc.h"
 #include <thread>
 #include <future>
 using namespace std;
 using namespace arma;
-#include "../xjc.h"
+
 
 inline fmat invfmat(fmat mat1, int n);
 inline cx_fmat invcxfmat(cx_fmat mat1, int n);
 inline cx_fmat solvecxfmat(cx_fmat mata, cx_fmat matb, int n);
 inline fmat solvefmat(fmat mata, fmat matb, int n);
 
-struct wiener3d_arlistnode
-{
-    struct wiener3d_arlistnode *back;
-    struct wiener3d_arlistnode *next;
-    cx_fmat arcxfmat_narnf;
-    bool arcxfmatcreat;
-    int listindex;
-}; 
 struct wiener3d
 {
     int nz,nx,ny,nf,nf1,nf2,nwx,nwy,narx,nary,\
         halfnarx,halfnary,nmovex,nmovey,ncpu,covermax;
-    float dz,dy,dx,df,dig_n,dig_n2;
-    fcube data,realrebuildtx;
+    float dz,dy,dx,df,dig_n,dig_n2,normal_con;
+    fcube data,realrebuildtx,dataagc;
     cx_fcube rebuildfx,rebuildtx,datafx;
-    struct wiener3d_arlistnode *headnode;
-    struct wiener3d_arlistnode *lastnode;
-    struct wiener3d_arlistnode *addnewnode;
-    bool use_anti_alias;
+    int use_way,agcwx,agcwy,agcwz;
+    bool use_anti_alias,normal_bool;
 };
-void wiener3d_arlistnode_addnode(struct wiener3d & par, int nf, int nar, int knode)
-{
-    if(par.headnode==NULL)
-    {
-        par.headnode=new wiener3d_arlistnode;
-        par.lastnode=par.headnode;
-        par.headnode->next=NULL;
-        par.headnode->back=NULL;
-        par.headnode->arcxfmat_narnf.zeros(nar,nf);
-        par.headnode->arcxfmatcreat=true;
-        par.headnode->listindex=0;
-        if(par.headnode->listindex!=knode)
-        {
-            cout<<"Error in addndoe: index of node may not true!"<<endl;
-        }
-    }
-    else
-    {
-        par.lastnode->next=new wiener3d_arlistnode;
-        par.addnewnode=par.lastnode->next;
-        par.addnewnode->next=NULL;
-        par.addnewnode->back=par.lastnode;
-        par.addnewnode->arcxfmat_narnf.zeros(nar,nf);
-        par.addnewnode->arcxfmatcreat=true;
-        par.addnewnode->listindex=par.lastnode->listindex+1;
-        par.lastnode=par.addnewnode;
-        par.addnewnode=NULL;
-        if(par.lastnode->listindex!=knode)
-        {
-            cout<<"Error in addndoe: index of node may not true!"<<endl;
-        }
-    }
-}
-void wiener3d_arlistnode_addfilter(struct wiener3d & par, cx_fmat filter_onecol,\
-    int kf, int knode)
-{
-    struct wiener3d_arlistnode *node;
-    node=par.headnode;
-    while(1)
-    {
-        if(node->listindex==knode)
-        {
-            node->arcxfmat_narnf.col(kf)=filter_onecol.col(0);
-            break;
-        }
-        else if(node==NULL)
-        {
-            cout<<"Error in Arlistnode_addfilter!"<<endl;
-            break;
-        }
-        else
-        {
-            node=node->next;
-        }
-    }
-}
-
-void wiener3d_arlistnode_getfilter(cx_fmat & filter_onecol, struct wiener3d & par,\
-    int kf, int knode)
-{
-    struct wiener3d_arlistnode *node;
-    node=par.headnode;
-    while(1)
-    {
-        if(node->listindex==knode)
-        {
-            filter_onecol.col(0)=node->arcxfmat_narnf.col(kf);
-            break;
-        }
-        else if(node==NULL)
-        {
-            cout<<"Error in Arlistnode_getfilter!"<<endl;
-            break;
-        }
-        else
-        {
-            node=node->next;
-        }
-    }
-}
 
 //设置一组常用的初始化参数
 //Mat(nx,ny,nz); Mat(nx,ny,nf)
 void wiener3d_parset(int nx, int ny, int nz,\
     struct wiener3d & par)
 {
+    par.agcwx=2,par.agcwy=2,par.agcwz=5;
+    par.normal_bool=false,par.normal_con=1.0;
+    par.use_way=1;
     par.nx=nx,par.ny=ny,par.nz=nz;
     par.dx=10,par.dy=10,par.dz=0.001;
     par.dig_n=0.001;par.dig_n2=0.00;
@@ -140,16 +53,11 @@ void wiener3d_parset(int nx, int ny, int nz,\
     if(par.nwx>21){par.nwx=21;}
     if(par.nwy>21){par.nwy=21;}
     if(par.narx>5){par.narx=5;}
-    if(par.nary>5){par.nary=5;}
+    if(par.nary>3){par.nary=3;}
     par.nmovex=par.nwx;par.nmovey=par.nwy;
     par.covermax=1;
-    //par.datafx.zeros(par.nx,par.ny,par.nf);
-    par.data.zeros(par.nx,par.ny,par.nz);
-    //par.rebuildfx.zeros(par.nx,par.ny,par.nf);
-    par.rebuildtx.zeros(par.nx,par.ny,par.nz);
-    par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
     par.ncpu=1;par.nf=1;
-    par.df=1.0/par.dz/par.nf;
+    //par.df=1.0/par.dz/par.nf;
     par.halfnarx=int(par.narx/2);
     par.narx=2*par.halfnarx+1;
     par.halfnary=int(par.nary/2);
@@ -166,25 +74,105 @@ void wiener3d_parset(int nx, int ny, int nz,\
         cout<<"error in wiener3d: find {nx < ny};\
          the data size {nx should >= ny}"<<endl;
     }
-    par.headnode=NULL,par.lastnode=NULL;
-    par.addnewnode=NULL;par.use_anti_alias=false;
+    par.use_anti_alias=false;
+    //par.datafx.zeros(par.nx,par.ny,par.nf);
+    par.data.zeros(par.nx,par.ny,par.nz);
+    par.dataagc.zeros(par.nx,par.ny,par.nz);
+    par.dataagc.fill(1.0);
+    //par.rebuildfx.zeros(par.nx,par.ny,par.nf);
+    par.rebuildtx.zeros(par.nx,par.ny,par.nz);
+    par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
 }
 
 void wiener3d_parupdate(struct wiener3d & par)
 {
-    par.df=1.0/par.dz/par.nf;
     par.halfnarx=int(par.narx/2);
     par.narx=2*par.halfnarx+1;
     par.halfnary=int(par.nary/2);
     par.nary=2*par.halfnary+1;
+    par.data.zeros(par.nx,par.ny,par.nz);
+    par.dataagc.zeros(par.nx,par.ny,par.nz);
+    par.dataagc.fill(1.0);
+    //par.rebuildfx.zeros(par.nx,par.ny,par.nf);
+    par.rebuildtx.zeros(par.nx,par.ny,par.nz);
+    par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
     par.datafx.zeros(par.nx,par.ny,par.nf);
     par.rebuildfx.zeros(par.nx,par.ny,par.nf);
+    if(par.ncpu>par.nx)
+    {
+        par.ncpu=par.nx;
+    }
 }
 
 void wiener3d_cleardata(struct wiener3d & par)
 {
     par.datafx.zeros(par.nx,par.ny,par.nf);
     par.rebuildfx.zeros(par.nx,par.ny,par.nf);
+}
+
+//void getagc_wiener3d_thread(struct wiener3d & par)
+void getagc_wiener3d(struct wiener3d & par)
+{
+    int i,j,k,i1,j1,k1;
+    float agcpow;
+    for(i=par.agcwx;i<par.nx-par.agcwx;i++)
+    {
+    for(j=par.agcwy;j<par.ny-par.agcwy;j++)
+    {
+    for(k=par.agcwz;k<par.nz-par.agcwz;k++)
+    {
+        agcpow=0;
+        for(i1=-par.agcwx;i1<=par.agcwx;i1++)
+        {
+        for(j1=-par.agcwy;j1<=par.agcwy;j1++)
+        {
+        for(k1=-par.agcwz;k1<=par.agcwz;k1++)
+        {
+            agcpow+=abs(par.data(i+i1,j+j1,k+k1));
+        }}}
+        par.dataagc(i,j,k)=agcpow;
+        agcpow=0;
+    }}}
+    for(i=0;i<par.agcwx;i++)
+    {
+        par.dataagc.row(i)=par.dataagc.row(par.agcwx);
+        par.dataagc.row(par.nx-1-i)=par.dataagc.row(par.nx-1-par.agcwx);
+    }
+    for(i=0;i<par.agcwy;i++)
+    {
+        par.dataagc.col(i)=par.dataagc.col(par.agcwy);
+        par.dataagc.col(par.ny-1-i)=par.dataagc.col(par.ny-1-par.agcwy);
+    }
+    for(i=0;i<par.agcwz;i++)
+    {
+        par.dataagc.slice(i)=par.dataagc.slice(par.agcwz);
+        par.dataagc.slice(par.nz-1-i)=par.dataagc.slice(par.nz-1-par.agcwz);
+    }
+    par.dataagc=par.dataagc/(par.dataagc.max()-par.dataagc.min());
+    cout<<par.dataagc.max()<<"|"<<par.dataagc.min()<<endl;
+    par.dataagc=par.dataagc+0.001*(par.dataagc.max()-par.dataagc.min());
+    par.dataagc=1.0/par.dataagc;
+    for(i=0;i<par.nx;i++)
+    {
+    for(j=0;j<par.ny;j++)
+    {
+    for(k=0;k<par.nz;k++)
+    {
+        par.data(i,j,k)=par.dataagc(i,j,k)*par.data(i,j,k);
+    }}}
+}
+void deagc_wiener3d(struct wiener3d & par)
+{
+    int i,j,k;
+    for(i=0;i<par.nx;i++)
+    {
+    for(j=0;j<par.ny;j++)
+    {
+    for(k=0;k<par.nz;k++)
+    {
+    par.realrebuildtx(i,j,k)=par.realrebuildtx(i,j,k)/par.dataagc(i,j,k);
+    par.data(i,j,k)=par.data(i,j,k)/par.dataagc(i,j,k);
+    }}}
 }
 
 void tx_to_fx3d_wiener3d(struct wiener3d & par)
@@ -324,7 +312,7 @@ void filter_yboundary(int kwinx, int kf,\
 void filter_xpoint(int kf,\
     struct wiener3d & par, fmat & weightmat);
 //////////////////////////////////////////////
-void wiener3d_mid(struct wiener3d & par, bool createnode=false)
+void wiener3d_mid(struct wiener3d & par, int midnumcpu=1)
 {
     struct wiener3d * ppar;
     ppar=&par;
@@ -341,30 +329,18 @@ void wiener3d_mid(struct wiener3d & par, bool createnode=false)
 
     int kwinx,kwiny,kf,kout(0);
     ofstream outfarreal,outfarimag,outfr;
-    outfr.open("ar.r.bin");
-    outfarreal.open("ar.real.bin");
-    outfarimag.open("ar.imag.bin");
+
     for(kf=par.nf1;kf<par.nf2;kf++)
     {
         ar_weight.fill(0.0);kout=0;
-        cout<<"now is run kf = "<<kf<<endl;
+        //cout<<"now is run kf = "<<kf<<endl;
         for(kwinx=halfarx;kwinx<nx-halfarx-nwx;kwinx+=movex)
         { 
             for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
             {
-                if(kf==par.nf1 && createnode)
-                {
-                    cout<<createnode;
-                    wiener3d_arlistnode_addnode(ppar[0],nf,nar,kout);
-                }
                 filter_mid(kwinx,kwiny,kf,ppar[0],ar_weight,\
                     outfarreal,outfarimag,outfr,kout);
                 //filter_forword_back(kwinx,kwiny,kf,ppar[0],ar_weight);
-            }
-            if(kf==par.nf1 && createnode)
-            {
-                cout<<createnode;
-                wiener3d_arlistnode_addnode(ppar[0],nf,nar,kout);
             }
             filter_mid(kwinx,ny-halfary-nwy,kf,ppar[0],ar_weight,\
                 outfarreal,outfarimag,outfr,kout);
@@ -372,19 +348,9 @@ void wiener3d_mid(struct wiener3d & par, bool createnode=false)
         }
         for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
         {
-            if(kf==par.nf1 && createnode)
-            {
-                cout<<createnode;
-                wiener3d_arlistnode_addnode(ppar[0],nf,nar,kout);
-            }
             filter_mid(nx-halfarx-nwx,kwiny,kf,ppar[0],ar_weight,\
                 outfarreal,outfarimag,outfr,kout);
             //filter_forword_back(nx-halfarx-nwx,kwiny,kf,ppar[0],ar_weight);
-        }
-        if(kf==par.nf1 && createnode)
-        {
-            cout<<createnode;
-            wiener3d_arlistnode_addnode(ppar[0],nf,nar,kout);
         }
         filter_mid(nx-halfarx-nwx,ny-halfary-nwy,kf,ppar[0],ar_weight,\
             outfarreal,outfarimag,outfr,kout);
@@ -414,9 +380,7 @@ void wiener3d_mid(struct wiener3d & par, bool createnode=false)
         }
         }
     }
-    outfarimag.close(); 
-    outfarreal.close();
-    outfr.close();
+
     //fx_to_tx3d_wiener3d(ppar[0]);
     fx_to_tx3d_wiener3d_thread(ppar[0]);
 }
@@ -475,37 +439,8 @@ void filter_mid(int kwinx, int kwiny, int kf,\
     cx_float cx_dig_n;
     cx_dig_n.real(1);
     cx_dig_n.imag(1);
-    if(par.use_anti_alias && kf>1)
-    {
-        cout<<par.use_anti_alias<<outar_flag;
-        wiener3d_arlistnode_getfilter(filter_A,ppar[0],int(kf)-1,outar_flag);
-        for(i=0;i<nar;i++)
-        {
-
-        }
-        //if(kf<80)
-        //cout<<abs((filter_A).t()*filter_A);
-        filter_A=filter_A+inv(R+digw+digw2)*hankel_D.t()*(ar_S-hankel_D*filter_A);
-        //wiener3d_arlistnode_addfilter(ppar[0],filter_A,kf,outar_flag);
-        //filter_A=inv(R+digw)*(digw*filter_A-hankel_D.t()*ar_S);
-        //filter_A=inv(R+digw+digw2)*hankel_D.t()*ar_S;
-        wiener3d_arlistnode_addfilter(ppar[0],filter_A,kf,outar_flag);
-    }
-    else
-    {
-        //filter_A=inv(R+digw+digw2)*hankel_D.t()*ar_S;        
-        filter_A=solvecxfmat((R+digw+digw2),hankel_D.t()*ar_S,nar);        
-        //filter_A=invcxfmat(R+digw+digw2,nar)*hankel_D.t()*ar_S;
-    }
-
-    if(outar_flag==0)
-    {
-        ardata=real(filter_A);
-        datawrite(ardata,nar,1,outfarreal);
-        ardata=imag(filter_A);
-        datawrite(ardata,nar,1,outfarimag);
-        datawrite(realR=real(R),nar,nar,outfarr);
-    }
+    
+    filter_A=inv(R+digw+digw2)*hankel_D.t()*ar_S;
     //filter_A=solve(R+digw,hankel_D.t()*ar_S);
     ar_S=hankel_D*filter_A;
     kw=0;
@@ -521,7 +456,6 @@ void filter_mid(int kwinx, int kwiny, int kf,\
         kw++;
     }
     }
-    outar_flag++;
 }
 
 void filter_forword_back(int kwinx, int kwiny, int kf,\
@@ -661,8 +595,10 @@ void filter_xpoint(int kf,\
     Rf=hankel_Df.t()*hankel_Df;
     float dig_nf(dig_n*max(max(abs(Rf))));
     digwf=digwf*dig_nf;
-    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=nx-nwx;i<nx;i++)
@@ -706,8 +642,10 @@ void filter_xpoint(int kf,\
     digwf.fill(0.0);
     digwf.diag()+=1;
     digwf=digwf*dig_nf;
-    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=nx-nwx;i<nx;i++)
@@ -751,8 +689,10 @@ void filter_xpoint(int kf,\
     digwf.fill(0.0);
     digwf.diag()+=1;
     digwf=digwf*dig_nf;
-    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=0;i<nwx;i++)
@@ -796,8 +736,10 @@ void filter_xpoint(int kf,\
     digwf.fill(0.0);
     digwf.diag()+=1;
     digwf=digwf*dig_nf;
-    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=0;i<nwx;i++)
@@ -881,8 +823,10 @@ void filter_xboundary(int kwiny, int kf,\
     Rf=hankel_Df.t()*hankel_Df;
     float dig_nf(dig_n*max(max(abs(Rf))));
     digwf=digwf*dig_nf;
-    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+     
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=nx-nwx;i<nx;i++)
@@ -902,8 +846,10 @@ void filter_xboundary(int kwiny, int kf,\
     Rb=hankel_Db.t()*hankel_Db;
     float dig_nb(dig_n*max(max(abs(Rb))));
     digwb=digwb*dig_nb;
-    filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
+    //filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
     //filter_Ab=solve(Rb+digwb,hankel_Db.t()*ar_Sb);
+    filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
+
     ar_Sb=hankel_Db*filter_Ab;
     kw=0;
     for(i=0;i<nwx;i++)
@@ -987,8 +933,10 @@ void filter_yboundary(int kwinx, int kf,\
     Rf=hankel_Df.t()*hankel_Df;
     float dig_nf(dig_n*max(max(abs(Rf))));
     digwf=digwf*dig_nf;
-    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=kwinx;i<kwinx+nwx;i++)
@@ -1008,8 +956,10 @@ void filter_yboundary(int kwinx, int kf,\
     Rb=hankel_Db.t()*hankel_Db;
     float dig_nb(dig_n*max(max(abs(Rb))));
     digwb=digwb*dig_nb;
-    filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
+    //filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
     //filter_Ab=solve(Rb+digwb,hankel_Db.t()*ar_Sb);
+    filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
+
     ar_Sb=hankel_Db*filter_Ab;
     kw=0;
     for(i=kwinx;i<kwinx+nwx;i++)
@@ -1075,7 +1025,7 @@ void wiener3d_mid_pthread(struct wiener3d * par, int pnf1, int pnf2,\
     for(kf=pnf1;kf<pnf2;kf++)  
     {
         ar_weight.fill(0.0);kout=0;
-        cout<<"now is run kf = "<<kf<<endl;
+        //cout<<"now is run kf = "<<kf<<endl;
         for(kwinx=halfarx;kwinx<nx-halfarx-nwx;kwinx+=movex)
         {
             for(kwiny=halfary;kwiny<ny-halfary-nwy;kwiny+=movey)
@@ -1126,14 +1076,17 @@ void wiener3d_mid_pthread(struct wiener3d * par, int pnf1, int pnf2,\
     }
 }
 
-void wiener3d_mid_thread(struct wiener3d & par, int numi=25, int mini=9)
-{
+void wiener3d_mid_thread(struct wiener3d & par,int midnumcpu, int numi=25, int mini=9)
+{ 
     struct wiener3d * ppar;
     struct wienerCG3d cg;
     ppar=&par;
-    wienerGC3d_parset(ppar[0],cg,numi,mini);
+    //getagc_wiener3d(ppar[0]);
     tx_to_fx3d_wiener3d_thread(ppar[0]);
+    int ncpuout=par.ncpu;
+    par.ncpu=midnumcpu;
 
+    wienerGC3d_parset(ppar[0],cg,numi,mini);
     int numf(par.nf2-par.nf1);
     int pn(par.ncpu),pnf1,pnf2,k,kf;
     float dnf;
@@ -1143,9 +1096,7 @@ void wiener3d_mid_thread(struct wiener3d & par, int numi=25, int mini=9)
     
 //Use for test, and ncpu=1 should be obey//
     ofstream outfarreal,outfarimag,outfr;
-    outfr.open("ar.r.bin");
-    outfarreal.open("ar.real.bin");
-    outfarimag.open("ar.imag.bin");
+
 ///////////////////////////////////////////
 
     for(k=0;k<pn-1;k++)
@@ -1166,7 +1117,9 @@ void wiener3d_mid_thread(struct wiener3d & par, int numi=25, int mini=9)
         pcal[k].join();
     }
 
+    par.ncpu=ncpuout;
     fx_to_tx3d_wiener3d_thread(ppar[0]);
+    deagc_wiener3d(ppar[0]);
 }
  
 /////////////////////////////////////////////////////////////////////////////
@@ -1321,28 +1274,30 @@ void filter_mid(int kwinx, int kwiny, int kf,\
     //dig_n=dig_n*(trace(abs(R)))/nar;
     dig_n=dig_n*max(max(abs(R)));
     digw=digw*dig_n;
-
+ 
     //filter_A=inv(R+digw+digw2)*hankel_D.t()*ar_S;
     //void wienerGC3d_getfilter(cx_fmat & X, cx_fmat A, cx_fmat B, \
     struct wienerCG3d & cg, int kcpu)
+    if(par.use_way==1)
+    {
+        filter_A=inv(R+digw+digw2)*hankel_D.t()*ar_S;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_A.zeros(nar,1),pcg=&cg;
     wienerGC3d_getfilter(filter_A, R+digw+digw2,\
         hankel_D.t()*ar_S, pcg[0], kcpu);
     }
-
-    if(outar_flag==3)
+    else if(par.use_way==3)
     {
-        outar_flag++;
-        ardata=real(filter_A);
-        datawrite(ardata,nar,1,outfarreal);
-        ardata=imag(filter_A);
-        datawrite(ardata,nar,1,outfarimag);
-        ardata=abs(filter_A);
-        datawrite(ardata,nar,1,outfarr);
-        cout<<"nar = "<<nar<<endl;
+        filter_A=solvecxfmat((R+digw+digw2),hankel_D.t()*ar_S,nar);
     }
+    else if(par.use_way==4)
+    {
+        filter_A=invcxfmat(R+digw+digw2,nar)*hankel_D.t()*ar_S;
+    }
+
     //filter_A=solve(R+digw,hankel_D.t()*ar_S);
     ar_S=hankel_D*filter_A;
     kw=0;
@@ -1429,11 +1384,26 @@ void filter_xboundary(int kwiny, int kf,\
     digwf=digwf*dig_nf;
     //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    if(par.use_way==1)
+    {
+        filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_Af.zeros(narf,1),pcg=&cg;
     wienerGC3d_getfilter(filter_Af, Rf+digwf+digw2f,\
         hankel_Df.t()*ar_Sf, pcg[0], kcpu);
+    }
+    else if(par.use_way==3)
+    {
+        filter_Af=solvecxfmat((Rf+digwf+digw2f),\
+            hankel_Df.t()*ar_Sf,narf);
+    }
+    else if(par.use_way==4)
+    {
+        filter_Af=invcxfmat(Rf+digwf+digw2f,narf)\
+            *hankel_Df.t()*ar_Sf;
     }
 
     ar_Sf=hankel_Df*filter_Af;
@@ -1457,12 +1427,28 @@ void filter_xboundary(int kwiny, int kf,\
     digwb=digwb*dig_nb;
     //filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
     //filter_Ab=solve(Rb+digwb,hankel_Db.t()*ar_Sb);
+    if(par.use_way==1)
+    {
+        filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_Ab.zeros(narb,1),pcg=&cg;
     wienerGC3d_getfilter(filter_Ab, Rb+digwb+digw2b,\
         hankel_Db.t()*ar_Sb, pcg[0], kcpu);
     }
+    else if(par.use_way==3)
+    {
+        filter_Ab=solvecxfmat((Rb+digwb+digw2b),\
+            hankel_Db.t()*ar_Sb,narb);
+    }
+    else if(par.use_way==4)
+    {
+        filter_Ab=invcxfmat(Rb+digwb+digw2b,narb)\
+            *hankel_Db.t()*ar_Sb;
+    }
+
     ar_Sb=hankel_Db*filter_Ab;
     kw=0;
     for(i=0;i<nwx;i++)
@@ -1549,12 +1535,28 @@ void filter_yboundary(int kwinx, int kf,\
     digwf=digwf*dig_nf;
     //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    if(par.use_way==1)
+    {
+        filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_Af.zeros(narf,1),pcg=&cg;
     wienerGC3d_getfilter(filter_Af, Rf+digwf+digw2f,\
         hankel_Df.t()*ar_Sf, pcg[0], kcpu);
     }
+    else if(par.use_way==3)
+    {
+        filter_Af=solvecxfmat((Rf+digwf+digw2f),\
+            hankel_Df.t()*ar_Sf,narf);
+    }
+    else if(par.use_way==4)
+    {
+        filter_Af=invcxfmat(Rf+digwf+digw2f,narf)\
+            *hankel_Df.t()*ar_Sf;
+    }
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=kwinx;i<kwinx+nwx;i++)
@@ -1576,12 +1578,28 @@ void filter_yboundary(int kwinx, int kf,\
     digwb=digwb*dig_nb;
     //filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
     //filter_Ab=solve(Rb+digwb,hankel_Db.t()*ar_Sb);
+    if(par.use_way==1)
+    {
+        filter_Ab=inv(Rb+digwb+digw2b)*hankel_Db.t()*ar_Sb;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_Ab.zeros(narb,1),pcg=&cg;
     wienerGC3d_getfilter(filter_Ab, Rb+digwb+digw2b,\
         hankel_Db.t()*ar_Sb, pcg[0], kcpu);
     }
+    else if(par.use_way==3)
+    {
+        filter_Ab=solvecxfmat((Rb+digwb+digw2b),\
+            hankel_Db.t()*ar_Sb,narb);
+    }
+    else if(par.use_way==4)
+    {
+        filter_Ab=invcxfmat(Rb+digwb+digw2b,narb)\
+            *hankel_Db.t()*ar_Sb;
+    }
+
     ar_Sb=hankel_Db*filter_Ab;
     kw=0;
     for(i=kwinx;i<kwinx+nwx;i++)
@@ -1646,11 +1664,26 @@ void filter_xpoint(int kf,\
     digwf=digwf*dig_nf;
     //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    if(par.use_way==1)
+    {
+        filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_Af.zeros(narf,1),pcg=&cg;
     wienerGC3d_getfilter(filter_Af, Rf+digwf+digw2f,\
         hankel_Df.t()*ar_Sf, pcg[0], kcpu);
+    }
+    else if(par.use_way==3)
+    {
+        filter_Af=solvecxfmat((Rf+digwf+digw2f),\
+            hankel_Df.t()*ar_Sf,narf);
+    }
+    else if(par.use_way==4)
+    {
+        filter_Af=invcxfmat(Rf+digwf+digw2f,narf)\
+            *hankel_Df.t()*ar_Sf;
     }
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
@@ -1697,12 +1730,28 @@ void filter_xpoint(int kf,\
     digwf=digwf*dig_nf;
     //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    if(par.use_way==1)
+    {
+        filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_Af.zeros(narf,1),pcg=&cg;
     wienerGC3d_getfilter(filter_Af, Rf+digwf+digw2f,\
         hankel_Df.t()*ar_Sf, pcg[0], kcpu);
     }
+    else if(par.use_way==3)
+    {
+        filter_Af=solvecxfmat((Rf+digwf+digw2f),\
+            hankel_Df.t()*ar_Sf,narf);
+    }
+    else if(par.use_way==4)
+    {
+        filter_Af=invcxfmat(Rf+digwf+digw2f,narf)\
+            *hankel_Df.t()*ar_Sf;
+    }
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=nx-nwx;i<nx;i++)
@@ -1748,12 +1797,28 @@ void filter_xpoint(int kf,\
     digwf=digwf*dig_nf;
     //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    if(par.use_way==1)
+    {
+        filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_Af.zeros(narf,1),pcg=&cg;
     wienerGC3d_getfilter(filter_Af, Rf+digwf+digw2f,\
         hankel_Df.t()*ar_Sf, pcg[0], kcpu);
     }
+    else if(par.use_way==3)
+    {
+        filter_Af=solvecxfmat((Rf+digwf+digw2f),\
+            hankel_Df.t()*ar_Sf,narf);
+    }
+    else if(par.use_way==4)
+    {
+        filter_Af=invcxfmat(Rf+digwf+digw2f,narf)\
+            *hankel_Df.t()*ar_Sf;
+    }
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=0;i<nwx;i++)
@@ -1799,12 +1864,28 @@ void filter_xpoint(int kf,\
     digwf=digwf*dig_nf;
     //filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
     //filter_Af=solve(Rf+digwf,hankel_Df.t()*ar_Sf);
+    if(par.use_way==1)
+    {
+        filter_Af=inv(Rf+digwf+digw2f)*hankel_Df.t()*ar_Sf;
+    }
+    else if(par.use_way==2)
     {
     struct wienerCG3d * pcg;
     filter_Af.zeros(narf,1),pcg=&cg;
     wienerGC3d_getfilter(filter_Af, Rf+digwf+digw2f,\
         hankel_Df.t()*ar_Sf, pcg[0], kcpu);
     }
+    else if(par.use_way==3)
+    {
+        filter_Af=solvecxfmat((Rf+digwf+digw2f),\
+            hankel_Df.t()*ar_Sf,narf);
+    }
+    else if(par.use_way==4)
+    {
+        filter_Af=invcxfmat(Rf+digwf+digw2f,narf)\
+            *hankel_Df.t()*ar_Sf;
+    }
+
     ar_Sf=hankel_Df*filter_Af;
     kw=0;
     for(i=0;i<nwx;i++)
@@ -1822,92 +1903,6 @@ void filter_xpoint(int kf,\
     }
 }
 
-fmat gethankel(fmat &mat1)
-{
-    int n1(mat1.n_rows),n2(mat1.n_cols),N;
-    fmat mat2;
-    if(n1>n2)
-    {
-        mat2,zeros(n2,n1);
-        mat2=mat1.st();
-        N=int((n1+1)/2);
-    }
-    if(n2>n1)
-    {
-        mat2.zeros(n1,n2);
-        mat2=mat1;
-        N=int((n2+1)/2);
-    }
-    if(n2==n1)
-    {
-        cout<<"Error in get Hankel_fmat!"<<endl;
-    }
-
-    fmat hankel(N,N);
-    int i,j;
-    for(i=0;i<N;i++)
-    {
-        for(j=0;j<N;j++)
-        {
-            hankel(i,j)=mat2(0,i+j);
-        }
-    }
-    return hankel;
-}
-cx_fmat gethankel(cx_fmat &mat1)
-{
-    int n1(mat1.n_rows),n2(mat1.n_cols);
-    fmat imat(n1,n2),rmat(n1,n2);
-    imat=imag(mat1);
-    rmat=real(mat1);
-    cx_fmat hankel;
-    hankel.set_imag(gethankel(imat));
-    hankel.set_real(gethankel(rmat));
-    return hankel;
-}
-
-fmat ihankelmat(fmat &hankel)
-{
-    int n1(hankel.n_rows),n2(hankel.n_cols),N(n1);
-    if(n1!=n2)
-    {
-        cout<<"Error in ihankel_fmat!"<<endl;
-    }
-    int nh(2*N-1);
-    fmat ihankel(1,nh);
-
-    float realavg;
-    int i,j,k,n,k2(0);
-    for(k=0;k<nh;k++)
-    {
-        realavg=0.0;
-        n=0;
-        for(i=0;i<=k;i++)
-        {
-            j=k-i;
-            if(i<N && j<N)
-            {
-                realavg=realavg+(hankel(i,j));
-                n=n+1;
-            }
-        }
-        realavg=realavg/n;
-        ihankel(k2,k)=(realavg);
-    }
-    return ihankel;
-}
-cx_fmat ihankelmat(cx_fmat &hankel)
-{
-    int n1(hankel.n_rows),n2(hankel.n_cols),N(n1);
-    fmat imat(n1,n2),rmat(n1,n2);
-    imat=imag(hankel);
-    rmat=real(hankel);
-    cx_fmat ihankel;
-    ihankel.set_imag(ihankelmat(imat));
-    ihankel.set_real(ihankelmat(rmat));
-    return ihankel;
-}
-
 inline cx_fmat invcxfmat(cx_fmat mat1, int n)
 {
     fmat matA(n,n), matB(n,n);
@@ -1916,8 +1911,6 @@ inline cx_fmat invcxfmat(cx_fmat mat1, int n)
     matB=imag(mat1);
     matAinv=invfmat(matA,n);
     matABinv=invfmat(matA+matB*matAinv*matB,n);
-    //matAinv=inv(matA);
-    //matABinv=inv(matA+matB*matAinv*matB);
 
     cx_fmat mat2(n,n);
     mat2.set_real(matABinv);

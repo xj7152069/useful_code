@@ -1,8 +1,22 @@
-psimage<image.kirchhoffpsdm.la2.bin \
-n1=300 wbox=4 hbox=3 legend=1 f1=0 d1=10 f2=0 d2=10 \
-lstyle=vertright lwidth=0.2 lheight=3 \
-label1='m' label2='m' bclip=0.001 wclip=-0.001 x1beg=500 x1end=3000 \
-threecolor=1 bps=24 \
- >image.kirchhoffpsdm.la2.eps
+filename="tp.3.ls.0.000001.bin"
+epsname="${filename}.eps"
+#figure="pswigb"
+figure="psimage"
+
+$figure< $filename \
+n1=1024 wbox=20 hbox=30 \
+legend=0 f1=-0 d1=0.001 f2=-0.0000995 d2=0.000001 \
+x1beg=0 x1end=1 \
+x2beg=-0.000051 x2end=0.000051 \
+label1='Time(s)' label2='p(s/m)' \
+labelsize=70 \
+bclip=0.00268943 wclip=-0.001421>$epsname
+#x2beg=0 x2end=1000\
+#x2beg= x2end=\
+#bclip=1.24932 wclip=-0.606472\
+#lstyle=vertright lwidth=0.2 lheight=3 \
+#bclip=0.001 wclip=-0.001 x1beg=500 x1end=3000 \
+#threecolor=1 bps=24 \
+
 
 #red white blue: wrgb=0,0,1.0 grgb=1.0,1.0,1.0 brgb=1.0,0,0
