@@ -36,21 +36,23 @@ struct elastic_wave_data
 {
     float **vxx=NULL, **vxy=NULL, **vyx=NULL, **vyy=NULL; //PML boundary
     float **vxx2=NULL, **vxy2=NULL, **vyx2=NULL, **vyy2=NULL; //PML boundary
+    float **vxx3=NULL, **vxy3=NULL, **vyx3=NULL, **vyy3=NULL; //PML boundary
     float **txx=NULL, **txy=NULL, **tyy=NULL; //PML boundary
     float **txxx=NULL, **txyx=NULL, **tyyx=NULL; //PML boundary
     float **txxy=NULL, **txyy=NULL, **tyyy=NULL; //PML boundary
     float **txxx2=NULL, **txyx2=NULL, **tyyx2=NULL; //PML boundary
     float **txxy2=NULL, **txyy2=NULL, **tyyy2=NULL; //PML boundary
-    float **vpx12=NULL, **vpx1=NULL;
-    float **vpx22=NULL, **vpx2=NULL;
-    float **vpy12=NULL, **vpy1=NULL;
-    float **vpy22=NULL, **vpy2=NULL;
+    float **vpx13=NULL,**vpx12=NULL, **vpx1=NULL;
+    float **vpx23=NULL,**vpx22=NULL, **vpx2=NULL;
+    float **vpy13=NULL,**vpy12=NULL, **vpy1=NULL;
+    float **vpy23=NULL,**vpy22=NULL, **vpy2=NULL;
     float **vsy=NULL, **vsx=NULL;
     float **vpy=NULL, **vpx=NULL;
-};
 
+};
+ 
 class elastic2D
-{
+{ 
 private:
 //����ƫ΢����ɢ���ϵ��
     //float xs2[5]={1.666667/1.463612\
@@ -60,25 +62,32 @@ private:
 //һ��ƫ΢����ɢ���ϵ��
     float xs1[10]={-7.93651154E-04,9.92063992E-03,-5.95238246E-02,0.238095269,-0.833333373,\
 0.833333373,-0.238095269,5.95238246E-02,-9.92063992E-03,7.93651154E-04};
-    void cal(float** ut2 ,float **ut1,float **u, float **m,const char & label);
-    void calx(float** ut2 ,float **ut1,float **u, float **m,int jc);
-    void caly(float** ut2 ,float **ut1,float **u, float **m,int jc);
+    void calx(float** ut2 ,float** ut1,float **u, float **m,int jc);
+    void caly(float** ut2 ,float** ut1,float **u, float **m,int jc);
+    void calx0(float** ut,float** u, float **m,int jc);
+    void caly0(float** ut,float** u, float **m,int jc);
+    void calx2pml(float** ut ,float **u, float **m,int jc);
+    void caly2pml(float** ut ,float **u, float **m,int jc);
+    void calx2(float** ut2 ,float** ut1 ,float **ut0,float **u, float **m,int jc);
+    void caly2(float** ut2 ,float** ut1 ,float **ut0,float **u, float **m,int jc);
 
 public:
     elastic_wave_data data;
     float **vp=NULL,**vs=NULL,**lmd=NULL,**uz=NULL,**ux=NULL,\
         **ro1=NULL,**miu=NULL,**ro=NULL,**mo=NULL,**mo1=NULL,\
+        **up=NULL,\
         **Txy=NULL,**Tyy=NULL,**Txx=NULL,vp1,vs1,roo; //velocity model
     float dx,dy,dt,R,dt2,t3,t5,C_X,C_Y;
-    int nx,ny,suface,PML_wide;
+    int nx,ny,suface,PML_wide,Zsiteofseasuface;
     
     elastic2D();
     elastic2D(int x, int y);
     ~elastic2D();
 
     //void timeslicecal(int restart=0);
-    void timeslicecal_u();
     void timeslicecal_T();
+    void timeslicecal_V();
+    void timeslicecal_U();
     void cleardata();
     void updatepar();
 };
@@ -89,7 +98,7 @@ elastic2D::elastic2D()
     nx=0;ny=0;
     dx=5.0;dy=5.0;dt=0.0005;
     dt2=dt;
-    PML_wide=50;suface=1;R=20;
+    PML_wide=40;suface=1;R=25;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
@@ -97,10 +106,10 @@ elastic2D::elastic2D(int z, int x)
 {
     nx=x;ny=z;t3=1;
     dx=5.0;dy=5.0;dt=0.0005;dt2=dt;
-    PML_wide=50;suface=1;R=20;
+    PML_wide=40;suface=1;R=25;
     vp1=3000,vs1=2000,roo=2000;
-    C_Y=(R)*3/2/(PML_wide-8)/(PML_wide-8)/(PML_wide-8)/dy/dy/dy;
-    C_X=(R)*3/2/(PML_wide-8)/(PML_wide-8)/(PML_wide-8)/dx/dx/dx;
+    C_Y=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
+    C_X=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/dx/dx/dx;
     
     data.txx=newfmatcs(ny,nx,0.0),data.txxx2=newfmatcs(ny,nx,0.0),data.txxx=newfmatcs(ny,nx,0.0),\
     data.txxy2=newfmatcs(ny,nx,0.0),data.txxy=newfmatcs(ny,nx,0.0),data.txy=newfmatcs(ny,nx,0.0),\
@@ -109,18 +118,21 @@ elastic2D::elastic2D(int z, int x)
     data.tyyx=newfmatcs(ny,nx,0.0),data.tyyy2=newfmatcs(ny,nx,0.0),data.tyyy=newfmatcs(ny,nx,0.0),\
     data.vxx2=newfmatcs(ny,nx,0.0),data.vxx=newfmatcs(ny,nx,0.0),data.vxy2=newfmatcs(ny,nx,0.0),\
     data.vxy=newfmatcs(ny,nx,0.0),data.vyx2=newfmatcs(ny,nx,0.0),data.vyx=newfmatcs(ny,nx,0.0),\
+    data.vxx3=newfmatcs(ny,nx,0.0),data.vxy3=newfmatcs(ny,nx,0.0),\
+    data.vyx3=newfmatcs(ny,nx,0.0),data.vyy3=newfmatcs(ny,nx,0.0),\
     data.vyy2=newfmatcs(ny,nx,0.0),data.vyy=newfmatcs(ny,nx,0.0);
-    data.vpx12=newfmatcs(ny,nx,0.0),data.vpx1=newfmatcs(ny,nx,0.0);
-    data.vpx22=newfmatcs(ny,nx,0.0),data.vpx2=newfmatcs(ny,nx,0.0);
-    data.vpy12=newfmatcs(ny,nx,0.0),data.vpy1=newfmatcs(ny,nx,0.0);
-    data.vpy22=newfmatcs(ny,nx,0.0),data.vpy2=newfmatcs(ny,nx,0.0);
+    data.vpx13=newfmatcs(ny,nx,0.0),data.vpx12=newfmatcs(ny,nx,0.0),data.vpx1=newfmatcs(ny,nx,0.0);
+    data.vpx23=newfmatcs(ny,nx,0.0),data.vpx22=newfmatcs(ny,nx,0.0),data.vpx2=newfmatcs(ny,nx,0.0);
+    data.vpy13=newfmatcs(ny,nx,0.0),data.vpy12=newfmatcs(ny,nx,0.0),data.vpy1=newfmatcs(ny,nx,0.0);
+    data.vpy23=newfmatcs(ny,nx,0.0),data.vpy22=newfmatcs(ny,nx,0.0),data.vpy2=newfmatcs(ny,nx,0.0);
     data.vsy=newfmatcs(ny,nx,0.0),data.vsx=newfmatcs(ny,nx,0.0);
     data.vpy=newfmatcs(ny,nx,0.0),data.vpx=newfmatcs(ny,nx,0.0);
+//pure-pressure modeling
 
     vs=newfmatcs(ny,nx,vs1),vp=newfmatcs(ny,nx,vp1),ro=newfmatcs(ny,nx,roo);
     miu=newfmatcs(ny,nx,vs1*vs1*roo),lmd=newfmatcs(ny,nx,(vp1*vp1*roo-2*vs1*vs1*roo));
     mo=newfmatcs(ny,nx,vp1*vp1*roo),ro1=newfmatcs(ny,nx,1.0/roo); 
-    ux=newfmatcs(ny,nx,0.0),uz=newfmatcs(ny,nx,0.0);
+    ux=newfmatcs(ny,nx,0.0),uz=newfmatcs(ny,nx,0.0),up=newfmatcs(ny,nx,0.0);
     mo1=newfmatcs(ny,nx,(lmd[0][0]+2*miu[0][0])/(2*lmd[0][0]+2*miu[0][0])/ro[0][0]); 
     Txx=newfmatcs(ny,nx,0.0),Tyy=newfmatcs(ny,nx,0.0),Txy=newfmatcs(ny,nx,0.0);
 }
@@ -139,11 +151,13 @@ elastic2D::~elastic2D()
     matdelete(data.vxx2,ny),matdelete(data.vxx,ny),matdelete(data.vxy2,ny),\
     matdelete(data.vxy,ny),matdelete(data.vyx2,ny),matdelete(data.vyx,ny),\
     matdelete(data.vyy2,ny),matdelete(data.vyy,ny);
+    matdelete(data.vxx3,ny),matdelete(data.vxy3,ny),\
+    matdelete(data.vyx3,ny),matdelete(data.vyy3,ny);
     matdelete(ux,ny),matdelete(uz,ny);
-    matdelete(data.vpx22,ny),matdelete(data.vpx1,ny);
-    matdelete(data.vpx12,ny),matdelete(data.vpx2,ny);
-    matdelete(data.vpy22,ny),matdelete(data.vpy1,ny);
-    matdelete(data.vpy12,ny),matdelete(data.vpy2,ny);
+    matdelete(data.vpx23,ny),matdelete(data.vpx22,ny),matdelete(data.vpx1,ny);
+    matdelete(data.vpx13,ny),matdelete(data.vpx12,ny),matdelete(data.vpx2,ny);
+    matdelete(data.vpy23,ny),matdelete(data.vpy22,ny),matdelete(data.vpy1,ny);
+    matdelete(data.vpy13,ny),matdelete(data.vpy12,ny),matdelete(data.vpy2,ny);
     matdelete(data.vsy,ny),matdelete(data.vsx,ny);
     matdelete(data.vpy,ny),matdelete(data.vpx,ny);
     matdelete(mo1,ny); 
@@ -157,6 +171,7 @@ elastic2D::~elastic2D()
     data.txxy=NULL, data.txyy=NULL, data.tyyy=NULL; //PML boundary
     data.txxx2=NULL, data.txyx2=NULL, data.tyyx2=NULL; //PML boundary
     data.txxy2=NULL, data.txyy2=NULL, data.tyyy2=NULL; //PML boundaryt
+
     cout<<"Delete an object-wave_modeling_2D"<<endl;
 }
 
@@ -191,14 +206,14 @@ void elastic2D::cleardata()
     data.vxy=newfmatcs(ny,nx,0.0),data.vyx2=newfmatcs(ny,nx,0.0),data.vyx=newfmatcs(ny,nx,0.0),\
     data.vyy2=newfmatcs(ny,nx,0.0),data.vyy=newfmatcs(ny,nx,0.0);
 }
-
+ 
 void elastic2D::updatepar()
 {
-    int i,j;
+    int i,j,n;
     dt2=dt;
-    C_Y=(R)*3/2/(PML_wide-5)/(PML_wide-5)/(PML_wide-5)/dy/dy/dy;
-    C_X=(R)*3/2/(PML_wide-5)/(PML_wide-5)/(PML_wide-5)/dx/dx/dx;
-    t5=1.0;
+    C_Y=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
+    C_X=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/dx/dx/dx;
+    t5=1.0;    
     for(i=0;i<ny;i++)
     {
         for(j=0;j<nx;j++)
@@ -219,6 +234,7 @@ void elastic2D::caly(float** ut2 ,float **ut1,float **u, float **m,int jc)
     int i,j,i1,j1;
     float du1(0),du2(0),du(0);
     float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    
     float C1      = 1.2340911;
     float C2      = -1.0664985e-01;
     float C3      = 2.3036367e-02;
@@ -227,74 +243,86 @@ void elastic2D::caly(float** ut2 ,float **ut1,float **u, float **m,int jc)
     float C6      = -1.6641888e-04;
     float C7      = 1.7021711e-005;
     float C8      = -8.5234642e-007;//差分系数
-
+    /*
+    float C1=1.21124268;
+    float C2=-8.97216797E-02;
+    float C3=1.38427736E-02;
+    float C4=-1.76565989E-03;   
+    float C5=1.18679469E-04;
+    float C6      = 0;
+    float C7      = 0;
+    float C8      = 0;//差分系数
+*/
     DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
     X=this->nx,Y=this->ny,suface_PML=this->suface;
-
-    //else if(label=='y')
     {
     for(i=8;i<X-8;i++)
     {
-        for(j=8;j<xshd;j++)
+        for(j=8;j<xshd+8;j++)
         {
             du=(
-                C1*(u[j+0+jc][i]-u[j-1+jc][i])+
-                C2*(u[j+1+jc][i]-u[j-2+jc][i])+
-                C3*(u[j+2+jc][i]-u[j-3+jc][i])+
-                C4*(u[j+3+jc][i]-u[j-4+jc][i])+
-                C5*(u[j+4+jc][i]-u[j-5+jc][i])+
-                C6*(u[j+5+jc][i]-u[j-6+jc][i])+
-                C7*(u[j+6+jc][i]-u[j-7+jc][i])+
-                C8*(u[j+7+jc][i]-u[j-8+jc][i])
+                C1*(u[j+0+jc][i]-u[j-1+jc][i])+\
+                C2*(u[j+1+jc][i]-u[j-2+jc][i])+\
+                C3*(u[j+2+jc][i]-u[j-3+jc][i])+\
+                C4*(u[j+3+jc][i]-u[j-4+jc][i])+\
+                C5*(u[j+4+jc][i]-u[j-5+jc][i])+\
+                C6*(u[j+5+jc][i]-u[j-6+jc][i])+\
+                C7*(u[j+6+jc][i]-u[j-7+jc][i])+\
+                C8*(u[j+7+jc][i]-u[j-8+jc][i])\
                 );
-            du=m[j][i]*du/DY;
-            du1=C_Y*this->vp[j][i]*DY*(xshd-j)*DY*(xshd-j)*ut1[j][i];
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
+            //take care of the PML_boundary!!!
+            if((suface_PML)==0 && j<this->Zsiteofseasuface)
+                du=0.5*(m[j][i]+m[j][i])*du/DY;
+            else
+            du=0.5*(m[j+(jc)][i]+m[j][i])*du/DY;
+
+            du1=C_Y*3000.0*DY*suface_PML*(xshd+8-j)*DY\
+                *suface_PML*(xshd+8-j);
+            //du1=C_Y*this->vp[j][i]*DY*suface_PML*(xshd+8-j)*DY\
+                *suface_PML*(xshd+8-j);
+            ut2[j][i]=(du+ut1[j][i]*(1/DT-du1/2))/(1/DT+du1/2);
         }
-        for(j=xshd;j<Y-xshd;j++)
+        for(j=xshd+8;j<Y-xshd-8;j++)
         {
             du=(
-                C1*(u[j+0+jc][i]-u[j-1+jc][i])+
-                C2*(u[j+1+jc][i]-u[j-2+jc][i])+
-                C3*(u[j+2+jc][i]-u[j-3+jc][i])+
-                C4*(u[j+3+jc][i]-u[j-4+jc][i])+
-                C5*(u[j+4+jc][i]-u[j-5+jc][i])+
-                C6*(u[j+5+jc][i]-u[j-6+jc][i])+
-                C7*(u[j+6+jc][i]-u[j-7+jc][i])+
-                C8*(u[j+7+jc][i]-u[j-8+jc][i])
+                C1*(u[j+0+jc][i]-u[j-1+jc][i])+\
+                C2*(u[j+1+jc][i]-u[j-2+jc][i])+\
+                C3*(u[j+2+jc][i]-u[j-3+jc][i])+\
+                C4*(u[j+3+jc][i]-u[j-4+jc][i])+\
+                C5*(u[j+4+jc][i]-u[j-5+jc][i])+\
+                C6*(u[j+5+jc][i]-u[j-6+jc][i])+\
+                C7*(u[j+6+jc][i]-u[j-7+jc][i])+\
+                C8*(u[j+7+jc][i]-u[j-8+jc][i])\
                 );
-            du=m[j][i]*du/DY;
+            //take care of the PML_boundary!!!
+            if((suface_PML)==0  && j<this->Zsiteofseasuface)
+                du=0.5*(m[j][i]+m[j][i])*du/DY;
+            else
+            du=0.5*(m[j+(jc)][i]+m[j][i])*du/DY;
+
             du1=0;
             ut2[j][i]=(du-du1)*DT+ut1[j][i];
         }
-        for(j=Y-xshd;j<Y-8;j++)
+        for(j=Y-xshd-8;j<Y-8;j++)
         {
             du=(
-                C1*(u[j+0+jc][i]-u[j-1+jc][i])+
-                C2*(u[j+1+jc][i]-u[j-2+jc][i])+
-                C3*(u[j+2+jc][i]-u[j-3+jc][i])+
-                C4*(u[j+3+jc][i]-u[j-4+jc][i])+
-                C5*(u[j+4+jc][i]-u[j-5+jc][i])+
-                C6*(u[j+5+jc][i]-u[j-6+jc][i])+
-                C7*(u[j+6+jc][i]-u[j-7+jc][i])+
-                C8*(u[j+7+jc][i]-u[j-8+jc][i])
+                C1*(u[j+0+jc][i]-u[j-1+jc][i])+\
+                C2*(u[j+1+jc][i]-u[j-2+jc][i])+\
+                C3*(u[j+2+jc][i]-u[j-3+jc][i])+\
+                C4*(u[j+3+jc][i]-u[j-4+jc][i])+\
+                C5*(u[j+4+jc][i]-u[j-5+jc][i])+\
+                C6*(u[j+5+jc][i]-u[j-6+jc][i])+\
+                C7*(u[j+6+jc][i]-u[j-7+jc][i])+\
+                C8*(u[j+7+jc][i]-u[j-8+jc][i])\
                 );
-            du=m[j][i]*du/DY;
-            du1=C_Y*this->vp[j][i]*DY*(j-Y+xshd+1)*DY*(j-Y+xshd+1)*ut1[j][i];
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
+            du=0.5*(m[j+jc][i]+m[j][i])*du/DY;
+            du1=C_Y*3000.0*DY*(j-Y+xshd+8)*DY*(j-Y+xshd+8);
+            //du1=C_Y*this->vp[j][i]*DY*(j-Y+xshd+8)*DY*(j-Y+xshd+8);
+            ut2[j][i]=(du+ut1[j][i]*(1/DT-du1/2))/(1/DT+du1/2);
         }
     }
     }
     du1=0,du2=0,du=0;
-    /*
-    for(j=0;j<Y;j++)
-    {
-        for(i=0;i<X;i++)
-        {
-            ut1[j][i]=(ut2[j][i]);
-        }
-    }
-    */
 }
 
 void elastic2D::calx(float** ut2 ,float **ut1,float **u, float **m,int jc)
@@ -304,6 +332,7 @@ void elastic2D::calx(float** ut2 ,float **ut1,float **u, float **m,int jc)
     int i,j,i1,j1;
     float du1(0),du2(0),du(0);
     float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    
     float C1      = 1.2340911;
     float C2      = -1.0664985e-01;
     float C3      = 2.3036367e-02;
@@ -312,334 +341,422 @@ void elastic2D::calx(float** ut2 ,float **ut1,float **u, float **m,int jc)
     float C6      = -1.6641888e-04;
     float C7      = 1.7021711e-005;
     float C8      = -8.5234642e-007;//差分系数
-
+    /*
+    float C1=1.21124268;
+    float C2=-8.97216797E-02;
+    float C3=1.38427736E-02;
+    float C4=-1.76565989E-03;   
+    float C5=1.18679469E-04;
+    float C6      = 0;
+    float C7      = 0;
+    float C8      = 0;//差分系数
+*/
     DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
     X=this->nx,Y=this->ny,suface_PML=this->suface;
-
-    //if(label=='x')
     {
     for(j=8;j<Y-8;j++)
     {
-        for(i=8;i<xshd;i++)
+        for(i=8;i<xshd+8;i++)
         {  
             du=(
-                C1*(u[j][i+0+jc]-u[j][i-1+jc])+
-                C2*(u[j][i+1+jc]-u[j][i-2+jc])+
-                C3*(u[j][i+2+jc]-u[j][i-3+jc])+
-                C4*(u[j][i+3+jc]-u[j][i-4+jc])+
-                C5*(u[j][i+4+jc]-u[j][i-5+jc])+
-                C6*(u[j][i+5+jc]-u[j][i-6+jc])+
-                C7*(u[j][i+6+jc]-u[j][i-7+jc])+
-                C8*(u[j][i+7+jc]-u[j][i-8+jc])
+                C1*(u[j][i+0+jc]-u[j][i-1+jc])+\
+                C2*(u[j][i+1+jc]-u[j][i-2+jc])+\
+                C3*(u[j][i+2+jc]-u[j][i-3+jc])+\
+                C4*(u[j][i+3+jc]-u[j][i-4+jc])+\
+                C5*(u[j][i+4+jc]-u[j][i-5+jc])+\
+                C6*(u[j][i+5+jc]-u[j][i-6+jc])+\
+                C7*(u[j][i+6+jc]-u[j][i-7+jc])+\
+                C8*(u[j][i+7+jc]-u[j][i-8+jc])\
                 );
-            du=m[j][i]*du/DX;
-            du1=C_X*this->vp[j][i]*DX*(xshd-i)*DX*(xshd-i)*ut1[j][i];
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
+            du=0.5*(m[j][i+jc]+m[j][i])*du/DX;
+            du1=C_X*3000.0*DX*(xshd+8-i)*DX*(xshd+8-i);
+            //du1=C_X*this->vp[j][i]*DX*(xshd+8-i)*DX*(xshd+8-i);
+            ut2[j][i]=(du+ut1[j][i]*(1/DT-du1/2))/(1/DT+du1/2);
         }
-        for(i=xshd;i<X-xshd;i++)
+        for(i=xshd+8;i<X-xshd-8;i++)
         {  
             du=(
-                C1*(u[j][i+0+jc]-u[j][i-1+jc])+
-                C2*(u[j][i+1+jc]-u[j][i-2+jc])+
-                C3*(u[j][i+2+jc]-u[j][i-3+jc])+
-                C4*(u[j][i+3+jc]-u[j][i-4+jc])+
-                C5*(u[j][i+4+jc]-u[j][i-5+jc])+
-                C6*(u[j][i+5+jc]-u[j][i-6+jc])+
-                C7*(u[j][i+6+jc]-u[j][i-7+jc])+
-                C8*(u[j][i+7+jc]-u[j][i-8+jc])
+                C1*(u[j][i+0+jc]-u[j][i-1+jc])+\
+                C2*(u[j][i+1+jc]-u[j][i-2+jc])+\
+                C3*(u[j][i+2+jc]-u[j][i-3+jc])+\
+                C4*(u[j][i+3+jc]-u[j][i-4+jc])+\
+                C5*(u[j][i+4+jc]-u[j][i-5+jc])+\
+                C6*(u[j][i+5+jc]-u[j][i-6+jc])+\
+                C7*(u[j][i+6+jc]-u[j][i-7+jc])+\
+                C8*(u[j][i+7+jc]-u[j][i-8+jc])\
                 );
-            du=m[j][i]*du/DX;
+            du=0.5*(m[j][i+jc]+m[j][i])*du/DX;
             du1=0;
             ut2[j][i]=(du-du1)*DT+ut1[j][i];
         }
-        for(i=X-xshd;i<X-8;i++)
+        for(i=X-xshd-8;i<X-8;i++)
         {  
             du=(
-                C1*(u[j][i+0+jc]-u[j][i-1+jc])+
-                C2*(u[j][i+1+jc]-u[j][i-2+jc])+
-                C3*(u[j][i+2+jc]-u[j][i-3+jc])+
-                C4*(u[j][i+3+jc]-u[j][i-4+jc])+
-                C5*(u[j][i+4+jc]-u[j][i-5+jc])+
-                C6*(u[j][i+5+jc]-u[j][i-6+jc])+
-                C7*(u[j][i+6+jc]-u[j][i-7+jc])+
-                C8*(u[j][i+7+jc]-u[j][i-8+jc])
+                C1*(u[j][i+0+jc]-u[j][i-1+jc])+\
+                C2*(u[j][i+1+jc]-u[j][i-2+jc])+\
+                C3*(u[j][i+2+jc]-u[j][i-3+jc])+\
+                C4*(u[j][i+3+jc]-u[j][i-4+jc])+\
+                C5*(u[j][i+4+jc]-u[j][i-5+jc])+\
+                C6*(u[j][i+5+jc]-u[j][i-6+jc])+\
+                C7*(u[j][i+6+jc]-u[j][i-7+jc])+\
+                C8*(u[j][i+7+jc]-u[j][i-8+jc])\
                 );
-            du=m[j][i]*du/DX;
-            du1=C_X*this->vp[j][i]*DX*(i-X+xshd+1)*DX*(i-X+xshd+1)*ut1[j][i];
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
+            du=0.5*(m[j][i+jc]+m[j][i])*du/DX;
+            du1=C_X*3000.0*DX*(i-X+xshd+8)*DX*(i-X+xshd+8);
+            //du1=C_X*this->vp[j][i]*DX*(i-X+xshd+8)*DX*(i-X+xshd+8);
+            ut2[j][i]=(du+ut1[j][i]*(1/DT-du1/2))/(1/DT+du1/2);
         }
     }
     }
     du1=0,du2=0,du=0;
-    /*
-    for(j=0;j<Y;j++)
-    {
-        for(i=0;i<X;i++)
-        {
-            ut1[j][i]=(ut2[j][i]);
-        }
-    }
-    */
 }
 
-void elastic2D::cal(float** ut2 ,float **ut1,float **u, float **m,const char & label)
+void elastic2D::caly2(float** ut2 ,float **ut1,float **ut0,float **u, float **m,int jc)
 {
     float DX,DY,DT,xshd;
     int X,Y,suface_PML;
     int i,j,i1,j1;
     float du1(0),du2(0),du(0);
     float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    /*
+    float C1      = 1.2340911;
+    float C2      = -1.0664985e-01;
+    float C3      = 2.3036367e-02;
+    float C4      = -5.3423856e-03;
+    float C5      = 1.0772712e-03;
+    float C6      = -1.6641888e-04;
+    float C7      = 1.7021711e-005;
+    float C8      = -8.5234642e-007;//差分系数
+    */
+    float C1=1.21124268;
+    float C2=-8.97216797E-02;
+    float C3=1.38427736E-02;
+    float C4=-1.76565989E-03;   
+    float C5=1.18679469E-04;
+    float C6      = 0;
+    float C7      = 0;
+    float C8      = 0;//差分系数
 
     DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
     X=this->nx,Y=this->ny,suface_PML=this->suface;
-
-    if(label=='x')
+    for(i=8;i<X-8;i++)
     {
-    for(j=5;j<Y-5;j++)
-    {
-        for(i=5;i<xshd;i++)
-        {  
-            du=0;
-            for(j1=0;j1<5;j1++)
-            {
-                du=du+u[j][i+j1-5]*xs1_in[j1]*this->t3;
-            }
-            for(j1=5;j1<10;j1++)
-            {
-
-                du=du+u[j][i+j1-4]*xs1_in[j1]*this->t3;
-            }
-            du=m[j][i]*du/DX;
-            du1=C_X*this->vp[j][i]*DX*(xshd-i)*DX*(xshd-i)*ut1[j][i];
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
-        }
-        for(i=xshd;i<X-xshd;i++)
-        {  
-            du=0;
-            for(j1=0;j1<5;j1++)
-            {
-                du=du+u[j][i+j1-5]*xs1_in[j1]*this->t3;
-            }
-            for(j1=5;j1<10;j1++)
-            {
-
-                du=du+u[j][i+j1-4]*xs1_in[j1]*this->t3;
-            }
-            du=m[j][i]*du/DX;
-            du1=0;
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
-        }
-        for(i=X-xshd;i<X-5;i++)
-        {  
-            du=0;
-            for(j1=0;j1<5;j1++)
-            {
-                du=du+u[j][i+j1-5]*xs1_in[j1]*this->t3;
-            }
-            for(j1=5;j1<10;j1++)
-            {
-
-                du=du+u[j][i+j1-4]*xs1_in[j1]*this->t3;
-            }
-            du=m[j][i]*du/DX;
-            du1=C_X*this->vp[j][i]*DX*(i-X+xshd+1)*DX*(i-X+xshd+1)*ut1[j][i];
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
-        }
-    }
-    }
-    else if(label=='y')
-    {
-    for(i=5;i<X-5;i++)
-    {
-        for(j=5;j<xshd;j++)
+        for(j=8;j<Y-8;j++)
         {
-            du=0;  
-            for(j1=0;j1<5;j1++)
-            {
-                du=du+u[j+j1-5][i]*xs1_in[j1]*this->t3;
-            }
-            for(j1=5;j1<10;j1++)
-            {
-
-                du=du+u[j+j1-4][i]*xs1_in[j1]*this->t3;
-            }
+            du=(
+                C1*(u[j+0+jc][i]-u[j-1+jc][i])+\
+                C2*(u[j+1+jc][i]-u[j-2+jc][i])+\
+                C3*(u[j+2+jc][i]-u[j-3+jc][i])+\
+                C4*(u[j+3+jc][i]-u[j-4+jc][i])+\
+                C5*(u[j+4+jc][i]-u[j-5+jc][i])+\
+                C6*(u[j+5+jc][i]-u[j-6+jc][i])+\
+                C7*(u[j+6+jc][i]-u[j-7+jc][i])+\
+                C8*(u[j+7+jc][i]-u[j-8+jc][i])\
+                );
             du=m[j][i]*du/DY;
-            du1=C_Y*this->vp[j][i]*DY*(xshd-j)*DY*(xshd-j)*ut1[j][i];
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
-        }
-        for(j=xshd;j<Y-xshd;j++)
-        {
-            du=0;  
-            for(j1=0;j1<5;j1++)
-            {
-                du=du+u[j+j1-5][i]*xs1_in[j1]*this->t3;
-            }
-            for(j1=5;j1<10;j1++)
-            {
-
-                du=du+u[j+j1-4][i]*xs1_in[j1]*this->t3;
-            }
-            du=m[j][i]*du/DY;
-            du1=0;
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
-        }
-        for(j=Y-xshd;j<Y-5;j++)
-        {
-            du=0;  
-            for(j1=0;j1<5;j1++)
-            {
-                du=du+u[j+j1-5][i]*xs1_in[j1]*this->t3;
-            }
-            for(j1=5;j1<10;j1++)
-            {
-
-                du=du+u[j+j1-4][i]*xs1_in[j1]*this->t3;
-            }
-            du=m[j][i]*du/DY;
-            du1=C_Y*this->vp[j][i]*DY*(j-Y+xshd+1)*DY*(j-Y+xshd+1)*ut1[j][i];
-            ut2[j][i]=(du-du1)*DT+ut1[j][i];
+            ut2[j][i]=DT*DT*(du)+2.0*ut1[j][i]-ut0[j][i];
         }
     }
-    }
-    else
-    {
-        cout<<"error!"<<endl;
-    }
-            du1=0,du2=0,du=0;
-    for(j=0;j<Y;j++)
-    {
-        for(i=0;i<X;i++)
-        {
-            ut1[j][i]=(ut2[j][i]);
-        }
-    }
+    du1=0,du2=0,du=0;
 }
 
-void elastic2D::timeslicecal_u()
+void elastic2D::calx2(float** ut2 ,float **ut1,float **ut0,float **u, float **m,int jc)
 {
-    int i,j;
-    float **swap=NULL;
-    //cal(float** ut2 ,float **ut1,float **u, float **m,const char & label)
-    this->calx(this->data.txyy2,this->data.txyy,this->ux,this->miu,1);
-    swap=this->data.txyy2,this->data.txyy2=this->data.txyy,this->data.txyy=swap;
-    this->caly(this->data.txyx2,this->data.txyx,this->uz,this->miu,0);
-    swap=this->data.txyx2,this->data.txyx2=this->data.txyx,this->data.txyx=swap;
+    float DX,DY,DT,xshd;
+    int X,Y,suface_PML;
+    int i,j,i1,j1;
+    float du1(0),du2(0),du(0);
+    float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    /*
+    float C1      = 1.2340911;
+    float C2      = -1.0664985e-01;
+    float C3      = 2.3036367e-02;
+    float C4      = -5.3423856e-03;
+    float C5      = 1.0772712e-03;
+    float C6      = -1.6641888e-04;
+    float C7      = 1.7021711e-005;
+    float C8      = -8.5234642e-007;//差分系数
+    */
+    float C1=1.21124268;
+    float C2=-8.97216797E-02;
+    float C3=1.38427736E-02;
+    float C4=-1.76565989E-03;   
+    float C5=1.18679469E-04;
+    float C6      = 0;
+    float C7      = 0;
+    float C8      = 0;//差分系数
 
-    this->calx(this->data.tyyy2,this->data.tyyy,this->uz,this->mo,0);
-    swap=this->data.tyyy2,this->data.tyyy2=this->data.tyyy,this->data.tyyy=swap;
-    this->caly(this->data.tyyx2,this->data.tyyx,this->ux,this->lmd,1);
-    swap=this->data.tyyx2,this->data.tyyx2=this->data.tyyx,this->data.tyyx=swap;
-
-    this->calx(this->data.txxy2,this->data.txxy,this->uz,this->lmd,0);
-    swap=this->data.txxy2,this->data.txxy2=this->data.txxy,this->data.txxy=swap;
-    this->caly(this->data.txxx2,this->data.txxx,this->ux,this->mo,1);
-    swap=this->data.txxx2,this->data.txxx2=this->data.txxx,this->data.txxx=swap;
-
-    for(i=0;i<ny;i++)
+    DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
+    X=this->nx,Y=this->ny,suface_PML=this->suface;
+    for(j=8;j<Y-8;j++)
     {
-        /*
-        float ptxx=Txx[i],ptxxx=data.txxx[i],ptxxy=data.txxy[i],\
-            ptxx=Txx[i],ptxx=Txx[i],ptxx=Txx[i],\
-            ptxx=Txx[i],ptxx=Txx[i],ptxx=Txx[i];*/
-        for(j=0;j<nx;j++)
-        {
-            this->Txx[i][j]=this->data.txxx[i][j]+this->data.txxy[i][j];
-            this->Tyy[i][j]=this->data.tyyx[i][j]+this->data.tyyy[i][j];
-            this->Txy[i][j]=this->data.txyx[i][j]+this->data.txyy[i][j];
+        for(i=8;i<X-8;i++)
+        {  
+            du=(
+                C1*(u[j][i+0+jc]-u[j][i-1+jc])+\
+                C2*(u[j][i+1+jc]-u[j][i-2+jc])+\
+                C3*(u[j][i+2+jc]-u[j][i-3+jc])+\
+                C4*(u[j][i+3+jc]-u[j][i-4+jc])+\
+                C5*(u[j][i+4+jc]-u[j][i-5+jc])+\
+                C6*(u[j][i+5+jc]-u[j][i-6+jc])+\
+                C7*(u[j][i+6+jc]-u[j][i-7+jc])+\
+                C8*(u[j][i+7+jc]-u[j][i-8+jc])\
+                );
+            du=m[j][i]*du/DX;
+            ut2[j][i]=DT*DT*(du)+2.0*ut1[j][i]-ut0[j][i];
         }
     }
-    this->calx(this->data.vyy2,this->data.vyy,this->Tyy,this->ro1,1);
-    swap=this->data.vyy2,this->data.vyy2=this->data.vyy,this->data.vyy=swap;
-    this->caly(this->data.vyx2,this->data.vyx,this->Txy,this->ro1,1);
-    swap=this->data.vyx2,this->data.vyx2=this->data.vyx,this->data.vyx=swap;
+    du1=0,du2=0,du=0;
+}
 
-    this->calx(this->data.vxy2,this->data.vxy,this->Txy,this->ro1,0);
-    swap=this->data.vxy2,this->data.vxy2=this->data.vxy,this->data.vxy=swap;
-    this->caly(this->data.vxx2,this->data.vxx,this->Txx,this->ro1,0);
-    swap=this->data.vxx2,this->data.vxx2=this->data.vxx,this->data.vxx=swap;
+void elastic2D::caly0(float** ut ,float **u, float **m,int jc)
+{
+    float DX,DY,DT,xshd;
+    int X,Y,suface_PML;
+    int i,j,i1,j1;
+    float du1(0),du2(0),du(0);
+    float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    /*
+    float C1      = 1.2340911;
+    float C2      = -1.0664985e-01;
+    float C3      = 2.3036367e-02;
+    float C4      = -5.3423856e-03;
+    float C5      = 1.0772712e-03;
+    float C6      = -1.6641888e-04;
+    float C7      = 1.7021711e-005;
+    float C8      = -8.5234642e-007;//差分系数
+    */
+    float C1=1.21124268;
+    float C2=-8.97216797E-02;
+    float C3=1.38427736E-02;
+    float C4=-1.76565989E-03;   
+    float C5=1.18679469E-04;
+    float C6      = 0;
+    float C7      = 0;
+    float C8      = 0;//差分系数
 
-    this->caly(this->data.vpx12,this->data.vpx1,this->Txx,this->mo1,0);
-    swap=this->data.vpx12,this->data.vpx12=this->data.vpx1,this->data.vpx1=swap;
-    this->caly(this->data.vpx22,this->data.vpx2,this->Tyy,this->mo1,0);
-    swap=this->data.vpx22,this->data.vpx22=this->data.vpx2,this->data.vpx2=swap;
-    this->calx(this->data.vpy12,this->data.vpy1,this->Txx,this->mo1,0);
-    swap=this->data.vpy12,this->data.vpy12=this->data.vpy1,this->data.vpy1=swap;
-    this->calx(this->data.vpy22,this->data.vpy2,this->Tyy,this->mo1,0);
-    swap=this->data.vpy22,this->data.vpy22=this->data.vpy2,this->data.vpy2=swap;
-
-    for(i=0;i<ny;i++)
+    DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
+    X=this->nx,Y=this->ny,suface_PML=this->suface;
+    for(i=8;i<X-8;i++)
     {
-        for(j=0;j<nx;j++)
+        for(j=8;j<Y-8;j++)
         {
-            this->uz[i][j]=this->data.vyx[i][j]+this->data.vyy[i][j];
-            this->ux[i][j]=this->data.vxx[i][j]+this->data.vxy[i][j];
-            this->data.vpx[i][j]=(this->data.vpx1[i][j]+this->data.vpx2[i][j]);
-            this->data.vpy[i][j]=(this->data.vpy1[i][j]+this->data.vpy2[i][j]);
-            this->data.vsx[i][j]=this->ux[i][j]-this->data.vpx[i][j];
-            this->data.vsy[i][j]=this->uz[i][j]-this->data.vpy[i][j];
+            du=(
+                C1*(u[j+0+jc][i]-u[j-1+jc][i])+\
+                C2*(u[j+1+jc][i]-u[j-2+jc][i])+\
+                C3*(u[j+2+jc][i]-u[j-3+jc][i])+\
+                C4*(u[j+3+jc][i]-u[j-4+jc][i])+\
+                C5*(u[j+4+jc][i]-u[j-5+jc][i])+\
+                C6*(u[j+5+jc][i]-u[j-6+jc][i])+\
+                C7*(u[j+6+jc][i]-u[j-7+jc][i])+\
+                C8*(u[j+7+jc][i]-u[j-8+jc][i])\
+                );
+            du=m[j][i]*du/DY;
+            ut[j][i]=du;
         }
     }
-    //this->t3=this->t3*(-1);
-    swap=NULL;
+    du1=0,du2=0,du=0;
+}
+
+void elastic2D::calx0(float** ut ,float **u, float **m,int jc)
+{
+    float DX,DY,DT,xshd;
+    int X,Y,suface_PML;
+    int i,j,i1,j1;
+    float du1(0),du2(0),du(0);
+    float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    /*
+    float C1      = 1.2340911;
+    float C2      = -1.0664985e-01;
+    float C3      = 2.3036367e-02;
+    float C4      = -5.3423856e-03;
+    float C5      = 1.0772712e-03;
+    float C6      = -1.6641888e-04;
+    float C7      = 1.7021711e-005;
+    float C8      = -8.5234642e-007;//差分系数
+    */
+    float C1=1.21124268;
+    float C2=-8.97216797E-02;
+    float C3=1.38427736E-02;
+    float C4=-1.76565989E-03;   
+    float C5=1.18679469E-04;
+    float C6      = 0;
+    float C7      = 0;
+    float C8      = 0;//差分系数
+
+    DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
+    X=this->nx,Y=this->ny,suface_PML=this->suface;
+    for(j=8;j<Y-8;j++)
+    {
+        for(i=8;i<X-8;i++)
+        {  
+            du=(
+                C1*(u[j][i+0+jc]-u[j][i-1+jc])+\
+                C2*(u[j][i+1+jc]-u[j][i-2+jc])+\
+                C3*(u[j][i+2+jc]-u[j][i-3+jc])+\
+                C4*(u[j][i+3+jc]-u[j][i-4+jc])+\
+                C5*(u[j][i+4+jc]-u[j][i-5+jc])+\
+                C6*(u[j][i+5+jc]-u[j][i-6+jc])+\
+                C7*(u[j][i+6+jc]-u[j][i-7+jc])+\
+                C8*(u[j][i+7+jc]-u[j][i-8+jc])\
+                );
+            du=m[j][i]*du/DX;
+            ut[j][i]=du;
+        }
+    }
+    du1=0,du2=0,du=0;
+}
+
+void elastic2D::caly2pml(float** ut ,float **u, float **m,int jc)
+{
+    float DX,DY,DT,xshd;
+    int X,Y,suface_PML;
+    int i,j,i1,j1;
+    float du1(0),du2(0),du(0);
+    float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    /*
+    float C1      = 1.2340911;
+    float C2      = -1.0664985e-01;
+    float C3      = 2.3036367e-02;
+    float C4      = -5.3423856e-03;
+    float C5      = 1.0772712e-03;
+    float C6      = -1.6641888e-04;
+    float C7      = 1.7021711e-005;
+    float C8      = -8.5234642e-007;//差分系数
+    */
+    float C1=1.21124268;
+    float C2=-8.97216797E-02;
+    float C3=1.38427736E-02;
+    float C4=-1.76565989E-03;   
+    float C5=1.18679469E-04;
+    float C6      = 0;
+    float C7      = 0;
+    float C8      = 0;//差分系数
+
+    DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
+    X=this->nx,Y=this->ny,suface_PML=this->suface;
+    for(i=8;i<X-8;i++)
+    {
+        for(j=8;j<Y-8;j++)
+        {
+            du=(
+                C1*(u[j+0+jc][i]-u[j-1+jc][i])+\
+                C2*(u[j+1+jc][i]-u[j-2+jc][i])+\
+                C3*(u[j+2+jc][i]-u[j-3+jc][i])+\
+                C4*(u[j+3+jc][i]-u[j-4+jc][i])+\
+                C5*(u[j+4+jc][i]-u[j-5+jc][i])+\
+                C6*(u[j+5+jc][i]-u[j-6+jc][i])+\
+                C7*(u[j+6+jc][i]-u[j-7+jc][i])+\
+                C8*(u[j+7+jc][i]-u[j-8+jc][i])\
+                );
+            du=m[j][i]*du/DY;
+            ut[j][i]=du;
+        }
+    }
+    du1=0,du2=0,du=0;
+}
+
+void elastic2D::calx2pml(float** ut ,float **u, float **m,int jc)
+{
+    float DX,DY,DT,xshd;
+    int X,Y,suface_PML;
+    int i,j,i1,j1;
+    float du1(0),du2(0),du(0);
+    float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    /*
+    float C1      = 1.2340911;
+    float C2      = -1.0664985e-01;
+    float C3      = 2.3036367e-02;
+    float C4      = -5.3423856e-03;
+    float C5      = 1.0772712e-03;
+    float C6      = -1.6641888e-04;
+    float C7      = 1.7021711e-005;
+    float C8      = -8.5234642e-007;//差分系数
+    */
+    float C1=1.21124268;
+    float C2=-8.97216797E-02;
+    float C3=1.38427736E-02;
+    float C4=-1.76565989E-03;   
+    float C5=1.18679469E-04;
+    float C6      = 0;
+    float C7      = 0;
+    float C8      = 0;//差分系数
+
+    DX=this->dx,DY=this->dy,DT=this->dt2,xshd=this->PML_wide;
+    X=this->nx,Y=this->ny,suface_PML=this->suface;
+    for(j=8;j<Y-8;j++)
+    {
+        for(i=8;i<X-8;i++)
+        {  
+            du=(
+                C1*(u[j][i+0+jc]-u[j][i-1+jc])+\
+                C2*(u[j][i+1+jc]-u[j][i-2+jc])+\
+                C3*(u[j][i+2+jc]-u[j][i-3+jc])+\
+                C4*(u[j][i+3+jc]-u[j][i-4+jc])+\
+                C5*(u[j][i+4+jc]-u[j][i-5+jc])+\
+                C6*(u[j][i+5+jc]-u[j][i-6+jc])+\
+                C7*(u[j][i+6+jc]-u[j][i-7+jc])+\
+                C8*(u[j][i+7+jc]-u[j][i-8+jc])\
+                );
+            du=m[j][i]*du/DX;
+            ut[j][i]=du;
+        }
+    }
+    du1=0,du2=0,du=0;
 }
 
 void elastic2D::timeslicecal_T()
 {
     int i,j;
     float **swap=NULL;
-    this->calx(this->data.vyy2,this->data.vyy,this->Tyy,this->ro1,1);
-    swap=this->data.vyy2,this->data.vyy2=this->data.vyy,this->data.vyy=swap;
-    this->caly(this->data.vyx2,this->data.vyx,this->Txy,this->ro1,1);
-    swap=this->data.vyx2,this->data.vyx2=this->data.vyx,this->data.vyx=swap;
+    this->caly(this->data.vyy2,this->data.vyy,this->Tyy,this->ro1,0);
+    swap=this->data.vyy,this->data.vyy=this->data.vyy2,this->data.vyy2=swap;
+    this->calx(this->data.vyx2,this->data.vyx,this->Txy,this->ro1,0);
+    swap=this->data.vyx,this->data.vyx=this->data.vyx2,this->data.vyx2=swap;
 
-    this->calx(this->data.vxy2,this->data.vxy,this->Txy,this->ro1,0);
-    swap=this->data.vxy2,this->data.vxy2=this->data.vxy,this->data.vxy=swap;
-    this->caly(this->data.vxx2,this->data.vxx,this->Txx,this->ro1,0);
-    swap=this->data.vxx2,this->data.vxx2=this->data.vxx,this->data.vxx=swap;
-
-    this->caly(this->data.vpx12,this->data.vpx1,this->Txx,this->mo1,0);
+    this->caly(this->data.vxy2,this->data.vxy,this->Txy,this->ro1,1);
+    swap=this->data.vxy,this->data.vxy=this->data.vxy2,this->data.vxy2=swap;
+    this->calx(this->data.vxx2,this->data.vxx,this->Txx,this->ro1,1);
+    swap=this->data.vxx,this->data.vxx=this->data.vxx2,this->data.vxx2=swap;
+/*
+    this->calx(this->data.vpx12,this->data.vpx1,this->Txx,this->mo1,0);
     swap=this->data.vpx12,this->data.vpx12=this->data.vpx1,this->data.vpx1=swap;
-    this->caly(this->data.vpx22,this->data.vpx2,this->Tyy,this->mo1,0);
+    this->calx(this->data.vpx22,this->data.vpx2,this->Tyy,this->mo1,0);
     swap=this->data.vpx22,this->data.vpx22=this->data.vpx2,this->data.vpx2=swap;
-    this->calx(this->data.vpy12,this->data.vpy1,this->Txx,this->mo1,0);
+    this->caly(this->data.vpy12,this->data.vpy1,this->Txx,this->mo1,0);
     swap=this->data.vpy12,this->data.vpy12=this->data.vpy1,this->data.vpy1=swap;
-    this->calx(this->data.vpy22,this->data.vpy2,this->Tyy,this->mo1,0);
+    this->caly(this->data.vpy22,this->data.vpy2,this->Tyy,this->mo1,0);
     swap=this->data.vpy22,this->data.vpy22=this->data.vpy2,this->data.vpy2=swap;
-
+*/
     for(i=0;i<ny;i++)
     {
         for(j=0;j<nx;j++)
         {
             this->uz[i][j]=this->data.vyx[i][j]+this->data.vyy[i][j];
-            this->ux[i][j]=this->data.vxx[i][j]+this->data.vxy[i][j];
+            this->ux[i][j]=this->data.vxx[i][j]+this->data.vxy[i][j];/*
             this->data.vpx[i][j]=(this->data.vpx1[i][j]+this->data.vpx2[i][j]);
             this->data.vpy[i][j]=(this->data.vpy1[i][j]+this->data.vpy2[i][j]);
             this->data.vsx[i][j]=this->ux[i][j]-this->data.vpx[i][j];
-            this->data.vsy[i][j]=this->uz[i][j]-this->data.vpy[i][j];
+            this->data.vsy[i][j]=this->uz[i][j]-this->data.vpy[i][j];*/
         }
     }
-    //cal(float** ut2 ,float **ut1,float **u, float **m,const char & label)
-    this->calx(this->data.txyy2,this->data.txyy,this->ux,this->miu,1);
-    swap=this->data.txyy2,this->data.txyy2=this->data.txyy,this->data.txyy=swap;
-    this->caly(this->data.txyx2,this->data.txyx,this->uz,this->miu,0);
-    swap=this->data.txyx2,this->data.txyx2=this->data.txyx,this->data.txyx=swap;
+    this->caly(this->data.txyy2,this->data.txyy,this->ux,this->miu,0);
+    swap=this->data.txyy,this->data.txyy=this->data.txyy2,this->data.txyy2=swap;
+    this->calx(this->data.txyx2,this->data.txyx,this->uz,this->miu,1);
+    swap=this->data.txyx,this->data.txyx=this->data.txyx2,this->data.txyx2=swap;
 
-    this->calx(this->data.tyyy2,this->data.tyyy,this->uz,this->mo,0);
-    swap=this->data.tyyy2,this->data.tyyy2=this->data.tyyy,this->data.tyyy=swap;
-    this->caly(this->data.tyyx2,this->data.tyyx,this->ux,this->lmd,1);
-    swap=this->data.tyyx2,this->data.tyyx2=this->data.tyyx,this->data.tyyx=swap;
+    this->caly(this->data.tyyy2,this->data.tyyy,this->uz,this->mo,1);
+    swap=this->data.tyyy,this->data.tyyy=this->data.tyyy2,this->data.tyyy2=swap;
+    this->calx(this->data.tyyx2,this->data.tyyx,this->ux,this->lmd,0);
+    swap=this->data.tyyx,this->data.tyyx=this->data.tyyx2,this->data.tyyx2=swap;
 
-    this->calx(this->data.txxy2,this->data.txxy,this->uz,this->lmd,0);
-    swap=this->data.txxy2,this->data.txxy2=this->data.txxy,this->data.txxy=swap;
-    this->caly(this->data.txxx2,this->data.txxx,this->ux,this->mo,1);
-    swap=this->data.txxx2,this->data.txxx2=this->data.txxx,this->data.txxx=swap;
+    this->caly(this->data.txxy2,this->data.txxy,this->uz,this->lmd,1);
+    swap=this->data.txxy,this->data.txxy=this->data.txxy2,this->data.txxy2=swap;
+    this->calx(this->data.txxx2,this->data.txxx,this->ux,this->mo,0);
+    swap=this->data.txxx,this->data.txxx=this->data.txxx2,this->data.txxx2=swap;
 
     for(i=0;i<ny;i++)
     {
-        /*
-        float ptxx=Txx[i],ptxxx=data.txxx[i],ptxxy=data.txxy[i],\
-            ptxx=Txx[i],ptxx=Txx[i],ptxx=Txx[i],\
-            ptxx=Txx[i],ptxx=Txx[i],ptxx=Txx[i];*/
         for(j=0;j<nx;j++)
         {
             this->Txx[i][j]=this->data.txxx[i][j]+this->data.txxy[i][j];
@@ -648,7 +765,79 @@ void elastic2D::timeslicecal_T()
         }
     }
     swap=NULL;
-    //this->t3=this->t3*(-1);
+}
+void elastic2D::timeslicecal_V()
+{this->timeslicecal_T();}
+void elastic2D::timeslicecal_U()
+{
+    int i,j;
+    float **swap=NULL;
+    this->caly2(this->data.vyy3,this->data.vyy2,this->data.vyy,this->Tyy,this->ro1,0);
+    swap=this->data.vyy,this->data.vyy=this->data.vyy2,\
+    this->data.vyy2=this->data.vyy3,this->data.vyy3=swap;
+    this->calx2(this->data.vyx3,this->data.vyx2,this->data.vyx,this->Txy,this->ro1,0);
+    swap=this->data.vyx,this->data.vyx=this->data.vyx2,\
+    this->data.vyx2=this->data.vyx3,this->data.vyx3=swap;
+
+    this->caly2(this->data.vxy3,this->data.vxy2,this->data.vxy,this->Txy,this->ro1,1);
+    swap=this->data.vxy,this->data.vxy=this->data.vxy2,\
+    this->data.vxy2=this->data.vxy3,this->data.vxy3=swap;
+    this->calx2(this->data.vxx3,this->data.vxx2,this->data.vxx,this->Txx,this->ro1,1);
+    swap=this->data.vxx,this->data.vxx=this->data.vxx2,\
+    this->data.vxx2=this->data.vxx3,this->data.vxx3=swap;
+
+    for(i=0;i<ny;i++)
+    {
+        for(j=0;j<nx;j++)
+        {
+            this->uz[i][j]=this->data.vyx2[i][j]+this->data.vyy2[i][j];
+            this->ux[i][j]=this->data.vxx2[i][j]+this->data.vxy2[i][j];
+        }
+    }
+    
+    this->caly0(this->data.txyy,this->ux,this->miu,0);
+    this->calx0(this->data.txyx,this->uz,this->miu,1);
+
+    this->caly0(this->data.tyyy,this->uz,this->mo,1);
+    this->calx0(this->data.tyyx,this->ux,this->lmd,0);
+
+    this->caly0(this->data.txxy,this->uz,this->lmd,1);
+    this->calx0(this->data.txxx,this->ux,this->mo,0);
+
+    for(i=0;i<ny;i++)
+    {
+        for(j=0;j<nx;j++)
+        {
+            this->Txx[i][j]=this->data.txxx[i][j]+this->data.txxy[i][j];
+            this->Tyy[i][j]=this->data.tyyx[i][j]+this->data.tyyy[i][j];
+            this->Txy[i][j]=this->data.txyx[i][j]+this->data.txyy[i][j];
+        }
+    }
+
+//cal pure-pressure modeling
+    this->calx2(this->data.vpx13,this->data.vpx12,this->data.vpx1,this->Txx,this->mo1,0);
+    swap=this->data.vpx1,this->data.vpx1=this->data.vpx12,\
+    this->data.vpx12=this->data.vpx13,this->data.vpx13=swap;
+    this->calx2(this->data.vpx23,this->data.vpx22,this->data.vpx2,this->Tyy,this->mo1,0);
+    swap=this->data.vpx2,this->data.vpx2=this->data.vpx22,\
+    this->data.vpx22=this->data.vpx23,this->data.vpx23=swap;
+    this->caly2(this->data.vpy13,this->data.vpy12,this->data.vpy1,this->Txx,this->mo1,1);
+    swap=this->data.vpy1,this->data.vpy1=this->data.vpy12,\
+    this->data.vpy12=this->data.vpy13,this->data.vpy13=swap;
+    this->caly2(this->data.vpy23,this->data.vpy22,this->data.vpy2,this->Tyy,this->mo1,1);
+    swap=this->data.vpy2,this->data.vpy2=this->data.vpy22,\
+    this->data.vpy22=this->data.vpy23,this->data.vpy23=swap;
+    for(i=0;i<ny;i++)
+    {
+        for(j=0;j<nx;j++)
+        {
+            //this->up[i][j]=this->data.vpx22[i][j]+this->data.vpx12[i][j];
+            this->up[i][j]=this->data.vpy22[i][j]+this->data.vpy12[i][j];
+        }
+    }
+
+    swap=NULL;
+
 }
 
 float** gauss_souce_windows(int ny,int nx, int n1, int n2, int n)
@@ -691,7 +880,7 @@ void elastic_test(int dmovie=1)
             A.ux[i][j]+=w[i][j]*wavelet02(k,A.dt,30,1);
             }
         }
-        A.timeslicecal_u();
+        A.timeslicecal_T();
 
         //if(k%dmovie==0)
         {
