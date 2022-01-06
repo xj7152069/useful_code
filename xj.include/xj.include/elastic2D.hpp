@@ -13,6 +13,8 @@ wave2D.h
 #include <fstream>
 #include <iomanip>
 #include <math.h>
+#include <thread>
+#include <future>
 using namespace std;
 
 #include "../xjc.h"
@@ -50,7 +52,8 @@ struct elastic_wave_data
     float **vpy=NULL, **vpx=NULL;
 
 };
- 
+
+void timeslicecal_T_thread(class elastic2D &par);
 class elastic2D
 { 
 private:
@@ -79,6 +82,7 @@ public:
         **Txy=NULL,**Tyy=NULL,**Txx=NULL,vp1,vs1,roo; //velocity model
     float dx,dy,dt,R,dt2,t3,t5,C_X,C_Y;
     int nx,ny,suface,PML_wide,Zsiteofseasuface;
+    int *par0=NULL,*par1=NULL;
     
     elastic2D();
     elastic2D(int x, int y);
@@ -90,6 +94,8 @@ public:
     void timeslicecal_U();
     void cleardata();
     void updatepar();
+    void calx_p(float** ut2 ,float** ut1,float **u, float **m,int *pjc);
+    void caly_p(float** ut2 ,float** ut1,float **u, float **m,int *pjc);
 };
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -110,6 +116,8 @@ elastic2D::elastic2D(int z, int x)
     vp1=3000,vs1=2000,roo=2000;
     C_Y=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
     C_X=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/dx/dx/dx;
+    par0=new int[1],par0[0]=0;
+    par1=new int[1],par1[0]=1;
     
     data.txx=newfmatcs(ny,nx,0.0),data.txxx2=newfmatcs(ny,nx,0.0),data.txxx=newfmatcs(ny,nx,0.0),\
     data.txxy2=newfmatcs(ny,nx,0.0),data.txxy=newfmatcs(ny,nx,0.0),data.txy=newfmatcs(ny,nx,0.0),\
@@ -229,11 +237,24 @@ void elastic2D::updatepar()
 
 void elastic2D::caly(float** ut2 ,float **ut1,float **u, float **m,int jc)
 {
+    int *pjc;
+    pjc=new int[1];
+    pjc[0]=jc;
+    this->caly_p(ut2 ,ut1,u,m,pjc);
+}
+void caly_pp(float** ut2 ,float **ut1,float **u, float **m,int *pjc,\
+    class elastic2D *par)
+{
+    par->caly_p(ut2 ,ut1,u,m,pjc);
+}
+void elastic2D::caly_p(float** ut2 ,float **ut1,float **u, float **m,int *pjc)
+{
     float DX,DY,DT,xshd;
     int X,Y,suface_PML;
-    int i,j,i1,j1;
+    int i,j,i1,j1,jc;
     float du1(0),du2(0),du(0);
     float *xs1_in=this->xs1,*xs2_in=this->xs2; 
+    jc=pjc[0];
     
     float C1      = 1.2340911;
     float C2      = -1.0664985e-01;
@@ -327,9 +348,21 @@ void elastic2D::caly(float** ut2 ,float **ut1,float **u, float **m,int jc)
 
 void elastic2D::calx(float** ut2 ,float **ut1,float **u, float **m,int jc)
 {
+    int *pjc;
+    pjc=new int[1];
+    pjc[0]=jc;
+    this->calx_p(ut2 ,ut1,u,m,pjc);
+}
+void calx_pp(float** ut2 ,float **ut1,float **u, float **m,int *pjc,\
+    class elastic2D *par)
+{
+    par->calx_p(ut2 ,ut1,u,m,pjc);
+}
+void elastic2D::calx_p(float** ut2 ,float **ut1,float **u, float **m,int *pjc)
+{
     float DX,DY,DT,xshd;
     int X,Y,suface_PML;
-    int i,j,i1,j1;
+    int i,j,i1,j1,jc(pjc[0]);
     float du1(0),du2(0),du(0);
     float *xs1_in=this->xs1,*xs2_in=this->xs2; 
     
@@ -703,6 +736,67 @@ void elastic2D::calx2pml(float** ut ,float **u, float **m,int jc)
         }
     }
     du1=0,du2=0,du=0;
+}
+
+
+void timeslicecal_T_thread(class elastic2D & par)
+{
+    int i,j,k;
+    float **swap=NULL;
+    thread *pcal;
+    pcal=new thread[6];
+    
+    pcal[0]=thread(caly_pp,par.data.vyy2,par.data.vyy,par.Tyy,par.ro1,par.par0,&par);
+    pcal[1]=thread(calx_pp,par.data.vyx2,par.data.vyx,par.Txy,par.ro1,par.par0,&par);
+    pcal[2]=thread(caly_pp,par.data.vxy2,par.data.vxy,par.Txy,par.ro1,par.par1,&par);
+    pcal[3]=thread(calx_pp,par.data.vxx2,par.data.vxx,par.Txx,par.ro1,par.par1,&par);
+    for(k=0;k<4;k++){
+        pcal[k].join();
+    }
+    //par.caly(par.data.vyy2,par.data.vyy,par.Tyy,par.ro1,0);
+    swap=par.data.vyy,par.data.vyy=par.data.vyy2,par.data.vyy2=swap;
+    //par.calx(par.data.vyx2,par.data.vyx,par.Txy,par.ro1,0);
+    swap=par.data.vyx,par.data.vyx=par.data.vyx2,par.data.vyx2=swap;
+    //par.caly(par.data.vxy2,par.data.vxy,par.Txy,par.ro1,1);
+    swap=par.data.vxy,par.data.vxy=par.data.vxy2,par.data.vxy2=swap;
+    //par.calx(par.data.vxx2,par.data.vxx,par.Txx,par.ro1,1);
+    swap=par.data.vxx,par.data.vxx=par.data.vxx2,par.data.vxx2=swap;
+
+    for(i=0;i<par.ny;i++){
+        for(j=0;j<par.nx;j++){
+            par.uz[i][j]=par.data.vyx[i][j]+par.data.vyy[i][j];
+            par.ux[i][j]=par.data.vxx[i][j]+par.data.vxy[i][j];
+        }}
+
+    pcal[0]=thread(caly_pp,par.data.txyy2,par.data.txyy,par.ux,par.miu,par.par0,&par);
+    pcal[1]=thread(calx_pp,par.data.txyx2,par.data.txyx,par.uz,par.miu,par.par1,&par);
+    pcal[2]=thread(caly_pp,par.data.tyyy2,par.data.tyyy,par.uz,par.mo,par.par1,&par);
+    pcal[3]=thread(calx_pp,par.data.tyyx2,par.data.tyyx,par.ux,par.lmd,par.par0,&par);
+    pcal[4]=thread(caly_pp,par.data.txxy2,par.data.txxy,par.uz,par.lmd,par.par1,&par);
+    pcal[5]=thread(calx_pp,par.data.txxx2,par.data.txxx,par.ux,par.mo,par.par0,&par);
+    for(k=0;k<6;k++){
+        pcal[k].join();
+    }
+    //par.caly(par.data.txyy2,par.data.txyy,par.ux,par.miu,0);
+    swap=par.data.txyy,par.data.txyy=par.data.txyy2,par.data.txyy2=swap;
+    //par.calx(par.data.txyx2,par.data.txyx,par.uz,par.miu,1);
+    swap=par.data.txyx,par.data.txyx=par.data.txyx2,par.data.txyx2=swap;
+    //par.caly(par.data.tyyy2,par.data.tyyy,par.uz,par.mo,1);
+    swap=par.data.tyyy,par.data.tyyy=par.data.tyyy2,par.data.tyyy2=swap;
+    //par.calx(par.data.tyyx2,par.data.tyyx,par.ux,par.lmd,0);
+    swap=par.data.tyyx,par.data.tyyx=par.data.tyyx2,par.data.tyyx2=swap;
+    //par.caly(par.data.txxy2,par.data.txxy,par.uz,par.lmd,1);
+    swap=par.data.txxy,par.data.txxy=par.data.txxy2,par.data.txxy2=swap;
+    //par.calx(par.data.txxx2,par.data.txxx,par.ux,par.mo,0);
+    swap=par.data.txxx,par.data.txxx=par.data.txxx2,par.data.txxx2=swap;
+
+    for(i=0;i<par.ny;i++){
+        for(j=0;j<par.nx;j++){
+            par.Txx[i][j]=par.data.txxx[i][j]+par.data.txxy[i][j];
+            par.Tyy[i][j]=par.data.tyyx[i][j]+par.data.tyyy[i][j];
+            par.Txy[i][j]=par.data.txyx[i][j]+par.data.txyy[i][j];
+        }}
+    swap=NULL;
 }
 
 void elastic2D::timeslicecal_T()
