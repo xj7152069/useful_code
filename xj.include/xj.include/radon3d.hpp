@@ -45,7 +45,7 @@ fmat smoothdig(fmat dig,int l,int n)
 }
 
 inline cx_fmat cx_fmatmul(cx_fmat & mat1, cx_fmat & mat2);
-inline cx_fmat cx_hessianelement1d(float w,\
+inline cx_dmat cx_hessianelement1d(float w,\
  int nx, float kx1, float dx, float dpx);
 cx_fmat cx_hessianelement2d(float w,\
  int nx, float kx1, float dx, float dpx,\
@@ -151,11 +151,11 @@ void beamforming_parupdate(struct linerradon3d & par)
     }
     for(k=0;k<par.nx;k++)
     {
-        par.x_coord(k,0)=k*par.dx-(par.nx*par.dx)/2.0;
+        par.x_coord(k,0)=k*par.dx-(int(par.nx/2)*par.dx);
     }
     for(k=0;k<par.ny;k++)
     {
-        par.y_coord(k,0)=k*par.dy-(par.ny*par.dy)/2.0;
+        par.y_coord(k,0)=k*par.dy-(int(par.ny/2)*par.dy);
     }
     par.rulef1=round(par.rulef1/par.df);
     par.rulef2=round(par.rulef2/par.df);
@@ -321,6 +321,7 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
     parinv.digw_fmat_npxnpy=(parinv.digw_fmat_npxnpy-minpower)/\
         (maxpower-minpower);
     parinv.digw_fmat_npxnpy+=sum(sum(parinv.digw_fmat_npxnpy))/parinv.digw_fmat_npxnpy.n_elem;
+    //parinv.digw_fmat_npxnpy+=0.001;
     parinv.digw_fmat_npxnpy=1.0/parinv.digw_fmat_npxnpy;
     maxpower=((parinv.digw_fmat_npxnpy.max()));
     minpower=((parinv.digw_fmat_npxnpy.min()));
@@ -346,39 +347,51 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
     int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
         ny(par[0].ny),npy(par[0].npy);
 
-    float ky1(-(ny*dy)/2.0);
-    float kx1(-(nx*dx)/2.0);
-    cx_fmat a(1,1);
+    float ky1(-(int(ny/2)*dy));
+    float kx1(-(int(nx/2)*dx));
+    cx_fmat a(1,1),A(nx,ny),B(nx,ny);
+    fmat hess(npx*npy,npx*npy);
+    //cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros); //
 
     kf=pnf;
-    if(kf<par[0].nf2) 
-    {
+    cout<<"hessian_inv kf = "<<kf+par[0].nf1<<endl;
+    if(kf<par[0].nf2) {
         w=2.0*pi*df*(kf);  //!!!take care of when (par.nf1 != 0)
-        for(kpx=0;kpx<npx;kpx++)
-        {
-        for(kpy=0;kpy<npy;kpy++)
-        {
+        //basey.zeros(ny,npy);basex.zeros(nx,npx); //
+        //basey.set_imag(w*(par->y_coord*par->py_coord.t())); //
+        //basex.set_imag(w*(par->x_coord*par->px_coord.t())); //
+        //basey=exp(basey);basex=exp(basex); //
+        for(kpx=0;kpx<npx;kpx++){
+        for(kpy=0;kpy<npy;kpy++){
             i=kpx*npy+kpy;
-            float fpx1(kpx*dpx+p0x);
-            float fpy1(kpy*dpy+p0y);
-            for(kpx2=0;kpx2<npx;kpx2++)
-            {
-            for(kpy2=0;kpy2<npy;kpy2++)
-            {
+            //A=basex.col(kpx)*basey.col(kpy).st(); //
+            float fpx1(par[0].px_coord(kpx,0));
+            float fpy1(par[0].py_coord(kpy,0));
+            for(kpx2=0;kpx2<npx;kpx2++){
+            for(kpy2=0;kpy2<npy;kpy2++){
                 j=kpx2*npy+kpy2;
-                float fpx2(kpx2*dpx+p0x);
-                float fpy2(kpy2*dpy+p0y);
+                //B=basex.col(kpx2)*basey.col(kpy2).st();
+                //B.set_imag(-imag(B));
+                float fpx2(par[0].px_coord(kpx2,0));
+                float fpy2(par[0].py_coord(kpy2,0));
                 a=cx_hessianelement2d(w,nx,kx1,dx,fpx1-fpx2,\
                     ny,ky1,dy,fpy1-fpy2);
+                //a=cx_fmatmul(A,B);
                 par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,j)=a(0,0);
                 par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](j,i)=a(0,0); 
             }
             }        
-            //par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,i)+=dig_n; //hessian dig
             par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,i)+=par->p_power(kpx,kpy);
             kpx2=npx;kpy2=npy;
         }
         } 
+        
+        if( kf==30){
+            hess=real(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]);
+            datawrite(hess,npx*npy,npx*npy,"hessmat.simple.bin");
+        }
+        par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]=\
+            inv(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]);
     }
 }
 
@@ -469,6 +482,7 @@ for(kf=0;kf<numf;kf+=ncpu)
     {
         pcal[kcpu].join();
     }
+    /*
     for(kcpu=0;kcpu<ncpu;kcpu++)  
     {
     if((kf+kcpu+par.nf1)<par.nf2) 
@@ -478,7 +492,7 @@ cout<<real(par2.hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu](0,0))<<endl;
         par2.hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu]=\
             inv(par2.hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu]);
     }
-    }
+    }*/
 //////////////////////////////////
     for(kcpu=0;kcpu<ncpu;kcpu++)  
     {
@@ -554,20 +568,10 @@ for(kf=0;kf<numf;kf+=ncpu)
 }
 
 ////////////////////linerradon 3D transform/////////////////////////
-void linerradon_getA(cx_fmat & A, cx_fmat & basex,\
-    cx_fmat & basey, int kpx, int kpy, int nx, int ny)
-{
-    int kx,ky;
-    for(kx=0;kx<nx;kx++)
-    {for(ky=0;ky<ny;ky++)
-    {
-        A(kx,ky)=basex(kx,kpx)*basey(ky,kpy);
-    }}
-}
 //线性Radon变换，无反演
 void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
 {
-    int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
+    int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
     float w,pi(3.1415926);
     float df(par->df),dx(par->dx),dy(par->dy),\
@@ -576,8 +580,10 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
     int nx(par->nx),npx(par->npx),nf(par->nf),\
         ny(par->ny),npy(par->npy);
 
-    cx_fmat forA(nx,ny),A(nx,ny),a(1,1),B(nx,ny);
+    cx_fmat forA(nx,ny),A(nx,ny),a(1,1),B(nx,ny),hesscxmat(npx*npy,npx*npy);
     cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros);
+    cx_fmat ap(nx,ny,fill::zeros),bp(nx,ny,fill::zeros);
+    fmat hessfmat(npx*npy,npx*npy);
 
     forA.fill(0.0);
     for(kf=pnf1;kf<pnf2;kf++)  
@@ -588,13 +594,12 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
         basey.set_imag(w*(par->y_coord*par->py_coord.t()));  
         basex.set_imag(w*(par->x_coord*par->px_coord.t()));  
         basey=exp(basey);basex=exp(basex);
-        B=par->datafx.slice(kf);
+        B=par->datafx.slice(kf); 
         for(kpx=0;kpx<npx;kpx++)
         {
             for(kpy=0;kpy<npy;kpy++)
             {
                 A=basex.col(kpx)*basey.col(kpy).st();
-                //linerradon_getA(A,basex,basey,kpx,kpy,nx,ny);
                 a=cx_fmatmul(A,B);
                 par->datafP(kpx,kpy,kf)=a(0,0);
             }
@@ -630,7 +635,8 @@ void linerradon(struct linerradon3d & par)
     }
 
     fp_to_tp3d_linerradon3d(par);
-    par.realdataTP=real(par.dataTP)/(par.nx*par.ny);
+    //par.realdataTP=real(par.dataTP)/(par.nx*par.ny);
+    par.realdataTP=real(par.dataTP);
     delete [] pcal;
 }
 
@@ -898,58 +904,53 @@ cx_fmat cx_hessianelement2d(float w,\
  int nx, float kx1, float dx, float dpx,\
  int ny, float ky1, float dy, float dpy)
 {
-    cx_fmat a(1,1,fill::zeros),b(1,1,fill::zeros);
-    //float n(1/((nx+1)*(ny+1)));
-    float n2(0.0000000000001);
-    float pdx(abs(cos(w*dpx*dx)-1.0)),pdy(abs(cos(w*dpy*dy)-1.0));
+    cx_dmat a(1,1,fill::zeros),b(1,1,fill::zeros);
+    float n2(0.000000000000);
+    float pdx(abs(dpx)),pdy(abs(dpy));
 
-    if(pdx>n2 && pdy>n2)
-    {
+    if(pdx>0 && pdy>0){
         a=cx_hessianelement1d(w, nx, kx1, dx, dpx);
         b=cx_hessianelement1d(w, ny, ky1, dy, dpy);
     }
-    else if(pdx<=n2 && pdy>n2)
-    {
-        a=nx;
+    else if(pdx==0 && pdy>n2){
+        a(0,0).real(nx);
         b=cx_hessianelement1d(w, ny, ky1, dy, dpy);
     }
-    else if(pdx>n2 && pdy<=n2)
-    {
+    else if(pdx>0 && pdy==0){
         a=cx_hessianelement1d(w, nx, kx1, dx, dpx);
-        b=ny;
+        b(0,0).real(ny);
     }
-    else if(pdx<=n2 && pdy<=n2)
-    {
-        a=nx;
-        b=ny;
+    else if(pdx==0 && pdy==0){
+        a(0,0).real(nx);
+        b(0,0).real(ny);
     }
     
     a=a*b;
-    return a;
+    cx_fmat af(1,1,fill::zeros);
+    af(0,0).real(a(0,0).real());
+    af(0,0).imag(a(0,0).imag());
+    return af;
 }
 
-inline cx_fmat cx_hessianelement1d(float w,\
+inline cx_dmat cx_hessianelement1d(float w,\
  int nx, float kx1, float dx, float dpx)
 {
-    cx_fmat a(1,1,fill::zeros);
-    float a1,a2,b1,b2,c1,c2,d1,d2;
+    cx_dmat a(1,1,fill::zeros);
+    cx_dmat b(1,1,fill::zeros);
+    cx_dmat c(1,1,fill::zeros);
+    cx_dmat d(1,1,fill::zeros);
+    cx_dmat o(1,1,fill::zeros);
+    o(0,0).real(1.0);
 
-    a1=cos(w*dpx*kx1);
-    a2=sin(w*dpx*kx1);
-    
-    b1=cos(w*dpx*nx*dx)-1.0;
-    b2=sin(w*dpx*nx*dx);
-    
-    c1=cos(w*dpx*dx)-1.0;
-    c2=sin(w*dpx*dx);
+    a(0,0).imag(w*dpx*kx1);
+    b=exp(a);
+    a(0,0).imag(w*dpx*nx*dx);
+    c=exp(a)-o;
+    a(0,0).imag(w*dpx*dx);
+    d=exp(a)-o;
 
-    d1=a1*b1-a2*b2;
-    d2=a2*b1+a1*b2;
-    a1=(d1*c1+d2*c2)/(c1*c1+c2*c2);
-    a2=(d2*c1-d1*c2)/(c1*c1+c2*c2);
-    
-    a(0,0).real(a1);
-    a(0,0).imag(a2);  //take care of the error!!!
+    a=b*c/d;
+
     return a;
 }
 
