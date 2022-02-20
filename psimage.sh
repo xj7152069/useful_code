@@ -1,4 +1,4 @@
-filename="tp.real.xs.0.000001.bin"
+filename="hessmat.all.bin"
 epsname="${filename}.eps"
 #figure="pswigb"
 figure="psimage"
@@ -14,13 +14,12 @@ perc=99.9>$epsname
 !
 
 $figure< $filename \
-n1=3000 wbox=20 hbox=30 \
-legend=0 f1=-0 d1=0.001 f2=-0.000150 d2=0.000001 \
-x1beg=0 x1end=1 \
-x2beg=-0.000149 x2end=0.000149 \
-label1='Time(s)' label2='p(s/m)' \
-labelsize=70 \
-bclip=0.039198 wclip=-0.0410701>$epsname
+n1=401 wbox=20 hbox=20 axeswidth=8 labelfont=Times-Bold \
+legend=1 lwidth=1 lheight=20 lstyle=vertright lx=22.0 \
+f1=-0.001999999 d1=0.00000999 f2=-0.001999999 d2=0.00000999 \
+label1='px(s/m)' label2='px(s/m)' \
+labelsize=75 \
+bclip=200 wclip=-50.0>$epsname
 
 #x2beg=0 x2end=1000\
 #x2beg= x2end=\
