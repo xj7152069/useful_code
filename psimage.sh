@@ -1,23 +1,33 @@
-filename="hessmat.all.bin"
+filename="hessmat.simple.bin"
 epsname="${filename}.eps"
 #figure="pswigb"
 figure="psimage"
 :<<!
 $figure< $filename \
-n1=3000 wbox=40 hbox=60 \
-legend=0 f1=-0 d1=0.001 f2=-00 d2=10 \
-x1beg=0 x1end=1 \
-x2beg=0 x2end=1000 \
-label1='Time(s)' label2='X(m)' \
+n1=2048 wbox=40 hbox=50 axeswidth=12 labelfont=Times-Roman \
+legend=0 f1=-2.0 d1=0.004 f2=-2000 d2=40.0 \
+x1beg=0 x1end=2 \
+x2beg=0 x2end=4000 \
+label1='t / s' label2='x / m' \
 labelsize=140 \
 perc=99.9>$epsname
 !
+:<<!
+$figure< $filename \
+n1=2048 wbox=40 hbox=50 axeswidth=12 labelfont=Times-Roman \
+legend=0 f1=-2 d1=0.004 f2=-0.00125 d2=0.000005 \
+x1beg=-0 x1end=2 \
+x2beg=-0.00125 x2end=0.00125 \
+label1='t / s' label2='p / (s/m)' \
+labelsize=140 \
+perc=99.998>$epsname
+!
 
 $figure< $filename \
-n1=401 wbox=20 hbox=20 axeswidth=8 labelfont=Times-Bold \
+n1=401 wbox=20 hbox=20 axeswidth=9 labelfont=Times-Roman \
 legend=1 lwidth=1 lheight=20 lstyle=vertright lx=22.0 \
 f1=-0.001999999 d1=0.00000999 f2=-0.001999999 d2=0.00000999 \
-label1='px(s/m)' label2='px(s/m)' \
+label1='p / (s/m)' label2='p / (s/m)' \
 labelsize=75 \
 bclip=200 wclip=-50.0>$epsname
 
