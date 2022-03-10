@@ -18,6 +18,148 @@ fmat get_blackman_upwin2d(fmat win, float w);
 fmat get_blackman_downwin2d(fmat win, float w);
 float Blackman(float n, float N);
 ///////////////////////////////////////////////////////////////////
+class agc2d{
+public:
+    fmat data,agcelem,dataagc;
+    int nx,ny,ncpu;
+    float stablepar,winnum;
+    int agcwx,agcwy;
+    agc2d(){}
+    ~agc2d(){}
+
+agc2d(int n1, int n2){
+    nx=n1,ny=n2,ncpu=1;
+    agcwx=100,agcwy=1;
+    winnum=(agcwx*2+1)*(agcwy*2+1);
+    stablepar=1000;
+    this->dataagc.zeros(nx,ny);
+    this->data.zeros(nx,ny);
+    this->agcelem.zeros(nx,ny);
+}
+
+void get_agc2d_pthread(agc2d* agc, int n1, int n2)
+{
+    int i,j,i1,j1;
+    float agcpow;
+    for(i=n1;i<n2;i++)
+    {
+    for(j=agc->agcwy;j<agc->ny-agc->agcwy;j++)
+    {
+        agcpow=0;
+        for(i1=-agc->agcwx;i1<=agc->agcwx;i1++)
+        {
+        for(j1=-agc->agcwy;j1<=agc->agcwy;j1++)
+        {
+            //agcpow+=abs(data(i+i1,j+j1));
+            agcpow+=(data(i+i1,j+j1)*data(i+i1,j+j1));
+        }}
+        agc->agcelem(i,j)=sqrt(agcpow);
+        agcpow=0;
+    }}
+}
+
+void get_agc2d(fmat & data2, fmat & data)
+{
+    int i,j,i1,j1;
+    float agcpow,maxpow(1.0/this->stablepar);
+    for(i=this->agcwx;i<this->nx-this->agcwx;i++)
+    {
+    for(j=this->agcwy;j<this->ny-this->agcwy;j++)
+    {
+        agcpow=0;
+        for(i1=-this->agcwx;i1<=this->agcwx;i1++)
+        {
+        for(j1=-this->agcwy;j1<=this->agcwy;j1++)
+        {
+            agcpow+=(data(i+i1,j+j1)*data(i+i1,j+j1));
+        }}
+        this->agcelem(i,j)=sqrt(agcpow/this->winnum);
+        agcpow=0;
+    }}
+    for(i=0;i<this->agcwx;i++)
+    {
+        this->agcelem.row(i)=this->agcelem.row(this->agcwx);
+        this->agcelem.row(this->nx-1-i)=this->agcelem.row(this->nx-1-this->agcwx);
+    }
+    for(i=0;i<this->agcwy;i++)
+    {
+        this->agcelem.col(i)=this->agcelem.col(this->agcwy);
+        this->agcelem.col(this->ny-1-i)=this->agcelem.col(this->ny-1-this->agcwy);
+    }
+
+    this->agcelem=this->agcelem/(this->agcelem.max()-this->agcelem.min());
+    cout<<this->agcelem.max()<<"|"<<this->agcelem.min()<<endl;
+    this->agcelem=this->agcelem+maxpow*(this->agcelem.max()-this->agcelem.min());
+    //this->agcelem=this->agcelem+maxpow*(this->agcelem.max());
+    this->agcelem=1.0/this->agcelem;
+    for(i=0;i<this->nx;i++)
+    {
+    for(j=0;j<this->ny;j++)
+    {
+        data2(i,j)=this->agcelem(i,j)*data(i,j);
+        this->dataagc(i,j)=this->agcelem(i,j)*data(i,j);
+    }}
+}
+
+void de_agc2d(fmat & data, fmat & agcelem)
+{
+    int i,j;
+    for(i=0;i<this->nx;i++)
+    {
+    for(j=0;j<this->ny;j++)
+    {
+        data(i,j)=data(i,j)/agcelem(i,j);
+    }}
+}
+
+void add_agc2d(fmat & data, fmat & agcelem)
+{
+    int i,j;
+    for(i=0;i<this->nx;i++)
+    {
+    for(j=0;j<this->ny;j++)
+    {
+        data(i,j)=data(i,j)*agcelem(i,j);
+    }}
+}
+};
+/*
+void get_agc2d_thread(agc2d & agc)
+{
+    int i,j,i1,j1;
+    float agcpow,maxpow(1.0/agc.stablepar);
+    thread *pcal;
+    pcal=new thread[agc.ncpu];
+    for(i=0;i<agc.ncpu;i++){
+
+        pcal[i]=thread(get_agc2d_pthread,&par,i1,j2);
+    }
+
+    for(i=0;i<agc.agcwx;i++)
+    {
+        agc.agcelem.row(i)=this->agcelem.row(this->agcwx);
+        this->agcelem.row(this->nx-1-i)=this->agcelem.row(this->nx-1-this->agcwx);
+    }
+    for(i=0;i<this->agcwy;i++)
+    {
+        this->agcelem.col(i)=this->agcelem.col(this->agcwy);
+        this->agcelem.col(this->ny-1-i)=this->agcelem.col(this->ny-1-this->agcwy);
+    }
+
+    this->agcelem=this->agcelem/(this->agcelem.max()-this->agcelem.min());
+    cout<<this->agcelem.max()<<"|"<<this->agcelem.min()<<endl;
+    this->agcelem=this->agcelem+maxpow*(this->agcelem.max()-this->agcelem.min());
+    this->agcelem=1.0/this->agcelem;
+    for(i=0;i<this->nx;i++)
+    {
+    for(j=0;j<this->ny;j++)
+    {
+        data2(i,j)=this->agcelem(i,j)*data(i,j);
+        this->dataagc(i,j)=this->agcelem(i,j)*data(i,j);
+    }}
+}
+*/
+///////////////////////////////////////////////////////////////////
 float Blackman(float n, float N)
 {
     float xs, pi(3.1415926);
