@@ -17,10 +17,7 @@
 #include "../xjc.h"
 using namespace std;
 using namespace arma;
-cx_fmat get_blackman_leftwin2d(cx_fmat win, float w);
-cx_fmat get_blackman_rightwin2d(cx_fmat win, float w, float wf);
-fmat get_blackman_upwin2d(fmat win, float w);
-fmat get_blackman_downwin2d(fmat win, float w);
+
 void cal_p_power_3d(struct linerradon3d & par);
 void tx_to_fx3d_linerradon3d(struct linerradon3d & par);
 void tp_to_fp3d_linerradon3d(struct linerradon3d & par);
@@ -611,6 +608,11 @@ void linerradon(struct linerradon3d & par)
 {
     //tx_to_fx3d_linerradon3d(par);
     tx_to_fx3d_radon3d_thread(par);
+    fmat fxpow(par.nz,1);
+    for(int i=0;i<par.nz;i++){
+        fxpow(i,0)=sum(sum(abs(par.datafx.slice(i))));
+    }
+    datawrite(fxpow,par.nz,1,"fxpow.bin");
     
     int pn(par.numthread),pnf1,pnf2,k;
     float dnf;
@@ -1235,135 +1237,6 @@ void beamformingCG3d(struct linerradon3d & par, int numi=9)
     par.realdataTP=real(par.dataTP);
     delete [] pcal;
 }
-cx_fmat get_blackman_leftwin2d(cx_fmat win, float w)
-{
-    int n1,n2;
-    n1=win.n_rows;
-    n2=win.n_cols;
-    int i,j;
-    float n;
-    for(i=0;i<n1;i++)
-    {
-        for(j=0;j<n2;j++)
-        {
-            if(j<=w)
-            {
-                n=j;
-                n=Blackman(n,w);
-                (win(i,j)).real(real(win(i,j))*n);
-                (win(i,j)).imag(imag(win(i,j))*n);
-            }
-        } 
-    }
-    return win;
-}
-cx_fmat get_blackman_rightwin2d(cx_fmat win, float w, float wf)
-{
-    int n1,n2;
-    n1=win.n_rows;
-    n2=win.n_cols;
-    int i,j;
-    float n;
-    for(i=0;i<n1;i++)
-    {
-        for(j=0;j<n2;j++)
-        {
-            if(j>=(wf-w) && j<wf)
-            {
-                n=wf-1-j;
-                n=Blackman(n,w);
-                (win(i,j)).real(real(win(i,j))*n);
-                (win(i,j)).imag(imag(win(i,j))*n);
-            }
-        } 
-    }
-    return win;
-}
-fmat get_blackman_leftwin2d(fmat win, float w)
-{
-    int n1,n2;
-    n1=win.n_rows;
-    n2=win.n_cols;
-    int i,j;
-    float n;
-    for(i=0;i<n1;i++)
-    {
-        for(j=0;j<n2;j++)
-        {
-            if(j<=w)
-            {
-                n=j;
-                n=Blackman(n,w);
-                win(i,j)*=n;
-            }
-        } 
-    }
-    return win;
-}
-fmat get_blackman_rightwin2d(fmat win, float w)
-{
-    int n1,n2;
-    n1=win.n_rows;
-    n2=win.n_cols;
-    int i,j;
-    float n;
-    for(i=0;i<n1;i++)
-    {
-        for(j=0;j<n2;j++)
-        {
-            if(j>=n2-w-1)
-            {
-                n=n2-1-j;
-                n=Blackman(n,w);
-                win(i,j)*=n;
-            }
-        } 
-    }
-    return win;
-}
 
-fmat get_blackman_downwin2d(fmat win, float w)
-{
-    int n1,n2;
-    n1=win.n_rows;
-    n2=win.n_cols;
-    int i,j;
-    float n;
-    for(i=0;i<n1;i++)
-    {
-        for(j=0;j<n2;j++)
-        {
-            if(i>=n1-w-1)
-            {
-                n=n1-1-i;
-                n=Blackman(n,w);
-                win(i,j)*=n;
-            }
-        } 
-    }
-    return win;
-}
-
-fmat get_blackman_upwin2d(fmat win, float w)
-{
-    int n1,n2;
-    n1=win.n_rows;
-    n2=win.n_cols;
-    int i,j;
-    float n;
-    for(i=0;i<n1;i++)
-    {
-        for(j=0;j<n2;j++)
-        {
-            if(i<=w)
-            {
-                n=i;
-                n=Blackman(n,w);
-                win(i,j)*=n;
-            }
-        } 
-    }
-    return win;
-}
 
 #endif
