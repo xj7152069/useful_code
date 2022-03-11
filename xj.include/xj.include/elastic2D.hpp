@@ -89,6 +89,7 @@ public:
     ~elastic2D();
 
     //void timeslicecal(int restart=0);
+    void initialize(int x, int y);
     void timeslicecal_T();
     void timeslicecal_V();
     void timeslicecal_U();
@@ -183,29 +184,18 @@ elastic2D::~elastic2D()
 
     cout<<"Delete an object-wave_modeling_2D"<<endl;
 }
-
-void elastic2D::cleardata()
+//take care of it!!!!
+void elastic2D::initialize(int z, int x)
 {
-    //this->setvelocity(0.0);
-    matdelete(data.txx,ny),matdelete(data.txxx2,ny),matdelete(data.txxx,ny),\
-    matdelete(data.txxy2,ny),matdelete(data.txxy,ny),matdelete(data.txy,ny),\
-    matdelete(data.txyx2,ny),matdelete(data.txyx,ny),matdelete(data.txyy2,ny),\
-    matdelete(data.txyy,ny),matdelete(data.tyy,ny),matdelete(data.tyyx2,ny),\
-    matdelete(data.tyyx,ny),matdelete(data.tyyy2,ny),matdelete(data.tyyy,ny),\
-    matdelete(data.vxx2,ny),matdelete(data.vxx,ny),matdelete(data.vxy2,ny),\
-    matdelete(data.vxy,ny),matdelete(data.vyx2,ny),matdelete(data.vyx,ny),\
-    matdelete(data.vyy2,ny),matdelete(data.vyy,ny);
-    matdelete(ux,ny),matdelete(uz,ny);
-    uz=NULL,ux=NULL;
-    data.vxx=NULL, data.vxy=NULL, data.vyx=NULL, data.vyy=NULL; //PML boundary
-    data.vxx2=NULL, data.vxy2=NULL, data.vyx2=NULL, data.vyy2=NULL; //PML boundary
-    data.txx=NULL, data.txy=NULL, data.tyy=NULL; //PML boundary
-    data.txxx=NULL, data.txyx=NULL, data.tyyx=NULL; //PML boundary
-    data.txxy=NULL, data.txyy=NULL, data.tyyy=NULL; //PML boundary
-    data.txxx2=NULL, data.txyx2=NULL, data.tyyx2=NULL; //PML boundary
-    data.txxy2=NULL, data.txyy2=NULL, data.tyyy2=NULL; //PML boundaryt
-    cout<<"All Matrix data has been clear!"<<endl;
-
+    nx=x;ny=z;t3=1;
+    dx=5.0;dy=5.0;dt=0.0005;dt2=dt;
+    PML_wide=40;suface=1;R=25;
+    vp1=3000,vs1=2000,roo=2000;
+    C_Y=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
+    C_X=(R)*3/2/(PML_wide)/(PML_wide)/(PML_wide)/dx/dx/dx;
+    par0=new int[1],par0[0]=0;
+    par1=new int[1],par1[0]=1;
+    
     data.txx=newfmatcs(ny,nx,0.0),data.txxx2=newfmatcs(ny,nx,0.0),data.txxx=newfmatcs(ny,nx,0.0),\
     data.txxy2=newfmatcs(ny,nx,0.0),data.txxy=newfmatcs(ny,nx,0.0),data.txy=newfmatcs(ny,nx,0.0),\
     data.txyx2=newfmatcs(ny,nx,0.0),data.txyx=newfmatcs(ny,nx,0.0),data.txyy2=newfmatcs(ny,nx,0.0),\
@@ -213,7 +203,43 @@ void elastic2D::cleardata()
     data.tyyx=newfmatcs(ny,nx,0.0),data.tyyy2=newfmatcs(ny,nx,0.0),data.tyyy=newfmatcs(ny,nx,0.0),\
     data.vxx2=newfmatcs(ny,nx,0.0),data.vxx=newfmatcs(ny,nx,0.0),data.vxy2=newfmatcs(ny,nx,0.0),\
     data.vxy=newfmatcs(ny,nx,0.0),data.vyx2=newfmatcs(ny,nx,0.0),data.vyx=newfmatcs(ny,nx,0.0),\
+    data.vxx3=newfmatcs(ny,nx,0.0),data.vxy3=newfmatcs(ny,nx,0.0),\
+    data.vyx3=newfmatcs(ny,nx,0.0),data.vyy3=newfmatcs(ny,nx,0.0),\
     data.vyy2=newfmatcs(ny,nx,0.0),data.vyy=newfmatcs(ny,nx,0.0);
+    data.vpx13=newfmatcs(ny,nx,0.0),data.vpx12=newfmatcs(ny,nx,0.0),data.vpx1=newfmatcs(ny,nx,0.0);
+    data.vpx23=newfmatcs(ny,nx,0.0),data.vpx22=newfmatcs(ny,nx,0.0),data.vpx2=newfmatcs(ny,nx,0.0);
+    data.vpy13=newfmatcs(ny,nx,0.0),data.vpy12=newfmatcs(ny,nx,0.0),data.vpy1=newfmatcs(ny,nx,0.0);
+    data.vpy23=newfmatcs(ny,nx,0.0),data.vpy22=newfmatcs(ny,nx,0.0),data.vpy2=newfmatcs(ny,nx,0.0);
+    data.vsy=newfmatcs(ny,nx,0.0),data.vsx=newfmatcs(ny,nx,0.0);
+    data.vpy=newfmatcs(ny,nx,0.0),data.vpx=newfmatcs(ny,nx,0.0);
+//pure-pressure modeling
+
+    vs=newfmatcs(ny,nx,vs1),vp=newfmatcs(ny,nx,vp1),ro=newfmatcs(ny,nx,roo);
+    miu=newfmatcs(ny,nx,vs1*vs1*roo),lmd=newfmatcs(ny,nx,(vp1*vp1*roo-2*vs1*vs1*roo));
+    mo=newfmatcs(ny,nx,vp1*vp1*roo),ro1=newfmatcs(ny,nx,1.0/roo); 
+    ux=newfmatcs(ny,nx,0.0),uz=newfmatcs(ny,nx,0.0),up=newfmatcs(ny,nx,0.0);
+    mo1=newfmatcs(ny,nx,(lmd[0][0]+2*miu[0][0])/(2*lmd[0][0]+2*miu[0][0])/ro[0][0]); 
+    Txx=newfmatcs(ny,nx,0.0),Tyy=newfmatcs(ny,nx,0.0),Txy=newfmatcs(ny,nx,0.0);
+}
+
+void elastic2D::cleardata()
+{
+    //Txy=NULL,Txx=NULL,Tyy=NULL;
+    //uz=NULL,ux=NULL;
+    matcopy(ux,0.0,ny,nx);matcopy(uz,0.0,ny,nx);
+    matcopy(Txx,0.0,ny,nx);matcopy(Tyy,0.0,ny,nx);matcopy(Txy,0.0,ny,nx);
+    //float **vxx=NULL, **vxy=NULL, **vyx=NULL, **vyy=NULL; //PML boundary
+    //float **txxx=NULL, **txyx=NULL, **tyyx=NULL; //PML boundary
+    //float **txxy=NULL, **txyy=NULL, **tyyy=NULL; //PML boundary
+    matcopy(data.vxx,0.0,ny,nx);matcopy(data.vxy,0.0,ny,nx);
+    matcopy(data.txxx,0.0,ny,nx);matcopy(data.txyx,0.0,ny,nx);matcopy(data.tyyx,0.0,ny,nx);
+    matcopy(data.vyx,0.0,ny,nx);matcopy(data.vyy,0.0,ny,nx);
+    matcopy(data.txxy,0.0,ny,nx);matcopy(data.txyy,0.0,ny,nx);matcopy(data.tyyy,0.0,ny,nx);
+    matcopy(data.vxx2,0.0,ny,nx);matcopy(data.vxy2,0.0,ny,nx);
+    matcopy(data.txxx2,0.0,ny,nx);matcopy(data.txyx2,0.0,ny,nx);matcopy(data.tyyx2,0.0,ny,nx);
+    matcopy(data.vyx2,0.0,ny,nx);matcopy(data.vyy2,0.0,ny,nx);
+    matcopy(data.txxy2,0.0,ny,nx);matcopy(data.txyy2,0.0,ny,nx);matcopy(data.tyyy2,0.0,ny,nx);
+    cout<<"All data has cleaar!"<<endl;
 }
  
 void elastic2D::updatepar()
