@@ -147,9 +147,11 @@ elastic2D::elastic2D(int z, int x)
 
 elastic2D::~elastic2D()
 {
-    matdelete(vs,ny),matdelete(vp,ny),matdelete(lmd,ny),\
-    matdelete(miu,ny),matdelete(ro,ny),matdelete(ro1,ny),matdelete(mo,ny);
-    vp=NULL,vs=NULL,lmd=NULL,miu=NULL,ro=NULL,ro1=NULL,mo=NULL;
+    matdelete(vs,ny),matdelete(vp,ny),matdelete(lmd,ny);
+    matdelete(mo,ny),matdelete(ux,ny),matdelete(uz,ny);
+    matdelete(miu,ny),matdelete(ro,ny),matdelete(ro1,ny);
+    matdelete(Txx,ny),matdelete(Tyy,ny),matdelete(Txy,ny);
+    matdelete(up,ny),matdelete(mo1,ny);
 
     matdelete(data.txx,ny),matdelete(data.txxx2,ny),matdelete(data.txxx,ny),\
     matdelete(data.txxy2,ny),matdelete(data.txxy,ny),matdelete(data.txy,ny),\
@@ -161,16 +163,15 @@ elastic2D::~elastic2D()
     matdelete(data.vyy2,ny),matdelete(data.vyy,ny);
     matdelete(data.vxx3,ny),matdelete(data.vxy3,ny),\
     matdelete(data.vyx3,ny),matdelete(data.vyy3,ny);
-    matdelete(ux,ny),matdelete(uz,ny);
     matdelete(data.vpx23,ny),matdelete(data.vpx22,ny),matdelete(data.vpx1,ny);
     matdelete(data.vpx13,ny),matdelete(data.vpx12,ny),matdelete(data.vpx2,ny);
     matdelete(data.vpy23,ny),matdelete(data.vpy22,ny),matdelete(data.vpy1,ny);
     matdelete(data.vpy13,ny),matdelete(data.vpy12,ny),matdelete(data.vpy2,ny);
     matdelete(data.vsy,ny),matdelete(data.vsx,ny);
     matdelete(data.vpy,ny),matdelete(data.vpx,ny);
-    matdelete(mo1,ny); 
-    matdelete(Txx,ny),matdelete(Tyy,ny),matdelete(Txy,ny);
-    uz=NULL,ux=NULL,mo1=NULL;
+
+    vp=NULL,vs=NULL,lmd=NULL,miu=NULL,ro=NULL,ro1=NULL,mo=NULL;
+    uz=NULL,ux=NULL,mo1=NULL,up=NULL;
     Txy=NULL,Txx=NULL,Tyy=NULL;
     data.vxx=NULL, data.vxy=NULL, data.vyx=NULL, data.vyy=NULL; //PML boundary
     data.vxx2=NULL, data.vxy2=NULL, data.vyx2=NULL, data.vyy2=NULL; //PML boundary
@@ -993,42 +994,6 @@ void elastic_test(int dmovie=1)
     outf3.close();
    // outf4.close();
     cout<<"Have output test movie."<<endl;
-}
-////////////////////////////////////////////////////
-void multiple_code(fmat& u2, fmat& u1, fmat& tu2u1,\
- float df, int fn1, int fn2)
-{
-    int n1(u1.n_rows),n2(u1.n_cols);
-    int i,j,k;
-    float w,pi(3.1415926);
-    cx_fmat codemat(n2,n2,fill::zeros),onecol(n1,1),\
-        u1cx(n2,n1),u2cx(n2,n1,fill::zeros);
-    cx_float a;
-    a.real(0.0);
-
-    for(k=0;k<n2;k++){
-        onecol.col(0)=fft(u1.col(k),n1);
-        u1cx.row(k)=onecol.col(0).st();
-        //u2cx.row(k)=fft(u2.col(k).t(),n1);
-    }
-    
-    for(k=fn1;k<fn2;k++){
-        w=-2.0*pi*df*k;
-        cout<<"k="<<k<<" | "<<"w="<<w<<endl;
-        for(i=0;i<n2;i++){
-            for(j=0;j<n2;j++){
-                a.imag(w*tu2u1(i,j));
-                codemat(i,j)=exp(a);
-            }
-        }
-        u2cx.col(k)=codemat*u1cx.col(k);
-    }
-
-    for(k=0;k<n2;k++){
-        //u1cx.row(k)=fft(u1.col(k).t(),n1);
-        onecol.col(0)=u2cx.row(k).st();
-        u2.col(k)=real(ifft(onecol.col(0),n1));
-    }
 }
 
 #endif
