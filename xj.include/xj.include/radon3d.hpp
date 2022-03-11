@@ -224,7 +224,7 @@ void tx_to_fx3d_radon3d_thread(struct linerradon3d & par)
         par.datafx.col(i)=get_blackman_leftwin2d\
             (par.datafx.col(i),par.rulef1);
         par.datafx.col(i)=get_blackman_rightwin2d\
-            (par.datafx.col(i),30,par.rulef2);
+            (par.datafx.col(i),300,par.rulef2);
     }
     
     fmat datapower(par.nf,1);
