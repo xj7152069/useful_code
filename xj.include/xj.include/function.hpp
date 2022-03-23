@@ -20,10 +20,10 @@ float Blackman(float n, float N);
 void multiple_code(fmat& u2, fmat& u1, fmat& green,\
  float df, int fn1=0, int fn2=2048);
 ///////////////////////////////////////////////////////////////////
-void single_trace_dewave(fmat & data, fmat & dict,\
+fmat single_trace_dewave(fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh)
+    int nwt,int dnwt,float zzh=0.001)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd);
     fmat mat1(nwt,nw),mat0(nwt,nw),datap3(nt,nx,fill::zeros),\
@@ -94,12 +94,9 @@ void single_trace_dewave(fmat & data, fmat & dict,\
                 matd(i,0)=datavz(i+kwt,k);
             }
             matD=mat1.t()*mat1;
+            
             digmat.fill(0);
-            if(matD.max()>0)
-                digmat.diag()+=(matD.max()*zzh);
-            else
-                digmat.diag()+=(zzh);
-
+            digmat.diag()+=(matD.max()*zzh+zzh);
             //cout<<digmat(1,1)<<endl;
             matq=inv(matD+digmat)*mat1.t()*matd;
             matd=mat1*matq;
