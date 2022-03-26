@@ -22,6 +22,114 @@ void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace);
 //void segyhead_readoneline_tofmat(segyhead & head, fmat & data);
 
 ///////////////////////////////////////////////////////////////////
+void dataread_fromsegy_to3dblock(segyhead & head, int nline, int keyw)
+{
+    //keyw==1, use cdp; keyw==2, use trace;
+    int i,j,k,nz(3501),ny(15),cdp0,cdp1,trac0,trac1,sx0,sx1;
+    ny=nline;
+    fmat numnx(ny,1);
+    ofstream outf,outf2;
+    outf.open("./data1.bin",ios::trunc);
+    int nx(0),maxnx(-1),nynum(0),begnx(0);
+    ifstream infhead;
+    while(1){
+        if(head.begnx==0){
+            segyhead_readonetrace_tofmat(head,head.data);
+            nz=head.data.n_rows;
+	        nx++;head.begnx=1;    
+            datawrite(head.data,nz,1,outf);
+            if(head.endian=='l'){
+                trac0=getendianchange(head.head2.cdp);
+                cdp0=getendianchange(head.head2.f1);
+		        sx0=getendianchange(head.head2.d2);
+                }
+            else{
+                trac0=head.head2.cdp;cdp0=head.head2.f1;
+		        sx0=head.head2.d2;
+                }
+            }
+        else if(head.begnx==1){
+            segyhead_readonetrace_tofmat(head,head.data);
+            nz=head.data.n_rows;
+            if(head.endian=='l'){
+                trac1=getendianchange(head.head2.cdp);
+                cdp1=getendianchange(head.head2.f1);
+		        sx1=getendianchange(head.head2.d2);
+                }
+            else{
+                trac1=head.head2.cdp;cdp1=head.head2.f1;
+		        sx1=head.head2.d2;
+                }
+            //cout<<"cdp="<<cdp1<<"|"<<"trac="<<trac1<<"|"<<sx1<<"|"<<nynum<<endl;
+            if(keyw==2)
+            {cdp1=trac1;cdp0=trac0;}
+            else if(keyw==3)
+            {cdp1=sx1;cdp0=sx0;}
+            if(cdp1==cdp0){
+                nx++;
+                datawrite(head.data,nz,1,outf);
+            }
+            else{
+                if(maxnx<nx)
+                {maxnx=nx;}
+                //cout<<nx<<",";
+                numnx(nynum,0)=nx;
+                nx=1;
+                cdp0=cdp1;
+		        sx0=sx1;
+		        trac0=trac1;
+                nynum++;
+                if(nynum>=(ny)){
+                    head.begnx=2;
+                    break;
+                }
+                else
+                {datawrite(head.data,nz,1,outf);}
+            } 
+        }
+        else if(head.begnx==2){
+            nz=head.data.n_rows;
+            nx++;head.begnx=1;    
+            datawrite(head.data,nz,1,outf);
+            if(head.endian=='l'){
+                trac0=getendianchange(head.head2.cdp);
+                cdp0=getendianchange(head.head2.f1);
+	            sx0=getendianchange(head.head2.d2);
+            }
+            else{
+                trac0=head.head2.cdp;cdp0=head.head2.f1;
+	            sx0=head.head2.d2;
+            }
+        }
+        if(head.infile.eof())
+        {break;}
+    }
+    //head.infile.close();
+    outf.close();
+    //datawrite(numnx,ny,1,"numofnx.bin");
+/////////////////////////////
+    ifstream inf;
+    fmat data;
+    data.resize(nz,maxnx);
+    inf.open("./data1.bin");
+    outf.open("./data1.oneblock.bin",ios::trunc);
+    outf2.open("./data1.nx.bin",ios::app);
+    for(i=0;i<ny;i++)
+    {
+        data.fill(0.0);
+        dataread(data,nz,numnx(i,0),inf);
+        datawrite(data,nz,maxnx,outf);
+    }
+    datawrite(numnx,ny,1,outf2);
+    inf.close();
+    outf.close();
+    outf2.close();
+    head.nz=nz,head.nx=maxnx;
+    head.datanx.zeros(ny,1);
+    head.datanx=numnx;
+    //cout<<"nz="<<head.nz<<"|"<<"nx="<<head.nx<<endl;
+}
+
 /*
 void segyhead_readoneline_tofmat(segyhead & head, fmat & data)
 {
