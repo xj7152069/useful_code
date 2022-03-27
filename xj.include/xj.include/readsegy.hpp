@@ -10,7 +10,7 @@
 
 using namespace std;
 
-unsigned long ibm2ieee (const unsigned long num);
+unsigned int ibm2ieee (const unsigned int num);
 void segyhead_endianget(segyhead & head);
 void segyhead_initialize(segyhead & head);
 template <typename T1> inline void endianchange(T1 & a);
@@ -22,7 +22,7 @@ void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace);
 //void segyhead_readoneline_tofmat(segyhead & head, fmat & data);
 
 ///////////////////////////////////////////////////////////////////
-void dataread_fromsegy_to3dblock(segyhead & head, int nline, int keyw)
+void dataread_fromsegy_to3dblockone(segyhead & head, int nline, int keyw)
 {
     //keyw==1, use cdp; keyw==2, use trace;
     int i,j,k,nz(3501),ny(15),cdp0,cdp1,trac0,trac1,sx0,sx1;
@@ -162,10 +162,10 @@ void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
         nz=int(head.head1.hns);
     trace.zeros(nz,1);
 
-    if(head.isibm==true){
+    if(head.isibm){
         int i,j;
         float *float_p;
-        unsigned long IBMFloatBytes;
+        unsigned int IBMFloatBytes;
         for(i=0;i<trace.n_rows;i++){
             for(j=0;j<trace.n_cols;j++){
                 head.infile.read((char *)&IBMFloatBytes, 4); 
@@ -173,10 +173,13 @@ void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
                 IBMFloatBytes=ibm2ieee(IBMFloatBytes);
                 float_p=(float *)(&IBMFloatBytes);
                 trace(i,j)=*float_p;
+                if(isinf(abs(trace(i,j)))){
+                    trace(i,j)=0;
+                }
             }
         }
     }
-    else if(head.isibm==false && head.endian=='l'){
+    else if(!head.isibm && head.endian=='l'){
         int i,j;
         float *float_p;
         unsigned long IBMFloatBytes;
@@ -189,7 +192,7 @@ void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
             }
         }
     }
-    else if(head.isibm==false && head.endian=='b'){
+    else if(!head.isibm && head.endian=='b'){
         int i,j;
         float *float_p;
         unsigned long IBMFloatBytes;
@@ -335,27 +338,26 @@ inline float getendianchange(T1 a)
     return b;
 }
 
-unsigned long ibm2ieee (const unsigned long num) 
+unsigned int ibm2ieee (const unsigned int num) 
 {  
     
-    unsigned long ibmCode(num);
-    //unsigned long ieeeFloat(0);
-    unsigned long ieeeFloat(0);
+    unsigned int ibmCode(num);
+    //unsigned int ieeeFloat(0);
+    //unsigned int ieeeFloat(0);
 if((ibmCode << 1) == 0)
 {  
 // If it is an IBM floating point number  
 // Returns the corresponding IEEE binary encoding  
-ieeeFloat=ibmCode;
-    return ieeeFloat;
+    return ibmCode;
 }
 //IBM浮点数： SEEEEEEE MMMMMMMM MMMMMMMM MMMMMMMM
 //浮点数值 Value = (-1)^s * M * 16^(E-64)
-   unsigned long   signCode(num>>31);//获取符号位, S=0或1， sign=00 00 00 0000000S
-   
+   unsigned int  signCode(num>>31);//获取符号位, S=0或1， sign=00 00 00 0000000S
+   /*
    int sign(1); //正数
    if (signCode==1)
       sign=-1;//负数
-
+*/
    ibmCode= (ibmCode<<1); // 左移移出符号位, ibmCode= EEEEEEEM MMMMMMMM MMMMMMMM MMMMMMM0
  /*
    int exponent((int)(ibmCode >> 25));  // 获取阶数, exponent=00 00 00 0EEEEEEE
@@ -376,7 +378,7 @@ ieeeFloat=ibmCode;
     return   ieeeFloat;
 */
 
-    unsigned long float_IBM(num);
+    unsigned int float_IBM(num);
 /*
 if((float_IBM << 1) == 0)
 {  
@@ -385,18 +387,18 @@ if((float_IBM << 1) == 0)
     return float_IBM;
 }*/
 // Get the S, symbol part of the IBM floating point number  
-unsigned long S_IBM_32(signCode<<31);  
+unsigned int S_IBM_32(signCode<<31);  
 // Get the E, exponential part of the IBM floating point number  
-unsigned long exponent(ibmCode >> 25);
-int exponent2((int)(ibmCode >> 25));
-unsigned long E_IBM_32(exponent << 24);  
+unsigned int exponent(ibmCode >> 25);
+//int exponent2((int)(ibmCode >> 25));
+unsigned int E_IBM_32(exponent << 24);  
 // Get the F, decimal part of the IBM floating point number 
-unsigned long fraction(ibmCode << 7);  //移出符号位和阶数剩余的部分：尾数部分fraction=MMMMMMMM MMMMMMMM MMMMMMM 00000000
+unsigned int fraction(ibmCode << 7);  //移出符号位和阶数剩余的部分：尾数部分fraction=MMMMMMMM MMMMMMMM MMMMMMM 00000000
    fraction= (fraction >> 8);  //fraction=00000000 MMMMMMMM MMMMMMMM MMMMMMM
-unsigned long F_IBM_32(fraction);  
+unsigned int F_IBM_32(fraction);  
 // Get the F, decimal part of the IBM floating point number  
-unsigned long radix(0);  
-unsigned long F_IEEE_32(F_IBM_32);  
+unsigned int radix(0);  
+unsigned int F_IEEE_32(F_IBM_32);  
 while (radix <= 3 && F_IEEE_32 < 0x01000000) {  
     radix++;  
     F_IEEE_32 = F_IEEE_32 << 1;  }  
@@ -405,20 +407,21 @@ F_IEEE_32 = (F_IEEE_32 - 0x01000000)>>1;
 // Get the E, exponential part of the IBM floating point number  
  // Start counting  
 // Put it in the correct position  
-
+/*
 double ratio(pow(2,24));
 double   P2(pow(16, exponent2-64));
 double   P1(fraction/ratio);
-ieeeFloat=sign*P1*P2;
-unsigned long E_IEEE_32((((E_IBM_32>>22)-130)-(radix-1))<<23);  
+ieeeFloat=sign*P1*P2;*/
+unsigned int E_IEEE_32((((E_IBM_32>>22)-130)-(radix-1))<<23);  
 // Whether overflow occurs  
-if (E_IEEE_32 > 0x7F800000) {  
-    return S_IBM_32|0x7F800000;  }  
+if (E_IEEE_32 > 0x7F000000) {  
+    //return S_IBM_32|0x7F000000;  }  
+    return S_IBM_32;  }  
 if (E_IEEE_32 < 0x10000000) {  
     return S_IBM_32;  } 
 else  
-    return ieeeFloat;  
-    //return S_IBM_32 | E_IEEE_32 | F_IEEE_32;  
+    //return ieeeFloat;  
+    return S_IBM_32 | E_IEEE_32 | F_IEEE_32;  
 }  
 
 ////////////////////////////////////////////////
