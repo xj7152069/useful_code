@@ -182,7 +182,7 @@ void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
     else if(!head.isibm && head.endian=='l'){
         int i,j;
         float *float_p;
-        unsigned long IBMFloatBytes;
+        unsigned int IBMFloatBytes;
         for(i=0;i<trace.n_rows;i++){
             for(j=0;j<trace.n_cols;j++){
                 head.infile.read((char *)&IBMFloatBytes, 4); 
@@ -195,7 +195,7 @@ void segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
     else if(!head.isibm && head.endian=='b'){
         int i,j;
         float *float_p;
-        unsigned long IBMFloatBytes;
+        unsigned int IBMFloatBytes;
         for(i=0;i<trace.n_rows;i++){
             for(j=0;j<trace.n_cols;j++){
                 head.infile.read((char *)&IBMFloatBytes, 4); 
