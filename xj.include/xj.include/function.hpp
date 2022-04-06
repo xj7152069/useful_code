@@ -7,7 +7,8 @@
 #include <fstream>
 #include <iomanip>
 #include <math.h>
-
+#include <thread>
+#include <future>
 #include <time.h>
 #include "../xjc.h"
 using namespace std;
@@ -154,20 +155,27 @@ void multiple_code(fmat& u2, fmat& u1, fmat& green,\
 class agc2d{
 public:
     fmat data,agcelem,dataagc;
-    int nx,ny,ncpu;
+    fcube data3d,agcelem3d;
+    int nx,ny,nz,ncpu;
     float stablepar,winnum;
-    int agcwx,agcwy;
+    int agcwx,agcwy,agcwz;
     agc2d(){}
     ~agc2d(){}
 
-agc2d(int n1, int n2){
-    nx=n1,ny=n2,ncpu=1;
-    agcwx=100,agcwy=1;
+agc2d(int n1, int n2, int n3=0){
+    nx=n1,ny=n2,nz=n3,ncpu=1;
+    agcwx=50,agcwy=2,agcwz=2;
     winnum=(agcwx*2+1)*(agcwy*2+1);
-    stablepar=100;
-    this->dataagc.zeros(nx,ny);
-    this->data.zeros(nx,ny);
-    this->agcelem.zeros(nx,ny);
+    stablepar=1000;
+    if(n3==0){
+        this->dataagc.zeros(nx,ny);
+        this->data.zeros(nx,ny);
+        this->agcelem.zeros(nx,ny);
+    }
+    else if(n3>0){
+        this->data3d.zeros(nx,ny,nz);
+        this->agcelem3d.zeros(nx,ny,nz);
+    }    
 }
 
 void get_agc2d_pthread(agc2d* agc, int n1, int n2)
@@ -255,7 +263,112 @@ void add_agc2d(fmat & data, fmat & agcelem)
         data(i,j)=data(i,j)*agcelem(i,j);
     }}
 }
+
+void removeagc3d(agc2d & par)
+{
+    int i,j,k;
+    for(i=0;i<par.nx;i++)
+    {
+    for(j=0;j<par.ny;j++)
+    {
+    for(k=0;k<par.nz;k++)
+    {
+        par.data3d(i,j,k)=par.data3d(i,j,k)/par.agcelem3d(i,j,k);
+    }}}
+}
+
 };
+
+void getagc3d_pthread(int coordy, agc2d * par)
+{
+    int i,j,k,i1,j1,k1;
+    float agcpow;
+    for(i=par[0].agcwx;i<par[0].nx-par[0].agcwx;i++)
+    {
+    for(j=coordy;j<(coordy+1);j++)
+    {
+    for(k=par[0].agcwz;k<par[0].nz-par[0].agcwz;k++)
+    {
+        agcpow=0;
+        for(i1=-par[0].agcwx;i1<=par[0].agcwx;i1++)
+        {
+        for(j1=-par[0].agcwy;j1<=par[0].agcwy;j1++)
+        {
+        for(k1=-par[0].agcwz;k1<=par[0].agcwz;k1++)
+        {
+            agcpow+=abs(par[0].data3d(i+i1,j+j1,k+k1));
+        }}}
+        par[0].agcelem3d(i,j,k)=agcpow;
+        agcpow=0;
+    }}}
+    for(i=0;i<par[0].agcwx;i++)
+    {
+        par[0].agcelem3d.row(i)=par[0].agcelem3d.row(par[0].agcwx);
+        par[0].agcelem3d.row(par[0].nx-1-i)=par[0].agcelem3d.row(par[0].nx-1-par[0].agcwx);
+    }
+    for(i=0;i<par[0].agcwz;i++)
+    {
+        par[0].agcelem3d.slice(i)=par[0].agcelem3d.slice(par[0].agcwz);
+        par[0].agcelem3d.slice(par[0].nz-1-i)=par[0].agcelem3d.slice(par[0].nz-1-par[0].agcwz);
+    }
+}
+
+void getagc3d(agc2d & par)
+{
+    int coordy,numcpu(par.ncpu),i,j,k;
+    agc2d * ppar;
+    ppar=&par;
+    if(numcpu>(par.ny-par.agcwy-par.agcwy))
+    {numcpu=(par.ny-par.agcwy-par.agcwy);}
+    thread *pcal;
+    pcal=new thread[numcpu];
+
+    int sx1(par.agcwy),sx2(par.ny-par.agcwy),\
+        dsx(1),s1(sx1/dsx),s2(sx2/dsx);
+    for(i=s1;i<(s2-numcpu);i+=numcpu)
+    {
+        for(k=0;k<numcpu;k++)
+        {
+            coordy=(i+k)*dsx;
+            pcal[k]=thread(getagc3d_pthread,coordy,ppar);
+        }
+        for(k=0;k<numcpu;k++)
+        {
+            pcal[k].join();
+        }
+    }
+    for(i=(s2-numcpu);i<(s2);i++)
+    {
+        k=i-(s2-numcpu);
+        coordy=(i)*dsx;
+        pcal[k]=thread(getagc3d_pthread,coordy,ppar);
+    }
+    for(i=(s2-numcpu);i<(s2);i++)
+    {
+        k=i-(s2-numcpu);
+        pcal[k].join();
+    }
+
+    float minpow(1.0/par.stablepar);
+    for(i=0;i<par.agcwy;i++)
+    {
+        par.agcelem3d.col(i)=par.agcelem3d.col(par.agcwy);
+        par.agcelem3d.col(par.ny-1-i)=par.agcelem3d.col(par.ny-1-par.agcwy);
+    }
+    par.agcelem3d=par.agcelem3d/(par.agcelem3d.max()-par.agcelem3d.min());
+    cout<<par.agcelem3d.max()<<"|"<<par.agcelem3d.min()<<endl;
+    par.agcelem3d=par.agcelem3d+minpow*(par.agcelem3d.max()-par.agcelem3d.min());
+    par.agcelem3d=1.0/par.agcelem3d;
+    for(i=0;i<par.nx;i++)
+    {
+    for(j=0;j<par.ny;j++)
+    {
+    for(k=0;k<par.nz;k++)
+    {
+        par.data3d(i,j,k)=par.agcelem3d(i,j,k)*par.data3d(i,j,k);
+    }}}
+}
+
 /*
 void get_agc2d_thread(agc2d & agc)
 {
