@@ -4,7 +4,6 @@
 #include <fstream>
 #include <iomanip>
 #include <math.h>
-#include <armadillo>
 //#include "./armadillo"
 using namespace arma;
 using namespace std;
