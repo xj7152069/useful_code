@@ -13,144 +13,15 @@
 #include "../xjc.h"
 using namespace std;
 using namespace arma;
+
 cx_fmat get_blackman_leftwin2d(cx_fmat win, float w);
 cx_fmat get_blackman_rightwin2d(cx_fmat win, float w, float wf);
 fmat get_blackman_upwin2d(fmat win, float w);
 fmat get_blackman_downwin2d(fmat win, float w);
 float Blackman(float n, float N);
-void multiple_code(fmat& u2, fmat& u1, fmat& green,\
- float df, int fn1=0, int fn2=2048);
+fmat hilbert1D(fmat &s, int n, float dt);
+fmat diff1D(fmat &s, int n, float dt);
 ///////////////////////////////////////////////////////////////////
-fmat single_trace_dewave(fmat & data, fmat & dict,\
-    fmat &dataph, fmat &datapd, fmat &dataphd,\
-    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh=0.001)
-{
-    int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd);
-    fmat mat1(nwt,nw),mat0(nwt,nw),datap3(nt,nx,fill::zeros),\
-        matq(nw,1),mat2(nw,1),matd(nwt,1),matD(nw,nw);
-    fmat digmat(nw,nw,fill::zeros),datal(nt,1);
-    fmat datap(nt,nx),datavz(nt,nx);
-
-////////////////////////////////////////////////////////////////////
-    
-    digmat.diag()+=1;
-    datap=dict/(dict.max()-dict.min());
-    datavz=data/(data.max()-data.min());
-    dataph=dataph/(dataph.max()-dataph.min());
-    datapd=datapd/(datapd.max()-datapd.min());
-    dataphd=dataphd/(dataphd.max()-dataphd.min());
-
-    for(k=0;k<nx;k++){
-        cout<<"tracl = "<<k<<endl;
-        for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
-            mat1.fill(0.0);
-
-            mat0.fill(0.0);
-            for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwp;j++){
-                    if((i-j)>=0)
-                        mat0(i-kwt,j-kwt)=datap(i-j+kwt,k);
-                }
-            }
-            for(j=kwt;j<kwt+nwp;j++){
-                mat1.col(j-kwt)=mat0.col(j-kwt);
-            }
-
-            mat0.fill(0.0);
-            for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwph;j++){
-                    if((i-j)>=0)
-                        mat0(i-kwt,j-kwt)=dataph(i-j+kwt,k);
-                }
-            }
-            for(j=kwt;j<kwt+nwph;j++){
-                mat1.col(j-kwt+nwp)=mat0.col(j-kwt);
-            }
-
-            mat0.fill(0.0);
-            for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwpd;j++){
-                    if((i-j)>=0)
-                        mat0(i-kwt,j-kwt)=datapd(i-j+kwt,k);
-                }
-            }
-            for(j=kwt;j<kwt+nwpd;j++){
-                mat1.col(j-kwt+nwp+nwph)=mat0.col(j-kwt);
-            }
-
-            mat0.fill(0.0);
-            for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwphd;j++){
-                    if((i-j)>=0)
-                        mat0(i-kwt,j-kwt)=dataphd(i-j+kwt,k);
-                }
-            }
-            for(j=kwt;j<kwt+nwphd;j++){
-                mat1.col(j-kwt+nwp+nwph+nwpd)=mat0.col(j-kwt);
-            }
-            ///////////
-            
-            for(i=0;i<nwt;i++){
-                matd(i,0)=datavz(i+kwt,k);
-            }
-            matD=mat1.t()*mat1;
-            
-            digmat.fill(0);
-            digmat.diag()+=(matD.max()*zzh+zzh);
-            //cout<<digmat(1,1)<<endl;
-            matq=inv(matD+digmat)*mat1.t()*matd;
-            matd=mat1*matq;
-            for(i=0;i<nwt;i++){
-                datap3(i+kwt,k)+=datavz(i+kwt,k)-matd(i,0);
-            }
-        }
-    }
-    for(i=0;i<nt;i++){
-        for(j=0;j<nx;j++){
-            if(isnan(abs(datap3(i,j))))
-                datap3(i,j)=0;
-        }
-    }
-
-    return datap3;
-}
-
-void multiple_code(fmat& u2, fmat& u1, fmat& green,\
- float df, int fn1, int fn2)
-{
-    int n1(u1.n_rows),n2(u1.n_cols);
-    int i,j,k;
-    float w,pi(3.1415926);
-    cx_fmat codemat(n2,n2,fill::zeros),onecol(n1,1),\
-        u1cx(n2,n1),u2cx(n2,n1,fill::zeros);
-    cx_float a;
-    a.real(0.0);
-
-    for(k=0;k<n2;k++){
-        onecol.col(0)=fft(u1.col(k),n1);
-        u1cx.row(k)=onecol.col(0).st();
-        //u2cx.row(k)=fft(u2.col(k).t(),n1);
-    }
-    
-    for(k=fn1;k<fn2;k++){
-        w=-2.0*pi*df*k;
-        cout<<"k="<<k<<" | "<<"w="<<w<<endl;
-        for(i=0;i<n2;i++){
-            for(j=0;j<n2;j++){
-                a.imag(w*green(i,j));
-                codemat(i,j)=exp(a);
-            }
-        }
-        u2cx.col(k)=codemat*u1cx.col(k);
-    }
-
-    for(k=0;k<n2;k++){
-        //u1cx.row(k)=fft(u1.col(k).t(),n1);
-        onecol.col(0)=u2cx.row(k).st();
-        u2.col(k)=real(ifft(onecol.col(0),n1));
-    }
-}
 
 class agc2d{
 public:
@@ -264,16 +135,16 @@ void add_agc2d(fmat & data, fmat & agcelem)
     }}
 }
 
-void removeagc3d(agc2d & par)
+void removeagc3d()
 {
     int i,j,k;
-    for(i=0;i<par.nx;i++)
+    for(i=0;i<this->nx;i++)
     {
-    for(j=0;j<par.ny;j++)
+    for(j=0;j<this->ny;j++)
     {
-    for(k=0;k<par.nz;k++)
+    for(k=0;k<this->nz;k++)
     {
-        par.data3d(i,j,k)=par.data3d(i,j,k)/par.agcelem3d(i,j,k);
+        this->data3d(i,j,k)=this->data3d(i,j,k)/this->agcelem3d(i,j,k);
     }}}
 }
 
@@ -406,6 +277,77 @@ void get_agc2d_thread(agc2d & agc)
 }
 */
 ///////////////////////////////////////////////////////////////////
+fmat diff1D(fmat &s, int n, float dt)
+{
+    fmat ss(n,1);
+    int i,j;
+    for(i=1;i<n-1;i++)
+    {
+        ss(i,0)=(s(i+1,0)-s(i-1,0))/dt/2;
+    }
+
+    return ss;
+}
+
+fmat hilbert1D(fmat &s, int n, float dt)
+{
+    float *h, pi(3.1415926);
+    int i,j,z,hn;
+    hn=3/dt;
+    z=int(hn/2);
+    h=new float[hn];
+    for(i=0;i<hn;i++)
+    {
+        if((i-z)!=0)
+        {
+            h[i]=1/(pi*dt*(i-z));
+        }
+        else
+        {
+            h[i]=0.0;
+        }   
+    }
+
+    float *h2, *s2, *sh, *sh2;
+    s2=new float[hn+n];
+    h2=new float[hn+n];
+    sh=new float[hn+n];
+    sh2=new float[hn+n];
+    for(i=0;i<hn+n;i++)
+    {
+        s2[i]=0.0;
+        h2[i]=0.0;
+        sh[i]=0.0;
+        sh2[i]=0.0;
+        if(i<n)
+        {
+            s2[i]=s(i,0);
+        }
+        if(i<hn)
+        {
+            h2[i]=h[i];
+        }
+    }
+
+    for(i=0;i<hn+n;i++)
+    {
+        for(j=0;j<=i;j++)
+        {
+            sh[i]+=s2[i-j]*h2[j];
+        }
+        if(i>=(z))
+        {
+            sh2[i-z]=sh[i]/(1.0/dt);
+        }
+    }
+    fmat ss(n,1);
+    for(i=0;i<n;i++)
+    {
+        ss(i,0)=sh2[i];
+    }
+    return ss;
+}
+
 float Blackman(float n, float N)
 {
     float xs, pi(3.1415926);
