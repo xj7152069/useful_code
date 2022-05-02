@@ -74,7 +74,8 @@ struct linerradon3d
     cx_fcube datafx,rebuildfx,datafP,rebuildfp,dataTP,rebuildtx;
     fmat p_power,py_coord,px_coord,x_coord,y_coord;
     char allAreal[99],allAimag[99];
-    float dig_n1,dig_n2,x_center,y_center;
+    float dig_n1,dig_n2,kerpar1;
+    float x_center,y_center;
     //cx_fmat Acol1,Arow1;
 };
 //设置一组常用的初始化参数
@@ -82,13 +83,14 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     struct linerradon3d & par)
 {
     par.rulef1=5,par.rulef2=30;
+    par.kerpar1=0;
     par.nx=nx,par.nz=nz,par.ny=ny,par.nf=nf;
     par.dx=10,par.dy=10,par.dz=0.001;
     //par.dx=50,par.dy=200,par.dz=0.001;
     par.npx=par.nz,par.dpx=2*par.dz/par.nx/par.dx;
     par.npy=par.nz,par.dpy=2*par.dz/par.ny/par.dy;
-    par.px_center=0;par.py_center=0;
     par.x_center=0;par.y_center=0;
+    par.px_center=0;par.py_center=0;
     par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
     par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.nf1=0;par.nf2=par.nf/2;
@@ -218,13 +220,19 @@ void tx_to_fx3d_radon3d_thread(struct linerradon3d & par)
     }
 /////////////////////////////////
     for(i=0;i<par.ny;i++)
-    {
-        //par.datafx.col(i)=get_blackman_leftwin2d\
+    {/*
+        par.datafx.col(i)=get_blackman_leftwin2d\
             (par.datafx.col(i),par.rulef1);
-        //par.datafx.col(i)=get_blackman_rightwin2d\
-            (par.datafx.col(i),300,par.rulef2);
+        par.datafx.col(i)=get_blackman_rightwin2d\
+            (par.datafx.col(i),30,par.rulef2);*/
     }
     
+    fmat datapower(par.nf,1);
+    for(i=0;i<par.nf;i++)
+    {
+        datapower(i,0)=sum(sum(abs(par.datafx.slice(i))));
+    }
+    datawrite(datapower,par.nf,1,"./fpower.bin");
 }
 
 void fx_to_tx3d_radon3d_pthread(int i, struct linerradon3d * par)
@@ -299,11 +307,13 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
  struct beamforminginv3d & parinv)
 {
     parinv.digw_fmat_npxnpy.fill(0.0);
-    int k;
+    int k,i;
     float maxpower,minpower(0);
+    cx_fmat cxmat(par.npx,par.npy);
+    cout<<par.rulef1<<"||"<<par.rulef2<<endl;
     for(k=par.rulef1;k<par.rulef2;k++)
     {
-        parinv.digw_fmat_npxnpy+=abs(par.datafP.slice(k));
+        parinv.digw_fmat_npxnpy+=abs(cxmat=par.datafP.slice(k));
     }  
     maxpower=((parinv.digw_fmat_npxnpy.max()));
     minpower=((parinv.digw_fmat_npxnpy.min()));
@@ -316,12 +326,41 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
     minpower=((parinv.digw_fmat_npxnpy.min()));
     parinv.digw_fmat_npxnpy=(parinv.digw_fmat_npxnpy-minpower)/\
         (maxpower-minpower);
-    parinv.digw_fmat_npxnpy=par.dig_n2+par.dig_n1*parinv.digw_fmat_npxnpy;
+
     par.p_power=parinv.digw_fmat_npxnpy;
-    for(k=0;k<par.npy;k++)
-    {
-        //par.p_power.col(k)=smoothdig(par.p_power.col(k),par.npx,9);
+    if(par.npy>=5){
+        par.p_power=fmatsmooth(par.p_power,par.npx,par.npy,1);
+        maxpower=((par.p_power.max()));
+        minpower=((par.p_power.min()));
+        par.p_power=(par.p_power-minpower)/\
+            (maxpower-minpower);
+        for(k=0;k<par.npy;k++){
+            for(i=0;i<par.npx;i++){
+                par.p_power(i,k)=1.0/(1.0+exp(100*(0.5-par.p_power(i,k))));
+            }
+            datawrite(par.p_power,par.npx,par.npy,"dig.bin");
+        }
     }
+    else{
+        fmat digline(par.npx,1);
+        for(k=0;k<par.npy;k++){
+            par.p_power.col(k)=smoothdig(par.p_power.col(k),par.npx,99);
+            //seabase=30+20/(1+exp(0.015*(nx/2-i)));
+        }
+        maxpower=((par.p_power.max()));
+        minpower=((par.p_power.min()));
+        par.p_power=(par.p_power-minpower)/\
+            (maxpower-minpower);
+        par.p_power+=par.kerpar1;
+        for(k=0;k<par.npy;k++){
+            for(i=0;i<par.npx;i++){
+                par.p_power(i,k)=1.0/(1.0+exp(10*(0.5-par.p_power(i,k))));
+            }
+            datawrite(digline=par.p_power.col(k),par.npx,1,"dig.bin");
+        }
+    }
+    parinv.digw_fmat_npxnpy=par.dig_n2+par.dig_n1*par.p_power;
+    par.p_power=parinv.digw_fmat_npxnpy;
 }
 
 void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
@@ -343,7 +382,7 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
     //cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros); //
 
     kf=pnf;
-    cout<<"hessian_inv kf = "<<kf+par[0].nf1<<endl;
+    //cout<<"hessian_inv kf = "<<kf+par[0].nf1<<endl;
     if(kf<par[0].nf2) {
         w=2.0*pi*df*(kf);  //!!!take care of when (par.nf1 != 0)
         //basey.zeros(ny,npy);basex.zeros(nx,npx); //
@@ -455,7 +494,7 @@ void beamforminginv3d(struct linerradon3d & par)
     //par.realdataTP.slice(i)=get_blackman_rightwin2d\
         (par.realdataTP.slice(i),par.npx/6);
     }*/
-    cout<<"now is running hessian_inv : "<<endl;
+    //cout<<"now is running hessian_inv : "<<endl;
     //beamforminginv3d_hessianinv(ppar[0], par2);
 
 thread *pcal;
@@ -536,7 +575,7 @@ for(kf=0;kf<numf;kf+=ncpu)
     {
     if((kf+kcpu+par.nf1)<par.nf2) 
     {
-        cout<<"hessian_inv kf = "<<kf+kcpu+par.nf1<<endl;
+        //cout<<"hessian_inv kf = "<<kf+kcpu+par.nf1<<endl;
         par2.hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu]=\
             inv(par2.hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu]);
     }
@@ -600,11 +639,6 @@ void linerradon(struct linerradon3d & par)
 {
     //tx_to_fx3d_linerradon3d(par);
     tx_to_fx3d_radon3d_thread(par);
-    fmat fxpow(par.nz,1);
-    for(int i=0;i<par.nz;i++){
-        fxpow(i,0)=sum(sum(abs(par.datafx.slice(i))));
-    }
-    datawrite(fxpow,par.nz,1,"fxpow.bin");
     
     int pn(par.numthread),pnf1,pnf2,k;
     float dnf;
@@ -1229,6 +1263,136 @@ void beamformingCG3d(struct linerradon3d & par, int numi=9)
     par.realdataTP=real(par.dataTP);
     delete [] pcal;
 }
+/*
+cx_fmat get_blackman_leftwin2d(cx_fmat win, float w)
+{
+    int n1,n2;
+    n1=win.n_rows;
+    n2=win.n_cols;
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(j<=w)
+            {
+                n=j;
+                n=Blackman(n,w);
+                (win(i,j)).real(real(win(i,j))*n);
+                (win(i,j)).imag(imag(win(i,j))*n);
+            }
+        } 
+    }
+    return win;
+}
+cx_fmat get_blackman_rightwin2d(cx_fmat win, float w, float wf)
+{
+    int n1,n2;
+    n1=win.n_rows;
+    n2=win.n_cols;
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(j>=(wf-w) && j<wf)
+            {
+                n=wf-1-j;
+                n=Blackman(n,w);
+                (win(i,j)).real(real(win(i,j))*n);
+                (win(i,j)).imag(imag(win(i,j))*n);
+            }
+        } 
+    }
+    return win;
+}
+fmat get_blackman_leftwin2d(fmat win, float w)
+{
+    int n1,n2;
+    n1=win.n_rows;
+    n2=win.n_cols;
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(j<=w)
+            {
+                n=j;
+                n=Blackman(n,w);
+                win(i,j)*=n;
+            }
+        } 
+    }
+    return win;
+}
+fmat get_blackman_rightwin2d(fmat win, float w)
+{
+    int n1,n2;
+    n1=win.n_rows;
+    n2=win.n_cols;
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(j>=n2-w-1)
+            {
+                n=n2-1-j;
+                n=Blackman(n,w);
+                win(i,j)*=n;
+            }
+        } 
+    }
+    return win;
+}
 
+fmat get_blackman_downwin2d(fmat win, float w)
+{
+    int n1,n2;
+    n1=win.n_rows;
+    n2=win.n_cols;
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(i>=n1-w-1)
+            {
+                n=n1-1-i;
+                n=Blackman(n,w);
+                win(i,j)*=n;
+            }
+        } 
+    }
+    return win;
+}
 
+fmat get_blackman_upwin2d(fmat win, float w)
+{
+    int n1,n2;
+    n1=win.n_rows;
+    n2=win.n_cols;
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(i<=w)
+            {
+                n=i;
+                n=Blackman(n,w);
+                win(i,j)*=n;
+            }
+        } 
+    }
+    return win;
+}
+*/
 #endif
