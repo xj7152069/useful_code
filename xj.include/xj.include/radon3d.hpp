@@ -60,6 +60,7 @@ struct linerradon3d
     char allAreal[99],allAimag[99];
     float dig_n1,dig_n2,kerpar1;
     float x_center,y_center;
+    bool lsinvmat;
     //cx_fmat Acol1,Arow1;
 };
 //设置一组常用的初始化参数
@@ -85,6 +86,7 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     strcat(par.allAreal,"./allAreal.bin");
     par.allAimag[0]='\0';
     strcat(par.allAimag,"./allAimag.bin");
+    par.lsinvmat=false;
 } 
 void beamforming_parset(int nx, int ny, int nz,\
     struct linerradon3d & par)
@@ -149,6 +151,16 @@ void beamforming_parupdate(struct linerradon3d & par)
     {
         par.rulef2=par.nf2/2;
     }
+    par.allAreal[0]='\0';
+    strcat(par.allAreal,"./allAreal.bin");
+    par.allAimag[0]='\0';
+    strcat(par.allAimag,"./allAimag.bin");
+    par.lsinvmat=false;
+    ofstream outf1;
+    outf1.open(par.allAreal);
+    outf1.close();
+    outf1.open(par.allAimag);
+    outf1.close();
 }
 
 void beamforming_cleardata(struct linerradon3d & par)
@@ -346,6 +358,102 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
     par.p_power=parinv.digw_fmat_npxnpy;
 }
 
+//get mat LS-LTL
+void beamforminginv3d_LS_hessianget_thread(struct linerradon3d * par,\
+ struct beamforminginv3d * par2, int pncpu, int pnf)
+{
+    int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
+    float fx,fy,fpx,fpy;
+    float w,pi(3.1415926);
+    float df(par[0].df),dx(par[0].dx),dy(par[0].dy),\
+        dpx(par[0].dpx),dpy(par[0].dpy),p0x(par[0].p0x),\
+        p0y(par[0].p0y),dz(par[0].dz),dig_n(par[0].dig_n);
+    int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
+        ny(par[0].ny),npy(par[0].npy);
+    ifstream inf1,inf2;
+    ofstream outf1,outf2;
+
+    float ky1(-(int(ny/2)*dy));
+    float kx1(-(int(nx/2)*dx));
+    cx_fmat a(1,1),A(nx,ny),B(nx,ny);
+    fmat hess(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
+            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols);
+
+    kf=pnf;
+    if(kf<par[0].nf2) {
+        if(!par[0].lsinvmat){
+            w=2.0*pi*df*(kf); 
+            for(kpx=0;kpx<npx;kpx++){
+            for(kpy=0;kpy<npy;kpy++){
+                i=kpx*npy+kpy;
+                //A=basex.col(kpx)*basey.col(kpy).st(); //
+                float fpx1(par[0].px_coord(kpx,0));
+                float fpy1(par[0].py_coord(kpy,0));
+                for(kpx2=0;kpx2<npx;kpx2++){
+                for(kpy2=0;kpy2<npy;kpy2++){
+                    j=kpx2*npy+kpy2;
+                    //B=basex.col(kpx2)*basey.col(kpy2).st();
+                    //B.set_imag(-imag(B));
+                    float fpx2(par[0].px_coord(kpx2,0));
+                    float fpy2(par[0].py_coord(kpy2,0));
+                    a=cx_hessianelement2d(w,nx,kx1,dx,fpx1-fpx2,\
+                        ny,ky1,dy,fpy1-fpy2);
+                    //a=cx_fmatmul(A,B);
+                    par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,j)=a(0,0);
+                    par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](j,i)=a(0,0); 
+                }
+                }        
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,i)+=par->p_power(kpx,kpy);
+                kpx2=npx;kpy2=npy;
+            }
+            } 
+            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]=\
+                inv(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]);
+
+            outf1.open(par[0].allAreal,ios::app);
+            outf1.seekp((kf-par[0].nf1)\
+                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows\
+                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols\
+                *sizeof(float),ios::beg);
+            datawrite(hess=real(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]),\
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols,outf1);
+            outf1.close();
+
+            outf1.open(par[0].allAimag,ios::app);
+            outf1.seekp((kf-par[0].nf1)\
+                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows\
+                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols\
+                *sizeof(float),ios::beg);
+            datawrite(hess=imag(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]),\
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols,outf1);
+            outf1.close();
+
+        }
+        else if(par[0].lsinvmat){
+            inf1.open(par[0].allAreal);
+            inf1.seekg((kf-par[0].nf1)\
+                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows\
+                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols\
+                *sizeof(float),ios::beg);
+            hess=dataread(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols,inf1);
+            inf1.close();
+            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].set_real(hess);
+
+            inf1.open(par[0].allAimag);
+            inf1.seekg((kf-par[0].nf1)\
+                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows\
+                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols\
+                *sizeof(float),ios::beg);
+            hess=dataread(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols,inf1);
+            inf1.close();
+            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].set_imag(hess);
+        }
+    }
+}
 //get mat LTL
 void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
  struct beamforminginv3d * par2, int pncpu, int pnf)
@@ -481,6 +589,57 @@ for(kf=0;kf<numf;kf+=ncpu)
         pcal[kcpu].join();
     }
 }
+    fp_to_tp3d_linerradon3d(par);
+    par.realdataTP=real(par.dataTP);
+}
+
+//LS-inv function of radon
+void beamformingLSinv3d(struct linerradon3d & par)
+{
+    int numf(par.nf2-par.nf1),ncpu(par.numthread);
+    int kf,kcpu,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
+    float fx,fy,fpx,fpy;
+    float w,pi(3.1415926);
+    float df(par.df),dx(par.dx),dy(par.dy),\
+        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
+        p0y(par.p0y),dz(par.dz);
+    int nx(par.nx),npx(par.npx),nf(par.nf),\
+        ny(par.ny),npy(par.npy);
+
+    struct beamforminginv3d par2;
+    struct linerradon3d * ppar;
+    ppar=&par;
+    par.dig_n1=0.0;
+    beamforminginv3d_parset(ppar[0], par2);
+    if(!par.lsinvmat)
+        {beamforminginv3d_getdigfmat(ppar[0], par2);}
+
+thread *pcal;
+pcal=new thread[ncpu];
+for(kf=0;kf<numf;kf+=ncpu)  
+{
+    for(kcpu=0;kcpu<ncpu;kcpu++)  
+    {
+        pcal[kcpu]=thread(beamforminginv3d_LS_hessianget_thread,\
+            &par,&par2,kcpu,kf+kcpu+par.nf1);
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++)  
+    {
+        pcal[kcpu].join();
+    }
+
+////////////////////////////////////////
+    for(kcpu=0;kcpu<ncpu;kcpu++)  
+    {
+        pcal[kcpu]=thread(beamforminginv3d_beamget_thread,\
+            &par,&par2,kcpu,kf+kcpu+par.nf1);
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++)  
+    {
+        pcal[kcpu].join();
+    }
+}
+    par.lsinvmat=true;
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
 }
