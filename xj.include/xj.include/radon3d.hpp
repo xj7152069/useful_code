@@ -17,7 +17,32 @@
 #include "../xjc.h"
 using namespace std;
 using namespace arma;
-
+// 2-D Linear Radon Transform in the frequence - space domain.
+int Beamforming_LS_2D(float **trace, int ntrace, int ns, float dt,\
+ float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr);
+/* discription.
+This function will do the local slant-stack over local traces .
+float
+**trace;
+the INPUT local seismic-gather, i.e. trace[ntrace][ns].
+int ntrace;
+the trace-number of the INPUT gather.
+int ns;
+the trace length.
+float dt;
+time- sampling interval, (unit of dt should be second) ,
+float *coor;
+coor[ntrace] stores the offset of each trace .
+float x0;
+the beam-center coordinate .
+float **tauppanel; the OUTPUT tau-p spectrum, i.e. tauppanel[npsr][ns].
+int npsr;
+the ray- parameter number of tau-p panel.
+float psrmin;
+the minimum ray-parameter, (unit is s/m) .
+float dpsr;
+the interval of ray-parameter， (unit is s/m) .*/
+///////////////////////////////////////////////////////////////////
 fmat smoothdig(fmat dig,int l,int n);
 void cal_p_power_3d(struct linerradon3d & par);
 void tx_to_fx3d_linerradon3d(struct linerradon3d & par);
@@ -54,8 +79,10 @@ struct linerradon3d
 {
     int nz,nx,ny,nf,npx,npy,nf1,nf2,numthread,rulef1,rulef2;
     float dz,dx,dy,df,dpx,dpy,p0x,p0y,px_center,py_center,dig_n;
+/*****************************************************/
     fcube data,realdataTP,realrebuildtx;
     cx_fcube datafx,rebuildfx,datafP,rebuildfp,dataTP,rebuildtx;
+/*****************************************************/
     fmat p_power,py_coord,px_coord,x_coord,y_coord;
     char allAreal[99],allAimag[99];
     float dig_n1,dig_n2,kerpar1;
@@ -75,9 +102,10 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     par.npy=par.nz,par.dpy=2*par.dz/par.ny/par.dy;
     par.x_center=0;par.y_center=0;
     par.px_center=0;par.py_center=0;
-    par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
-    par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
+    //par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
+    //par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.nf1=0;par.nf2=par.nf/2;
+    par.rulef1=0;par.rulef2=par.nf/2;
     par.numthread=1;
     par.dig_n=(1);
     par.dig_n1=(1);
@@ -87,6 +115,22 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     par.allAimag[0]='\0';
     strcat(par.allAimag,"./allAimag.bin");
     par.lsinvmat=false;
+    par.dig_n=par.dig_n*par.nx*par.ny;
+    par.dig_n1=par.dig_n1*par.nx*par.ny;
+    par.dig_n2=par.dig_n2*par.nx*par.ny;
+    par.x_coord.zeros(par.nx,1);
+    par.y_coord.zeros(par.ny,1);
+    int k;
+    for(k=0;k<par.nx;k++)
+    {
+        par.x_coord(k,0)=k*par.dx-(int(par.nx/2)*par.dx)+par.x_center;
+    }
+    for(k=0;k<par.ny;k++)
+    {
+        par.y_coord(k,0)=k*par.dy-(int(par.ny/2)*par.dy)+par.y_center;
+    }
+    par.dig_n1=0.0;  //L1
+    par.kerpar1=0.0;     //kernel function par
 } 
 void beamforming_parset(int nx, int ny, int nz,\
     struct linerradon3d & par)
@@ -99,15 +143,15 @@ void beamforming_parset(int nx, int ny, int nz,\
     {
         nf*=2;
     }
-    cout<<"nf = "<<nf<<endl;
+    //cout<<"nf = "<<nf<<endl;
     beamforming_parset(nx,ny,nz,nf,ppar[0]);
 }
 
 void beamforming_parupdate(struct linerradon3d & par)
 { 
     par.df=1.0/par.dz/par.nf;
-    par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
-    par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
+    //par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
+    //par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.data.zeros(par.nx,par.ny,par.nz);
     par.datafP.zeros(par.npx,par.npy,par.nf);
     par.datafx.zeros(par.nx,par.ny,par.nf);
@@ -118,31 +162,10 @@ void beamforming_parupdate(struct linerradon3d & par)
     par.rebuildtx.zeros(par.nx,par.ny,par.nz);
     par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
     par.p_power.zeros(par.npx,par.npy);
-    par.dig_n=par.dig_n*par.nx*par.ny;
-    par.dig_n1=par.dig_n1*par.nx*par.ny;
-    par.dig_n2=par.dig_n2*par.nx*par.ny;
-    par.px_coord.zeros(par.npx,1);
-    par.py_coord.zeros(par.npy,1);
-    par.x_coord.zeros(par.nx,1);
-    par.y_coord.zeros(par.ny,1);
-    int k;
-    for(k=0;k<par.npx;k++)
-    {
-        par.px_coord(k,0)=k*par.dpx+par.p0x;
-    }
-    for(k=0;k<par.npy;k++)
-    {
-        par.py_coord(k,0)=k*par.dpy+par.p0y;
-    }
-    for(k=0;k<par.nx;k++)
-    {
-        par.x_coord(k,0)=k*par.dx-(int(par.nx/2)*par.dx)+par.x_center;
-    }
-    for(k=0;k<par.ny;k++)
-    {
-        par.y_coord(k,0)=k*par.dy-(int(par.ny/2)*par.dy)+par.y_center;
-    }
-
+    par.nf1=1;
+    par.rulef1=1;
+    par.nf2=int(par.nf2/par.df);
+    par.rulef2= par.nf2;
     if(par.nf2>par.nf/2)
     {
         par.nf2=par.nf/2;
@@ -156,11 +179,26 @@ void beamforming_parupdate(struct linerradon3d & par)
     par.allAimag[0]='\0';
     strcat(par.allAimag,"./allAimag.bin");
     par.lsinvmat=false;
+
+    par.px_coord.zeros(par.npx,1);
+    par.py_coord.zeros(par.npy,1);
+    
+    int k;
+    for(k=0;k<par.npx;k++)
+    {
+        par.px_coord(k,0)=k*par.dpx+par.p0x;
+    }
+    for(k=0;k<par.npy;k++)
+    {
+        par.py_coord(k,0)=k*par.dpy+par.p0y;
+    }
+
+    /*
     ofstream outf1;
     outf1.open(par.allAreal);
     outf1.close();
     outf1.open(par.allAimag);
-    outf1.close();
+    outf1.close();*/
 }
 
 void beamforming_cleardata(struct linerradon3d & par)
@@ -211,14 +249,6 @@ void tx_to_fx3d_radon3d_thread(struct linerradon3d & par)
     {
         k=i-(par.nx-par.numthread);
         pcal[k].join();
-    }
-
-    for(i=0;i<par.ny;i++)
-    {/*
-        par.datafx.col(i)=get_blackman_leftwin2d\
-            (par.datafx.col(i),par.rulef1);
-        par.datafx.col(i)=get_blackman_rightwin2d\
-            (par.datafx.col(i),30,par.rulef2);*/
     }
     
     fmat datapower(par.nf,1);
@@ -456,7 +486,7 @@ void beamforminginv3d_LS_hessianget_thread(struct linerradon3d * par,\
 }
 //get mat LTL
 void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
- struct beamforminginv3d * par2, int pncpu, int pnf)
+ struct beamforminginv3d * par2, int pncpu, int pnf, int ltl)
 {
     int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
@@ -470,26 +500,39 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
     float ky1(-(int(ny/2)*dy));
     float kx1(-(int(nx/2)*dx));
     cx_fmat a(1,1),A(nx,ny),B(nx,ny);
+    cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros); //
 
     kf=pnf;
     if(kf<par[0].nf2) {
         w=2.0*pi*df*(kf); 
+        if(ltl==0){
+        basey.zeros(ny,npy);basex.zeros(nx,npx); //
+        basey.set_imag(w*(par->y_coord*par->py_coord.t())); //
+        basex.set_imag(w*(par->x_coord*par->px_coord.t())); //
+        basey=exp(basey);basex=exp(basex); //
+        }
         for(kpx=0;kpx<npx;kpx++){
         for(kpy=0;kpy<npy;kpy++){
             i=kpx*npy+kpy;
-            //A=basex.col(kpx)*basey.col(kpy).st(); //
+            if(ltl==0){
+            A=basex.col(kpx)*basey.col(kpy).st();
+            }
             float fpx1(par[0].px_coord(kpx,0));
             float fpy1(par[0].py_coord(kpy,0));
             for(kpx2=0;kpx2<npx;kpx2++){
             for(kpy2=0;kpy2<npy;kpy2++){
                 j=kpx2*npy+kpy2;
-                //B=basex.col(kpx2)*basey.col(kpy2).st();
-                //B.set_imag(-imag(B));
+                if(ltl==0){
+                B=basex.col(kpx2)*basey.col(kpy2).st();
+                B.set_imag(-imag(B));
+                a=cx_fmatmul(A,B);
+                }
+                else{
                 float fpx2(par[0].px_coord(kpx2,0));
                 float fpy2(par[0].py_coord(kpy2,0));
                 a=cx_hessianelement2d(w,nx,kx1,dx,fpx1-fpx2,\
                     ny,ky1,dy,fpy1-fpy2);
-                //a=cx_fmatmul(A,B);
+                }
                 par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,j)=a(0,0);
                 par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](j,i)=a(0,0); 
             }
@@ -546,7 +589,7 @@ void beamforminginv3d_beamget_thread(struct linerradon3d * par,\
 }
 
 //inv function of radon
-void beamforminginv3d(struct linerradon3d & par)
+void beamforminginv3d(struct linerradon3d & par, int ltl=1)
 {
     int numf(par.nf2-par.nf1),ncpu(par.numthread);
     int kf,kcpu,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
@@ -571,7 +614,7 @@ for(kf=0;kf<numf;kf+=ncpu)
     for(kcpu=0;kcpu<ncpu;kcpu++)  
     {
         pcal[kcpu]=thread(beamforminginv3d_hessianget_thread,\
-            &par,&par2,kcpu,kf+kcpu+par.nf1);
+            &par,&par2,kcpu,kf+kcpu+par.nf1,ltl);
     }
     for(kcpu=0;kcpu<ncpu;kcpu++)  
     {
@@ -747,7 +790,6 @@ void linerradon(struct linerradon3d & par)
     thread *pcal;
     pcal=new thread[pn];
     dnf=float(par.nf2-par.nf1)/pn;
-
     for(k=0;k<pn-1;k++)
     {
         pnf1=round(par.nf1+k*dnf);
@@ -1371,4 +1413,100 @@ fmat smoothdig(fmat dig,int l,int n)
     dig=d2;
     return dig;
 }
+// 2-D Linear Radon Transform in the frequence - space domain.
+int Beamforming_LS_2D(float **trace, int ntrace, int ns, float dt,\
+ float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr,\
+ float fmax=150, int ncpu=1)
+{
+/* discription.
+This function will do the local slant-stack over local traces .
+float
+**trace;
+the INPUT local seismic-gather, i.e. trace[ntrace][ns].
+int ntrace;
+the trace-number of the INPUT gather.
+int ns;
+the trace length.
+float dt;
+time- sampling interval, (unit of dt should be second) ,
+float *coor;
+coor[ntrace] stores the offset of each trace .
+float x0;
+the beam-center coordinate .
+float **tauppanel; the OUTPUT tau-p spectrum, i.e. tauppanel[npsr][ns].
+int npsr;
+the ray- parameter number of tau-p panel.
+float psrmin;
+the minimum ray-parameter, (unit is s/m) .
+float dpsr;
+the interval of ray-parameter， (unit is s/m) .*/
+    struct linerradon3d par;
+
+    int i,j,k;
+    int nz2(ns),nz(ns),nx(ntrace),ny(1),nf(0);
+//////////////////////////radon par-set////////////////////////////
+    beamforming_parset(nx,ny,nz,par);
+    par.dpx=dpsr;
+    par.dpy=dpsr;
+    par.dz=dt;
+
+//The default px of central channel is zero
+    par.npx=npsr;
+    par.p0x=psrmin;
+    par.npy=1;
+    par.p0y=0.0;   
+
+    //ncpu
+    par.numthread=ncpu;
+
+//Frequency calculation range (number)
+    par.nf2=fmax; 
+//Low frequency constraint range (number)
+    par.rulef2=fmax/2;
+//regularization parameter
+    par.dig_n2=nx*ny*0.1;  //L2, Tikhonov 
+//Seismic trace coordinates
+    for(k=0;k<par.nx;k++){
+        par.x_coord(k,0)=coor[k]-x0;
+    }
+//Parameters updated
+    beamforming_parupdate(par);
+
+//////////////////////////////////////////////////////////////////
+//data input, (row,col,slice) of par.data is (nx,ny,nz)
+//nx: Spatial sampling nummber
+//ny: trace nummber
+//nz: time sampling nummber
+for(i=0;i<ntrace;i++){
+    for(j=0;j<ns;j++){
+        par.data(i,0,j)=trace[i][j];
+    }
+}
+//////////////////////////////////////////////////
+    linerradon(par); 
+    //inv radon
+    beamforming_cleardata(par);
+    beamforminginv3d(par,0);
+    //recover data
+    rebuildsignal(par);
+
+///////////////////output tau-p///////////////////
+//output tau-p, (row,col,slice) of par.realdataTP is (npx,npy,nz)
+//npx: X Ray parameters sampling nummber
+//npy: Y Ray parameters sampling nummber
+//nz: time sampling nummber
+for(i=0;i<npsr;i++){
+    for(j=0;j<ns;j++){
+        tauppanel[i][j]=par.realdataTP(i,0,j);
+    }
+}
+////////////////////output recover data/////////////////////
+//output recover data, (row,col,slice) of par.realrebuildtx is (nx,ny,nz)
+//npx: X Ray parameters sampling nummber
+//npy: Y Ray parameters sampling nummber
+//nz: time sampling nummber
+
+    return 0;
+}
+
 #endif
