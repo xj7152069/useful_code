@@ -36,26 +36,26 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh, int ncpu);
-void single_trace_dewave(struct demultiple2d & par, int ncpu=1)
+    int nwt,int dnwt,float zzh, int ncpu, bool multiple_win);
+void single_trace_dewave(struct demultiple2d & par, int ncpu=1, bool multiple_win=true)
 {
     single_trace_dewave(par.dataup, par.datadown,\
     par.data2d, par.datadict,\
     par.datah, par.datad, par.datahd,\
     par.n1,par.n2,par.nwp,par.nwph,par.nwpd,par.nwphd,\
-    par.n1w,par.d1w,par.lmd,ncpu);
+    par.n1w,par.d1w,par.lmd,ncpu,multiple_win);
 }
 
 void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     fmat* datavz, fmat* datap,\
     fmat*dataph, fmat* datapd, fmat*dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh,int nx1,int nx2);
+    int nwt,int dnwt,float zzh,int nx1,int nx2, bool multiple_win);
 void single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh, int ncpu)
+    int nwt,int dnwt,float zzh, int ncpu, bool multiple_win=true)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1,nx2,dnx;
     //fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
@@ -84,12 +84,12 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
         nx2=nx1+dnx;
         pcal[k]=thread(single_trace_dewave_pthread,pdataup, pdatadown,\
             pdata, pdict,pdataph, pdatapd, pdataphd,\
-            nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx2);
+            nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx2,multiple_win);
         nx1=nx2;
     }
     pcal[ncpu-1]=thread(single_trace_dewave_pthread,pdataup, pdatadown,\
         pdata, pdict,pdataph, pdatapd, pdataphd,\
-        nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx);
+        nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx,multiple_win);
     for(k=0;k<ncpu;k++){
         pcal[k].join();
     }
@@ -185,7 +185,7 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     fmat* datavz, fmat* datap,\
     fmat*dataph, fmat* datapd, fmat*dataphd,\
      int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh,int nx1,int nx2)
+    int nwt,int dnwt,float zzh,int nx1,int nx2, bool multiple_win=true)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd);
     fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
@@ -251,7 +251,7 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
             digmat.fill(0);
             digmat.diag()+=(matD.max()*zzh+zzh);
             //cout<<digmat(1,1)<<endl;
-            if(kwt==0){
+            if(kwt==0 || multiple_win){
                 matq=inv(matD+digmat)*mat1.t()*matd;
                 matq0=matq;
             }
@@ -305,28 +305,13 @@ void multiple_code2d(fmat& u2, fmat& u1, fmat& green,\
     for(k=0;k<ncpu;k++){
         pcal[k].join();
     }
-/*
-    for(k=fn1;k<fn2;k++){
-        w=-2.0*pi*df*k;
-        if(k%100==0){
-            cout<<"k="<<k<<" | "<<"w="<<w<<endl;
-        }
-        for(i=0;i<n2;i++){
-            for(j=0;j<n2;j++){
-                a.imag(w*green(i,j));
-                codemat(i,j)=exp(a);
-            }
-        }
-        u2cx.col(k)=codemat*u1cx.col(k);
-    }
-*/
+
     for(k=0;k<n2;k++){
         //u1cx.row(k)=fft(u1.col(k).t(),n1);
         onecol.col(0)=u2cx.row(k).st();
         u2.col(k)=real(ifft(onecol.col(0),n1));
     }
 }
-
 void multiple_code2d_pthread(cx_fmat* u2cx, cx_fmat* u1cx, fmat* green,\
  float df, int fn1, int fn2)
 {
@@ -354,7 +339,188 @@ void multiple_code2d_pthread(cx_fmat* u2cx, cx_fmat* u1cx, fmat* green,\
     
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
+void multiple_code3d_onepoint_onefrequence(cx_fmat* u2, cx_fmat* u1, fmat* green,\
+ int i1, int j1, float f1)
+{
+    int n1(u1[0].n_rows),n2(u1[0].n_cols);
+    int i,j;
+    float w,pi(3.1415926);
+    cx_float a;
+    a.real(0.0);
 
+    w=-2.0*pi*f1;
+    for(i=0;i<n1;i++){
+        for(j=0;j<n2;j++){
+            a.imag(w*green[0](i,j));
+            a=exp(a);
+            u2[0](i,j)+=a*u1[0](i1,j1);
+        }
+    }
+
+}
+
+void multiple_code3d_onepoint(cx_fcube& u2, cx_fcube& u1, fmat& green,\
+ int i1, int j1, float df, int fn1, int fn2, int ncpu)
+{
+    int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
+    int i,j,k;
+    float w,pi(3.1415926),f1;
+
+    thread * pcal;
+    pcal=new thread[ncpu];
+    cx_fmat* pu2cx;
+    cx_fmat* pu1cx;
+    pu1cx=new cx_fmat[ncpu];
+    pu2cx=new cx_fmat[ncpu];
+    fmat* pgreen=(&green);
+    for(k=0;k<ncpu;k++){
+        pu1cx[k].zeros(n1,n2);
+        pu2cx[k].zeros(n1,n2);
+    }
+
+    for(i=fn1;i<(fn2-ncpu);i+=ncpu){
+        for(k=0;k<ncpu;k++){
+            f1=(i+k)*df;
+            pu1cx[k]=u1.slice(i+k);
+            pu2cx[k].fill(0.0);
+            pcal[k]=thread(multiple_code3d_onepoint_onefrequence,\
+                &pu2cx[k],&pu1cx[k], pgreen,i1, j1,f1);
+        }
+        for(k=0;k<ncpu;k++){
+            pcal[k].join();
+            u2.slice(i+k)+=pu2cx[k];
+        }
+    }
+}
+
+void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
+ int source_site_x, int source_site_y, float water_velocity,\
+ float dx, float dy, float df, int fn1, int fn2, int ncpu)
+{
+    int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
+    int i,j,k,i1,j1,i2,j2,sx(source_site_x),sy(source_site_y);
+    float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
+    float l_min(0.000000001),l_sum(0.0),l_trace;
+    fmat green(n1,n2);
+    cx_fcube *pu2(&u2);
+    cx_fcube *pu1(&u1);
+
+    for(i=0;i<n1;i++){
+        fi=((float(sx)+i)/2.0);
+        i1=floor((sx+i)/2);
+        i2=1+floor((sx+i)/2);
+        for(j=0;j<n2;j++){
+            fj=((float(sy)+j)/2.0);
+            j1=floor((sy+j)/2);
+            j2=1+floor((sy+j)/2);
+            l11=dx*dx*(fi-i1)*(fi-i1)+dy*dy*(fj-j1)*(fj-j1)+l_min;
+            l12=dx*dx*(fi-i1)*(fi-i1)+dy*dy*(fj-j2)*(fj-j2)+l_min;
+            l21=dx*dx*(fi-i2)*(fi-i2)+dy*dy*(fj-j1)*(fj-j1)+l_min;
+            l22=dx*dx*(fi-i2)*(fi-i2)+dy*dy*(fj-j2)*(fj-j2)+l_min;
+            l11=1/l11;l12=1/l12;l21=1/l21;l22=1/l22;
+            l_sum=l11+l12+l21+l22;
+            l11/=l_sum;l12/=l_sum;l21/=l_sum;l22/=l_sum;
+            d11=seabase_depth(i1,j1);
+            d12=seabase_depth(i1,j2);
+            d21=seabase_depth(i2,j1);
+            d22=seabase_depth(i2,j2);
+            depth=l11*d11+l21*d21+l12*d12+l22*d22;
+            half_offset=sqrt((fi-i)*(fi-i)+(fj-j)*(fj-j));
+            l_trace=2*sqrt(half_offset*half_offset+depth*depth);
+            green(i,j)=l_trace/water_velocity;
+            multiple_code3d_onepoint(pu2[0],pu1[0],green,i,j,df,fn1,fn2,ncpu);
+        }
+    }
+}
+////////////function: tx2fx or fx2tx/////////////
+void tx2fx_3d_pthread(cx_fcube *data3d_out,fcube *data3d,int i)
+{
+    int j,n1(data3d[0].n_rows),n2(data3d[0].n_cols),n3(data3d[0].n_slices);
+    cx_fmat datafx(n2,n3);
+    fmat data(n2,n3);
+    data=data3d[0].row(i);
+    for(j=0;j<n2;j++)
+    {
+        datafx.row(j)=fft(data.row(j),n3);
+    }
+    data3d_out[0].row(i)=datafx;
+}
+void tx2fx_3d_thread(cx_fcube &data3d_out,fcube &data3d, int ncpu)
+{
+    int i,j,k;
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices);
+    cx_fcube *pdata3d_out=&data3d_out;
+    fcube *pdata3d=&data3d;
+    thread *pcal;
+    pcal=new thread[ncpu];
+    
+    for(i=0;i<(n1-ncpu);i+=ncpu){
+        for(k=0;k<ncpu;k++)
+        {
+            pcal[k]=thread(tx2fx_3d_pthread,pdata3d_out,pdata3d,i+k);
+        }
+        for(k=0;k<ncpu;k++)
+        {
+            pcal[k].join();
+        }
+    } 
+    for(i=(n1-ncpu);i<(n1);i++)
+    {
+        k=i-(n1-ncpu);
+        pcal[k]=thread(tx2fx_3d_pthread,pdata3d_out,pdata3d,i);
+    }
+    for(i=(n1-ncpu);i<(n1);i++)
+    {
+        k=i-(n1-ncpu);
+        pcal[k].join();
+    }
+}
+
+void fx2tx_3d_pthread(fcube *data3d_out,cx_fcube *data3d,int i)
+{
+    int j,n1(data3d[0].n_rows),n2(data3d[0].n_cols),n3(data3d[0].n_slices);
+    cx_fmat data(n2,n3),datafx(n2,n3);
+    datafx=data3d[0].row(i);
+    for(j=0;j<n2;j++)
+    {
+        data.row(j)=ifft(datafx.row(j),n3);
+    }
+    data3d_out[0].row(i)=real(data);
+}
+void fx2tx_3d_thread(fcube &data3d_out,cx_fcube &data3d, int ncpu)
+{
+    int i,j,k;
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices);
+    fcube *pdata3d_out=&data3d_out;
+    cx_fcube *pdata3d=&data3d;
+    thread *pcal;
+    pcal=new thread[ncpu];
+    
+    for(i=0;i<(n1-ncpu);i+=ncpu){
+        for(k=0;k<ncpu;k++)
+        {
+            pcal[k]=thread(fx2tx_3d_pthread,pdata3d_out,pdata3d,i+k);
+        }
+        for(k=0;k<ncpu;k++)
+        {
+            pcal[k].join();
+        }
+    } 
+    for(i=(n1-ncpu);i<(n1);i++)
+    {
+        k=i-(n1-ncpu);
+        pcal[k]=thread(fx2tx_3d_pthread,pdata3d_out,pdata3d,i);
+    }
+    for(i=(n1-ncpu);i<(n1);i++)
+    {
+        k=i-(n1-ncpu);
+        pcal[k].join();
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////
 void getagc_demultiple2d(struct demultiple2d & par, fmat & data,\
      fmat & dataagc, float par1)
 {
