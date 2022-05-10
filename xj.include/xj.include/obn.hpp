@@ -93,81 +93,6 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
     for(k=0;k<ncpu;k++){
         pcal[k].join();
     }
-
-/*
-    for(k=0;k<nx;k++){
-        cout<<"tracl = "<<k<<endl;
-        for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
-            mat1.fill(0.0);
-
-            mat0.fill(0.0);
-            for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwp;j++){
-                    if((i-j)>=0)
-                        mat0(i-kwt,j-kwt)=datap(i-j+kwt,k);
-                }
-            }
-            for(j=kwt;j<kwt+nwp;j++){
-                mat1.col(j-kwt)=mat0.col(j-kwt);
-            }
-
-            mat0.fill(0.0);
-            for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwph;j++){
-                    if((i-j)>=0)
-                        mat0(i-kwt,j-kwt)=dataph(i-j+kwt,k);
-                }
-            }
-            for(j=kwt;j<kwt+nwph;j++){
-                mat1.col(j-kwt+nwp)=mat0.col(j-kwt);
-            }
-
-            mat0.fill(0.0);
-            for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwpd;j++){
-                    if((i-j)>=0)
-                        mat0(i-kwt,j-kwt)=datapd(i-j+kwt,k);
-                }
-            }
-            for(j=kwt;j<kwt+nwpd;j++){
-                mat1.col(j-kwt+nwp+nwph)=mat0.col(j-kwt);
-            }
-
-            mat0.fill(0.0);
-            for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwphd;j++){
-                    if((i-j)>=0)
-                        mat0(i-kwt,j-kwt)=dataphd(i-j+kwt,k);
-                }
-            }
-            for(j=kwt;j<kwt+nwphd;j++){
-                mat1.col(j-kwt+nwp+nwph+nwpd)=mat0.col(j-kwt);
-            }
-            ///////////
-            
-            for(i=0;i<nwt;i++){
-                matd(i,0)=datavz(i+kwt,k);
-            }
-            matD=mat1.t()*mat1;
-            
-            digmat.fill(0);
-            digmat.diag()+=(matD.max()*zzh+zzh);
-            //cout<<digmat(1,1)<<endl;
-            if(kwt==0){
-                matq=inv(matD+digmat)*mat1.t()*matd;
-                matq0=matq;
-            }
-            else{
-                matq=matq0;
-            }
-            matd=mat1*matq;
-            for(i=nw;i<nwt;i++){
-                dataup(i+kwt,k)+=datavz(i+kwt,k)-matd(i,0);
-                datadown(i+kwt,k)+=datavz(i+kwt,k)+matd(i,0);
-            }
-        }
-    }
-*/
 ////////////////////////////////////////////////////////////////////
     for(i=0;i<nt;i++){
         for(j=0;j<nx;j++){
@@ -379,7 +304,7 @@ void multiple_code3d_onepoint(cx_fcube& u2, cx_fcube& u1, fmat& green,\
         pu2cx[k].zeros(n1,n2);
     }
 
-    for(i=fn1;i<(fn2-ncpu);i+=ncpu){
+    for(i=fn1;i<(fn2);i+=ncpu){
         for(k=0;k<ncpu;k++){
             f1=(i+k)*df;
             pu1cx[k]=u1.slice(i+k);
@@ -391,6 +316,18 @@ void multiple_code3d_onepoint(cx_fcube& u2, cx_fcube& u1, fmat& green,\
             pcal[k].join();
             u2.slice(i+k)+=pu2cx[k];
         }
+    }
+    i=i-ncpu;
+    for(k=i;k<fn2;k++){
+        f1=(k)*df;
+        pu1cx[k-i]=u1.slice(k);
+        pu2cx[k-i].fill(0.0);
+        pcal[k-i]=thread(multiple_code3d_onepoint_onefrequence,\
+            &pu2cx[k-i],&pu1cx[k-i], pgreen,i1, j1,f1);
+    }
+    for(k=i;k<fn2;k++){
+        pcal[k-i].join();
+        u2.slice(k)+=pu2cx[k-i];
     }
 }
 
@@ -407,6 +344,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
     cx_fcube *pu1(&u1);
 
     for(i=0;i<n1;i++){
+        cout<<i<<endl;
         fi=((float(sx)+i)/2.0);
         i1=floor((sx+i)/2);
         i2=1+floor((sx+i)/2);
