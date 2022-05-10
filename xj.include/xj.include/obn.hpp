@@ -265,6 +265,7 @@ void multiple_code2d_pthread(cx_fmat* u2cx, cx_fmat* u1cx, fmat* green,\
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
+/*
 void multiple_code3d_onepoint_onefrequence(cx_fmat* u2, cx_fmat* u1, fmat* green,\
  int i1, int j1, float f1)
 {
@@ -282,9 +283,26 @@ void multiple_code3d_onepoint_onefrequence(cx_fmat* u2, cx_fmat* u1, fmat* green
             u2[0](i,j)+=a*u1[0](i1,j1);
         }
     }
+}*/
+void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* green,\
+ int i1, int j1, int nf1, float df)
+{
+    int n1(u1[0].n_rows),n2(u1[0].n_cols);
+    int i,j;
+    float w,pi(3.1415926);
+    cx_float a;
+    
+    w=-2.0*pi*df*nf1;
+    for(i=0;i<n1;i++){
+        for(j=0;j<n2;j++){
+            a.real(0.0);
+            a.imag(w*green[0](i,j));
+            a=exp(a);
+            u2[0](i,j,nf1)+=a*u1[0](i1,j1,nf1);
+        }
+    }
 
 }
-
 void multiple_code3d_onepoint(cx_fcube& u2, cx_fcube& u1, fmat& green,\
  int i1, int j1, float df, int fn1, int fn2, int ncpu)
 {
@@ -294,40 +312,26 @@ void multiple_code3d_onepoint(cx_fcube& u2, cx_fcube& u1, fmat& green,\
 
     thread * pcal;
     pcal=new thread[ncpu];
-    cx_fmat* pu2cx;
-    cx_fmat* pu1cx;
-    pu1cx=new cx_fmat[ncpu];
-    pu2cx=new cx_fmat[ncpu];
+    cx_fcube *pu2=(&u2);
+    cx_fcube *pu1=(&u1);
     fmat* pgreen=(&green);
-    for(k=0;k<ncpu;k++){
-        pu1cx[k].zeros(n1,n2);
-        pu2cx[k].zeros(n1,n2);
-    }
 
     for(i=fn1;i<(fn2);i+=ncpu){
         for(k=0;k<ncpu;k++){
-            f1=(i+k)*df;
-            pu1cx[k]=u1.slice(i+k);
-            pu2cx[k].fill(0.0);
             pcal[k]=thread(multiple_code3d_onepoint_onefrequence,\
-                &pu2cx[k],&pu1cx[k], pgreen,i1, j1,f1);
+                pu2,pu1, pgreen,i1, j1,(i+k),df);
         }
         for(k=0;k<ncpu;k++){
             pcal[k].join();
-            u2.slice(i+k)+=pu2cx[k];
         }
     }
     i=i-ncpu;
     for(k=i;k<fn2;k++){
-        f1=(k)*df;
-        pu1cx[k-i]=u1.slice(k);
-        pu2cx[k-i].fill(0.0);
         pcal[k-i]=thread(multiple_code3d_onepoint_onefrequence,\
-            &pu2cx[k-i],&pu1cx[k-i], pgreen,i1, j1,f1);
+            pu2,pu1, pgreen,i1, j1,k,df);
     }
     for(k=i;k<fn2;k++){
         pcal[k-i].join();
-        u2.slice(k)+=pu2cx[k-i];
     }
 }
 
@@ -336,22 +340,29 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
  float dx, float dy, float df, int fn1, int fn2, int ncpu)
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
-    int i,j,k,i1,j1,i2,j2,sx(source_site_x),sy(source_site_y);
+    int i,j,k,i1,j1,i2,j2,ix,jy,sx(source_site_x),sy(source_site_y);
     float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
     float l_min(0.000000001),l_sum(0.0),l_trace;
     fmat green(n1,n2);
     cx_fcube *pu2(&u2);
     cx_fcube *pu1(&u1);
-
-    for(i=0;i<n1;i++){
-        cout<<i<<endl;
+for(ix=0;ix<n1;ix++){
+    cout<<ix<<endl;
+    sx=ix;
+for(jy=0;jy<n2;jy++){
+    sy=jy;
+    for(i=0;i<n1;i++){      
         fi=((float(sx)+i)/2.0);
         i1=floor((sx+i)/2);
         i2=1+floor((sx+i)/2);
+        i1=max(i1,0);
+        i2=min(i2,n1-1);
         for(j=0;j<n2;j++){
             fj=((float(sy)+j)/2.0);
             j1=floor((sy+j)/2);
             j2=1+floor((sy+j)/2);
+            j1=max(j1,0);
+            j2=min(j2,n2-1);
             l11=dx*dx*(fi-i1)*(fi-i1)+dy*dy*(fj-j1)*(fj-j1)+l_min;
             l12=dx*dx*(fi-i1)*(fi-i1)+dy*dy*(fj-j2)*(fj-j2)+l_min;
             l21=dx*dx*(fi-i2)*(fi-i2)+dy*dy*(fj-j1)*(fj-j1)+l_min;
@@ -359,17 +370,19 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
             l11=1/l11;l12=1/l12;l21=1/l21;l22=1/l22;
             l_sum=l11+l12+l21+l22;
             l11/=l_sum;l12/=l_sum;l21/=l_sum;l22/=l_sum;
+
             d11=seabase_depth(i1,j1);
             d12=seabase_depth(i1,j2);
             d21=seabase_depth(i2,j1);
             d22=seabase_depth(i2,j2);
             depth=l11*d11+l21*d21+l12*d12+l22*d22;
-            half_offset=sqrt((fi-i)*(fi-i)+(fj-j)*(fj-j));
+            half_offset=sqrt(dx*dx*(fi-i)*(fi-i)+dy*dy*(fj-j)*(fj-j));
             l_trace=2*sqrt(half_offset*half_offset+depth*depth);
             green(i,j)=l_trace/water_velocity;
-            multiple_code3d_onepoint(pu2[0],pu1[0],green,i,j,df,fn1,fn2,ncpu);
         }
     }
+    multiple_code3d_onepoint(pu2[0],pu1[0],green,sx,sy,df,fn1,fn2,ncpu);
+}}
 }
 ////////////function: tx2fx or fx2tx/////////////
 void tx2fx_3d_pthread(cx_fcube *data3d_out,fcube *data3d,int i)
