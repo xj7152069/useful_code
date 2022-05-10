@@ -315,7 +315,7 @@ void multiple_code3d_onepoint(cx_fcube& u2, cx_fcube& u1, fmat& green,\
     cx_fcube *pu2=(&u2);
     cx_fcube *pu1=(&u1);
     fmat* pgreen=(&green);
-
+/*
     for(i=fn1;i<(fn2);i+=ncpu){
         for(k=0;k<ncpu;k++){
             pcal[k]=thread(multiple_code3d_onepoint_onefrequence,\
@@ -332,6 +332,25 @@ void multiple_code3d_onepoint(cx_fcube& u2, cx_fcube& u1, fmat& green,\
     }
     for(k=i;k<fn2;k++){
         pcal[k-i].join();
+    }
+    */
+    for(k=fn1;k<fn1+ncpu;k++){
+        pcal[k-fn1]=thread(multiple_code3d_onepoint_onefrequence,\
+            pu2,pu1, pgreen,i1, j1,(k),df);
+    }
+    i=fn1+ncpu;
+    while(i<fn2){
+        for(k=0;k<ncpu;k++){
+            if(pcal[k].joinable()){
+                pcal[k].join();
+                pcal[k]=thread(multiple_code3d_onepoint_onefrequence,\
+                    pu2,pu1, pgreen,i1, j1,(i),df);
+                i++;
+            }   
+        }
+    }
+    for(k=0;k<ncpu;k++){
+        pcal[k].join();
     }
 }
 
