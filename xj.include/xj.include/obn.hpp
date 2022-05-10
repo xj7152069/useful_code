@@ -265,26 +265,7 @@ void multiple_code2d_pthread(cx_fmat* u2cx, cx_fmat* u1cx, fmat* green,\
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
-/*
-void multiple_code3d_onepoint_onefrequence(cx_fmat* u2, cx_fmat* u1, fmat* green,\
- int i1, int j1, float f1)
-{
-    int n1(u1[0].n_rows),n2(u1[0].n_cols);
-    int i,j;
-    float w,pi(3.1415926);
-    cx_float a;
-    a.real(0.0);
-
-    w=-2.0*pi*f1;
-    for(i=0;i<n1;i++){
-        for(j=0;j<n2;j++){
-            a.imag(w*green[0](i,j));
-            a=exp(a);
-            u2[0](i,j)+=a*u1[0](i1,j1);
-        }
-    }
-}*/
-void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* green,\
+void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat& green,\
  int i1, int j1, int nf1, float df)
 {
     int n1(u1[0].n_rows),n2(u1[0].n_cols);
@@ -296,80 +277,25 @@ void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* gre
     for(i=0;i<n1;i++){
         for(j=0;j<n2;j++){
             a.real(0.0);
-            a.imag(w*green[0](i,j));
+            a.imag(w*green(i,j));
             a=exp(a);
             u2[0](i,j,nf1)+=a*u1[0](i1,j1,nf1);
         }
     }
-
-}
-void multiple_code3d_onepoint(cx_fcube& u2, cx_fcube& u1, fmat& green,\
- int i1, int j1, float df, int fn1, int fn2, int ncpu)
-{
-    int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
-    int i,j,k;
-    float w,pi(3.1415926),f1;
-
-    thread * pcal;
-    pcal=new thread[ncpu];
-    cx_fcube *pu2=(&u2);
-    cx_fcube *pu1=(&u1);
-    fmat* pgreen=(&green);
-/*
-    for(i=fn1;i<(fn2);i+=ncpu){
-        for(k=0;k<ncpu;k++){
-            pcal[k]=thread(multiple_code3d_onepoint_onefrequence,\
-                pu2,pu1, pgreen,i1, j1,(i+k),df);
-        }
-        for(k=0;k<ncpu;k++){
-            pcal[k].join();
-        }
-    }
-    i=i-ncpu;
-    for(k=i;k<fn2;k++){
-        pcal[k-i]=thread(multiple_code3d_onepoint_onefrequence,\
-            pu2,pu1, pgreen,i1, j1,k,df);
-    }
-    for(k=i;k<fn2;k++){
-        pcal[k-i].join();
-    }
-    */
-    for(k=fn1;k<fn1+ncpu;k++){
-        pcal[k-fn1]=thread(multiple_code3d_onepoint_onefrequence,\
-            pu2,pu1, pgreen,i1, j1,(k),df);
-    }
-    i=fn1+ncpu;
-    while(i<fn2){
-        for(k=0;k<ncpu;k++){
-            if(pcal[k].joinable()){
-                pcal[k].join();
-                pcal[k]=thread(multiple_code3d_onepoint_onefrequence,\
-                    pu2,pu1, pgreen,i1, j1,(i),df);
-                i++;
-            }   
-        }
-    }
-    for(k=0;k<ncpu;k++){
-        pcal[k].join();
-    }
 }
 
-void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
- int source_site_x, int source_site_y, float water_velocity,\
- float dx, float dy, float df, int fn1, int fn2, int ncpu)
+void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,fmat* seabase_depth,\
+ int ix, int jy, float dx, float dy, float df, int fn1, int fn2,float water_velocity)
 {
-    int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
-    int i,j,k,i1,j1,i2,j2,ix,jy,sx(source_site_x),sy(source_site_y);
+    int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
+    int i,j,k,i1,j1,i2,j2,sx,sy;
     float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
-    float l_min(0.000000001),l_sum(0.0),l_trace;
+    float l_min(0.000001),l_sum(0.0),l_trace;
     fmat green(n1,n2);
-    cx_fcube *pu2(&u2);
-    cx_fcube *pu1(&u1);
-for(ix=0;ix<n1;ix++){
-    cout<<ix<<endl;
-    sx=ix;
-for(jy=0;jy<n2;jy++){
+    //fmat* pgreen(&green);
+
     sy=jy;
+    sx=ix;
     for(i=0;i<n1;i++){      
         fi=((float(sx)+i)/2.0);
         i1=floor((sx+i)/2);
@@ -390,18 +316,61 @@ for(jy=0;jy<n2;jy++){
             l_sum=l11+l12+l21+l22;
             l11/=l_sum;l12/=l_sum;l21/=l_sum;l22/=l_sum;
 
-            d11=seabase_depth(i1,j1);
-            d12=seabase_depth(i1,j2);
-            d21=seabase_depth(i2,j1);
-            d22=seabase_depth(i2,j2);
+            d11=seabase_depth[0](i1,j1);
+            d12=seabase_depth[0](i1,j2);
+            d21=seabase_depth[0](i2,j1);
+            d22=seabase_depth[0](i2,j2);
             depth=l11*d11+l21*d21+l12*d12+l22*d22;
             half_offset=sqrt(dx*dx*(fi-i)*(fi-i)+dy*dy*(fj-j)*(fj-j));
             l_trace=2*sqrt(half_offset*half_offset+depth*depth);
             green(i,j)=l_trace/water_velocity;
         }
     }
-    multiple_code3d_onepoint(pu2[0],pu1[0],green,sx,sy,df,fn1,fn2,ncpu);
-}}
+    for(k=fn1;k<fn2;k++){
+        multiple_code3d_onepoint_onefrequence(u2,u1,green,ix,jy,(k),df);
+    }
+}
+
+void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
+ int source_site_x, int source_site_y, float water_velocity,\
+ float dx, float dy, float df, int fn1, int fn2, int ncpu)
+{
+    int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
+    int i,j,k,i1,j1,i2,j2,ix,jy,sx(source_site_x),sy(source_site_y);
+    float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
+    float l_min(0.000000001),l_sum(0.0),l_trace;
+    
+    cx_fcube *pu2(&u2);
+    cx_fcube *pu1(&u1);
+    fmat *pseabase;
+    pseabase=new fmat[ncpu];
+    thread * pcal;
+    pcal=new thread[ncpu];
+
+    for(jy=0;jy<n2;jy++){
+        cout<<jy<<endl;
+        sy=jy;
+        for(k=0;k<ncpu;k++){
+            pseabase[k].zeros(n1,n2);
+            pseabase[k]=seabase_depth;
+            pcal[k]=thread(multiple_code3d_onepoint_allfrequence,\
+                pu2,pu1, &(pseabase[k]),k, sy, dx, dy, df, fn1, fn2, water_velocity);
+        }
+        i=ncpu;
+        while(i<n1){
+            for(k=0;k<ncpu;k++){
+                if(pcal[k].joinable() && i<n1){
+                    pcal[k].join();
+                    pcal[k]=thread(multiple_code3d_onepoint_allfrequence,\
+                        pu2,pu1, &(pseabase[k]),(i),sy, dx, dy, df, fn1, fn2, water_velocity);
+                    i++;
+                }   
+            }
+        }
+        for(k=0;k<ncpu;k++){
+            pcal[k].join();
+        }
+    }
 }
 ////////////function: tx2fx or fx2tx/////////////
 void tx2fx_3d_pthread(cx_fcube *data3d_out,fcube *data3d,int i)
