@@ -79,8 +79,8 @@ void slantstack3d_cleardata(struct slantstack3d & par)
     par.recoverdatatx.fill(0.0);
 }
 
-/////////////////////////slantstack_CG3d///////////////////////////
-void slantstack3d_stack_L_operator(fcube &datatp,fcube &datatx,\
+/////////////////////////slantstack3d_L_LT///////////////////////////
+void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
  fmat &ptrace_coord,fmat &pline_coord,fmat &ntrace_coord,fmat &nline_coord,\
  float dt){
 
@@ -115,7 +115,7 @@ for(k=0;k<n3;k++){
     }}}}}
 }
 
-void slantstack3d_recover_LT_operator(fcube &recoverdatatx,fcube &datatp,\
+void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
  fmat &ptrace_coord,fmat &pline_coord,fmat &ntrace_coord,fmat &nline_coord,\
  float dt){
 
@@ -152,14 +152,61 @@ for(k=0;k<n3;k++){
 }
 
 void slantstack3d_stack(struct slantstack3d &par){
-    slantstack3d_stack_L_operator(par.datatp,par.datatx,\
+    slantstack3d_stack_LT_operator(par.datatp,par.datatx,\
     par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
     par.dt);
 }
 void slantstack3d_recover(struct slantstack3d &par){
-    slantstack3d_recover_LT_operator(par.recoverdatatx,par.datatp,\
+    slantstack3d_recover_L_operator(par.recoverdatatx,par.datatp,\
     par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
     par.dt);
+}
+
+/////////////////////////slantstack_CG3d///////////////////////////
+inline float fcube_inner_product(fcube data1, fcube data2){
+    int ni(data1.n_rows),nj(data1.n_cols),nk(data1.n_slices),i,j,k;
+    float inner_num(0);
+    for(i=0;i<ni;i++){
+        for(j=0;j<nj;j++){
+            for(k=0;k<nk;k++){
+                inner_num+=(data1(i,j,k)*data2(i,j,k));
+    }}}
+    return inner_num;
+} 
+
+void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par\
+ int iterations=9, int residual_ratio=0.01){
+
+    int ip,jp,in,jn,k,iter(0);
+    int n1(par.datatx.n_rows),n2(par.datatx.n_cols),n3(par.datatx.n_slices),\
+        np1(par.datatp.n_rows),np2(par.datatp.n_cols);
+    fcube gradient_rk,gradient_rk_1,\
+        gradient_cg_pk,gradient_cg_pk_1,\
+        recoverdatatx_uk;
+    float beta_k,alpha_k,residual_pow;
+    gradient_rk.copy_size(par.datatp);
+    gradient_rk_1.copy_size(par.datatp);
+    gradient_cg_pk.copy_size(par.datatp);
+    gradient_cg_pk_1.copy_size(par.datatp); 
+    recoverdatatx_uk.copy_size(par.datatx);
+
+    iter=0;
+    slantstack3d_recover_L_operator(recoverdatatx_uk,par.datatp,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.dt);
+    recoverdatatx_uk=recoverdatatx_uk-par.datatx;
+    slantstack3d_stack_LT_operator(gradient_gk,recoverdatatx_uk,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.dt);
+    gradient_cg_dk=-gradient_gk;
+    beta_k=fcube_inner_product();
+
+
+
+
+    
+
+
 }
 
 #endif
