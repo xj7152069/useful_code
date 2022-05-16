@@ -174,38 +174,184 @@ inline float fcube_inner_product(fcube data1, fcube data2){
     return inner_num;
 } 
 
-void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par\
- int iterations=9, int residual_ratio=0.01){
+void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
+ int iterations_num=9, float residual_ratio=1)
+{
 
     int ip,jp,in,jn,k,iter(0);
     int n1(par.datatx.n_rows),n2(par.datatx.n_cols),n3(par.datatx.n_slices),\
         np1(par.datatp.n_rows),np2(par.datatp.n_cols);
     fcube gradient_rk,gradient_rk_1,\
         gradient_cg_pk,gradient_cg_pk_1,\
-        recoverdatatx_uk;
-    float beta_k,alpha_k,residual_pow;
+        datatp_k,datatp_k_1,\
+        recoverdatatx_uk,A_gradient_cg_pk,A_datatp_k;
+    fmat sum_num(1,1);
+    float beta_k,alpha_k,residual_pow,residual_k;
+    datatp_k.copy_size(par.datatp);
+    datatp_k_1.copy_size(par.datatp);
     gradient_rk.copy_size(par.datatp);
     gradient_rk_1.copy_size(par.datatp);
     gradient_cg_pk.copy_size(par.datatp);
     gradient_cg_pk_1.copy_size(par.datatp); 
     recoverdatatx_uk.copy_size(par.datatx);
+    A_gradient_cg_pk.copy_size(par.datatp);
+    A_datatp_k.copy_size(par.datatp);
+    sum_num=sum(sum(sum(abs(par.datatp))));
+    residual_pow=sum_num(0,0);
+    residual_pow*=residual_ratio;
 
     iter=0;
-    slantstack3d_recover_L_operator(recoverdatatx_uk,par.datatp,\
+
+    datatp_k=par.datatp/par.nline/par.ntrace;
+    slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.dt);
+    slantstack3d_stack_LT_operator(A_datatp_k,recoverdatatx_uk,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.dt);
+    //regularization
+    A_datatp_k=A_datatp_k+datatp_k*par.factor_l2;
+
+    gradient_rk=par.datatp-A_datatp_k;
+    gradient_cg_pk=gradient_rk;
+
+    //cal residual_pow
+    sum_num=sum(sum(sum(abs(gradient_rk))));
+    residual_k=sum_num(0,0);
+
+    slantstack3d_recover_L_operator(recoverdatatx_uk,gradient_cg_pk,\
+        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.dt);
+    slantstack3d_stack_LT_operator(A_gradient_cg_pk,recoverdatatx_uk,\
+        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.dt);
+    //regularization
+    A_gradient_cg_pk=A_gradient_cg_pk+gradient_cg_pk*par.factor_l2;
+        
+    alpha_k=fcube_inner_product(gradient_rk,gradient_rk);
+    alpha_k=alpha_k/fcube_inner_product(gradient_cg_pk,A_gradient_cg_pk);
+    //get new solution
+    datatp_k_1=datatp_k+alpha_k*gradient_cg_pk;
+    gradient_rk_1=gradient_rk-alpha_k*A_gradient_cg_pk;
+
+    beta_k=fcube_inner_product(gradient_rk_1,gradient_rk_1);
+    beta_k=beta_k/fcube_inner_product(gradient_rk,gradient_rk);
+    gradient_cg_pk_1=gradient_rk_1+beta_k*gradient_cg_pk;
+    //updata
+    datatp_k=datatp_k_1;
+    gradient_rk=gradient_rk_1;
+    gradient_cg_pk=gradient_cg_pk_1;
+
+    while(iter<iterations_num && residual_k>residual_pow){
+        cout<<iter<<"||"<<residual_k/residual_pow<<endl;
+        iter++;
+        //cal residual_pow
+        sum_num=sum(sum(sum(abs(gradient_rk))));
+        residual_k=sum_num(0,0);
+
+        slantstack3d_recover_L_operator(recoverdatatx_uk,gradient_cg_pk,\
+            par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+            par.dt);
+        slantstack3d_stack_LT_operator(A_gradient_cg_pk,recoverdatatx_uk,\
+            par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+            par.dt);
+        //regularization
+        A_gradient_cg_pk=A_gradient_cg_pk+gradient_cg_pk*par.factor_l2;
+        
+        alpha_k=fcube_inner_product(gradient_rk,gradient_rk);
+        alpha_k=alpha_k/fcube_inner_product(gradient_cg_pk,A_gradient_cg_pk);
+        //get new solution
+        datatp_k_1=datatp_k+alpha_k*gradient_cg_pk;
+        gradient_rk_1=gradient_rk-alpha_k*A_gradient_cg_pk;
+
+        beta_k=fcube_inner_product(gradient_rk_1,gradient_rk_1);
+        beta_k=beta_k/fcube_inner_product(gradient_rk,gradient_rk);
+        gradient_cg_pk_1=gradient_rk_1+beta_k*gradient_cg_pk;
+        //updata
+        datatp_k=datatp_k_1;
+        gradient_rk=gradient_rk_1;
+        gradient_cg_pk=gradient_cg_pk_1;
+    }
+    par.datatp=datatp_k;
+    cout<<iter<<"||"<<residual_k/residual_pow<<endl;
+
+}
+
+void slantstack3d_stack_HSCG_invL_operator(struct slantstack3d &par,\
+ int iterations_num=9, int residual_ratio=0.01)
+{
+
+    int ip,jp,in,jn,k,iter(0);
+    int n1(par.datatx.n_rows),n2(par.datatx.n_cols),n3(par.datatx.n_slices),\
+        np1(par.datatp.n_rows),np2(par.datatp.n_cols);
+    fcube gradient_gk,gradient_gk_1,\
+        gradient_cg_dk,gradient_cg_dk_1,\
+        datatp_k,datatp_k_1,\
+        recoverdatatx_uk;
+    fmat sum_num(1,1);
+    float beta_k,alpha_k,residual_pow,residual_k;
+    datatp_k.copy_size(par.datatp);
+    datatp_k_1.copy_size(par.datatp);
+    gradient_gk.copy_size(par.datatp);
+    gradient_gk_1.copy_size(par.datatp);
+    gradient_cg_dk.copy_size(par.datatp);
+    gradient_cg_dk_1.copy_size(par.datatp); 
+    recoverdatatx_uk.copy_size(par.datatx);
+    datatp_k_1=par.datatp;
+
+    iter=0;alpha_k=0.00005;
+
+    slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k_1,\
     par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
     par.dt);
     recoverdatatx_uk=recoverdatatx_uk-par.datatx;
+    //cal residual_pow
+    sum_num=sum(sum(sum(abs(recoverdatatx_uk))));
+    residual_pow=sum_num(0,0);
+    residual_k=residual_pow;
+    residual_pow*=residual_ratio;
+    //
     slantstack3d_stack_LT_operator(gradient_gk,recoverdatatx_uk,\
     par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
     par.dt);
+    //updata radient
+    beta_k=1.0;
+    gradient_gk_1=gradient_gk;
+    //updata radient_cg
     gradient_cg_dk=-gradient_gk;
-    beta_k=fcube_inner_product();
+    gradient_cg_dk_1=gradient_cg_dk;
+    //updata solution
+    datatp_k=datatp_k_1+alpha_k*gradient_cg_dk;
+    datatp_k_1=datatp_k;
 
-
-
-
-    
-
+    while(iter<iterations_num || residual_k<residual_pow){
+        cout<<iter<<"||"<<residual_k<<endl;
+        iter++;
+        slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k_1,\
+        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.dt);
+        recoverdatatx_uk=recoverdatatx_uk-par.datatx;
+        //cal residual_pow
+        sum_num=sum(sum(sum(abs(recoverdatatx_uk))));
+        residual_k=sum_num(0,0);
+        //
+        slantstack3d_stack_LT_operator(gradient_gk,recoverdatatx_uk,\
+        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.dt);
+        //updata radient
+        beta_k=fcube_inner_product(gradient_gk,\
+            gradient_gk-gradient_gk_1);
+        beta_k=beta_k/fcube_inner_product(gradient_cg_dk_1,\
+            gradient_gk-gradient_gk_1);
+        gradient_gk_1=gradient_gk;
+        //updata radient_cg
+        gradient_cg_dk=-gradient_gk+beta_k*gradient_cg_dk_1;
+        gradient_cg_dk_1=gradient_cg_dk;
+        //updata solution
+        datatp_k=datatp_k_1+alpha_k*gradient_cg_dk;
+        datatp_k_1=datatp_k;
+    }
+    par.datatp=datatp_k;
 
 }
 
