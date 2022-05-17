@@ -1,7 +1,6 @@
 /************update in 2021.01.07**************/
 /*
     
-    
 ***********************************************/
 
 #ifndef SLANTSTACK3D_HPP
@@ -14,10 +13,53 @@
 #include <math.h>
 #include <thread>
 #include <future>
-#include "../xjc.h"
+#include "./armadillo-9.800.2/include/armadillo"
 using namespace std;
 using namespace arma;
 
+// 2-D Slant-stack in the time - space domain.
+int Slantstack_CG_2D(float **trace, int ntrace, int ns, float dt,\
+ float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr,\
+ float **recoverdata, bool dorecover, int ncpu, \
+ float factor_L2, int iterations_num, float residual_ratio);
+/* discription.
+This function will do the local LRT over local traces .
+float **trace;
+the INPUT local seismic-gather, i.e. trace[ntrace][ns].
+int ntrace;
+the trace-number of the INPUT gather.
+int ns;
+the trace length.
+float dt;
+time-sampling interval, (unit of dt should be second) ,
+float *coor;
+coor[ntrace] stores the offset of each trace .
+float x0;
+the beam-center coordinate .
+float **tauppanel; 
+the OUTPUT tau-p spectrum, i.e. tauppanel[npsr][ns].
+int npsr;
+the ray-parameter number of tau-p panel.
+float psrmin;
+the minimum ray-parameter, (unit is s/m) .
+float dpsr;
+the interval of ray-parameter， (unit is s/m) .
+float **recoverdata;
+the OUTPUT recover local seismic-gather, i.e. recoverdata[ntrace][ns].
+bool dorecover; default true
+Whether to OUTPUT recover local seismic-gather
+float factor_L2; default 1.0
+L2, Tikhonov regularization parameter
+float fmax; default 150
+The maximum frequency of the seismic signal
+int ncpu; default 1
+The number of threads computed by multithreading
+int iterations_num; default 48
+the Maximum number of iterations of conjugate-gradient method
+float residual_ratio; default 0.5
+Conjugate gradient method iteration error, The smaller the more accurate
+*/
+///////////////////////////////////////////////////////////////////
 /*slantstack3d变换 传递的参数：
 n: number of
 d: Time or spatial sampling interval
@@ -147,7 +189,7 @@ void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
                     pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
                     dt, i);
                 i++;
-                cout<<i<<endl;
+                //cout<<i<<endl;
         }}
     }
     for(k=0;k<ncpu;k++){
@@ -255,7 +297,7 @@ void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
                     pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
                     dt, i);
                 i++;
-                cout<<i<<endl;
+                //cout<<i<<endl;
         }}
     }
     for(k=0;k<ncpu;k++){
@@ -401,7 +443,7 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
     gradient_cg_pk=gradient_cg_pk_1;
 
     while(iter<iterations_num && residual_k>residual_pow){
-        cout<<iter<<"||"<<residual_k/residual_pow<<endl;
+        //cout<<iter<<"||"<<residual_k/residual_pow<<endl;
         iter++;
         //cal residual_pow
         sum_num=sum(sum(sum(abs(gradient_rk))));
@@ -510,7 +552,118 @@ void slantstack3d_stack_HSCG_invL_operator(struct slantstack3d &par,\
         datatp_k_1=datatp_k;
     }
     par.datatp=datatp_k;
+}
 
+// 2-D Slant-stack in the time - space domain.
+int Slantstack_CG_2D(float **trace, int ntrace, int ns, float dt,\
+ float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr,\
+ float **recoverdata, bool dorecover=true, int ncpu=1,  \
+ float factor_L2=1.0, int iterations_num=48, float residual_ratio=0.5)
+{
+/* discription.
+This function will do the local LRT over local traces .
+float **trace;
+the INPUT local seismic-gather, i.e. trace[ntrace][ns].
+int ntrace;
+the trace-number of the INPUT gather.
+int ns;
+the trace length.
+float dt;
+time-sampling interval, (unit of dt should be second) ,
+float *coor;
+coor[ntrace] stores the offset of each trace .
+float x0;
+the beam-center coordinate .
+float **tauppanel; 
+the OUTPUT tau-p spectrum, i.e. tauppanel[npsr][ns].
+int npsr;
+the ray-parameter number of tau-p panel.
+float psrmin;
+the minimum ray-parameter, (unit is s/m) .
+float dpsr;
+the interval of ray-parameter， (unit is s/m) .
+float **recoverdata;
+the OUTPUT recover local seismic-gather, i.e. recoverdata[ntrace][ns].
+bool dorecover; default true
+Whether to OUTPUT recover local seismic-gather
+float L2; default 1.0
+L2, Tikhonov regularization parameter
+float fmax; default 150
+The maximum frequency of the seismic signal
+int ncpu; default 1
+The number of threads computed by multithreading
+int iterations_num=48, 
+the Maximum number of iterations of conjugate-gradient method; default 48
+float residual_ratio=0.5
+Conjugate gradient method iteration error, The smaller the more accurate
+*/
+///////////////////////////////////////////////////////////////////
+    struct slantstack3d par;
+
+    int i,j,k;
+    int nz2(ns),nz(ns),nx(ntrace),ny(1),nf(0);
+//////////////////////////radon par-set////////////////////////////
+    slantstack3d_parset(nx,ny,nz,par);
+    par.dp_trace=dpsr;
+    par.dp_line=dpsr;
+    par.dt=dt;
+
+//The default px of central channel is zero
+    par.np_trace=npsr;
+    par.ptrace_coord0=psrmin;
+    par.np_line=1;
+    par.pline_coord0=0.0;   
+
+    //ncpu
+    par.numthread=ncpu;
+
+//regularization parameter
+    par.factor_l2=nx*ny*factor_L2;  //L2, Tikhonov 
+
+//Parameters updated
+    slantstack3d_parupdate(par);
+//Seismic trace coordinates
+    for(k=0;k<par.ntrace;k++){
+        par.ntrace_coord(k,0)=coor[k]-x0;
+    }
+//////////////////////////////////////////////////////////////////
+//data input, (row,col,slice) of par.data is (nx,ny,nz)
+//nx: Spatial sampling nummber
+//ny: trace nummber
+//nz: time sampling nummber
+for(i=0;i<ntrace;i++){
+    for(j=0;j<ns;j++){
+        par.datatx(i,0,j)=trace[i][j];
+    }
+}
+//////////////////////////////////////////////////
+    slantstack3d_stack_multithread(par);
+    slantstack3d_stack_CG_invL_operator(par,iterations_num,residual_ratio);
+////////////////////output recover data/////////////////////
+//output recover data, (row,col,slice) of par.realrebuildtx is (nx,ny,nz)
+//npx: X Ray parameters sampling nummber
+//npy: Y Ray parameters sampling nummber
+//nz: time sampling nummber
+    if(dorecover){
+        slantstack3d_recover_multithread(par);
+        for(i=0;i<ntrace;i++){
+            for(j=0;j<ns;j++){
+                recoverdata[i][j]=par.recoverdatatx(i,0,j);
+            }
+        }
+    }
+
+///////////////////output tau-p///////////////////
+//output tau-p, (row,col,slice) of par.realdataTP is (npx,npy,nz)
+//npx: X Ray parameters sampling nummber
+//npy: Y Ray parameters sampling nummber
+//nz: time sampling nummber
+    for(i=0;i<npsr;i++){
+        for(j=0;j<ns;j++){
+            tauppanel[i][j]=par.datatp(i,0,j);
+        }
+    }
+    return 0;
 }
 
 #endif
