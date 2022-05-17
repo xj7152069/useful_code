@@ -80,6 +80,81 @@ void slantstack3d_cleardata(struct slantstack3d & par)
 }
 
 /////////////////////////slantstack3d_L_LT///////////////////////////
+
+void slantstack3d_stack_LT_pthread(fcube *datatp,fcube *datatx,\
+ fmat *ptrace_coord,fmat *pline_coord,fmat *ntrace_coord,fmat *nline_coord,\
+ float dt, int kt)
+{
+
+    int ip,jp,in,jn,k,ntaoceil,ntaofloor;
+    float tao0,dtao1,dtao2,dtao12,ntao12,wceil,wfloor,wsum,wmin(0.000000001);
+    int n1(datatx[0].n_rows),n2(datatx[0].n_cols),n3(datatx[0].n_slices),\
+        np1(datatp[0].n_rows),np2(datatp[0].n_cols);
+        
+k=kt;
+{
+    tao0=k*dt;
+    for(ip=0;ip<np1;ip++){
+        for(jp=0;jp<np2;jp++){
+            for(in=0;in<n1;in++){
+                dtao1=ntrace_coord[0](in,0)*ptrace_coord[0](ip,0);
+                for(jn=0;jn<n2;jn++){
+                    dtao2=nline_coord[0](jn,0)*pline_coord[0](jp,0);
+                    dtao12=dtao1+dtao2;
+                    ntao12=(tao0+dtao12)/dt;
+                    if(ntao12<(n3-1) && ntao12>0){
+                        ntaoceil=ceil(ntao12);
+                        ntaofloor=floor(ntao12);
+                        wceil=1.0/(abs(ntaoceil-ntao12)+wmin);
+                        wfloor=1.0/(abs(ntaofloor-ntao12)+wmin);
+                        wsum=wceil+wfloor;
+                        wceil=wceil/wsum;
+                        wfloor=wfloor/wsum;
+
+                        datatp[0](ip,jp,k)=datatp[0](ip,jp,k)\
+                            +datatx[0](in,jn,ntaoceil)*wceil\
+                            +datatx[0](in,jn,ntaofloor)*wfloor;
+                    }
+    }}}}}
+}
+
+void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
+ fmat &ptrace_coord,fmat &pline_coord,fmat &ntrace_coord,fmat &nline_coord,\
+ float dt, int ncpu){
+
+    int i,j,k,nt(datatx.n_slices);
+    datatp.fill(0.0);
+    fcube *pdatatp(&datatp);
+    fcube *pdatatx(&datatx);
+    fmat *pptrace_coord(&ptrace_coord);
+    fmat *ppline_coord(&pline_coord);
+    fmat *pntrace_coord(&ntrace_coord);
+    fmat *pnline_coord(&nline_coord);
+
+    thread *pcal;
+    pcal=new thread[ncpu];
+    for(k=0;k<ncpu;k++){
+        pcal[k]=thread(slantstack3d_stack_LT_pthread,pdatatp,pdatatx,\
+            pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
+                dt, k);
+    }
+    i=ncpu;
+    while(i<nt){
+        for(k=0;k<ncpu;k++){
+            if(pcal[k].joinable() && i<nt){
+                pcal[k].join();
+                pcal[k]=thread(slantstack3d_stack_LT_pthread,pdatatp,pdatatx,\
+                    pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
+                    dt, i);
+                i++;
+                cout<<i<<endl;
+        }}
+    }
+    for(k=0;k<ncpu;k++){
+        pcal[k].join();
+    }
+}
+
 void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
  fmat &ptrace_coord,fmat &pline_coord,fmat &ntrace_coord,fmat &nline_coord,\
  float dt){
@@ -113,6 +188,78 @@ for(k=0;k<n3;k++){
                             +datatx(in,jn,ntaofloor)*wfloor;
                     }
     }}}}}
+}
+/////////////////////////////////////////////////////////////////////////
+void slantstack3d_recover_L_pthread(fcube *recoverdatatx,fcube *datatp,\
+ fmat *ptrace_coord,fmat *pline_coord,fmat *ntrace_coord,fmat *nline_coord,\
+ float dt,int kt)
+{
+    int ip,jp,in,jn,k,ntaoceil,ntaofloor;
+    float tao0,dtao1,dtao2,dtao12,ntao12,wceil,wfloor,wsum,wmin(0.000000001);
+    int n1(recoverdatatx[0].n_rows),n2(recoverdatatx[0].n_cols),n3(recoverdatatx[0].n_slices),\
+        np1(datatp[0].n_rows),np2(datatp[0].n_cols);
+
+k=kt;
+{
+    tao0=k*dt;
+    for(in=0;in<n1;in++){
+        for(jn=0;jn<n2;jn++){
+            for(ip=0;ip<np1;ip++){
+                dtao1=ntrace_coord[0](in,0)*ptrace_coord[0](ip,0);
+                for(jp=0;jp<np2;jp++){
+                    dtao2=nline_coord[0](jn,0)*pline_coord[0](jp,0);
+                    dtao12=dtao1+dtao2;
+                    ntao12=(tao0-dtao12)/dt;
+                    if(ntao12<(n3-1) && ntao12>0){
+                        ntaoceil=ceil(ntao12);
+                        ntaofloor=floor(ntao12);
+                        wceil=1.0/(abs(ntaoceil-ntao12)+wmin);
+                        wfloor=1.0/(abs(ntaofloor-ntao12)+wmin);
+                        wsum=wceil+wfloor;
+                        wceil=wceil/wsum;
+                        wfloor=wfloor/wsum;
+
+                        recoverdatatx[0](in,jn,k)=recoverdatatx[0](in,jn,k)\
+                            +datatp[0](ip,jp,ntaoceil)*wceil\
+                            +datatp[0](ip,jp,ntaofloor)*wfloor;
+                    }
+    }}}}}
+}
+void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
+ fmat &ptrace_coord,fmat &pline_coord,fmat &ntrace_coord,fmat &nline_coord,\
+ float dt, int ncpu){
+
+    int i,j,k,nt(recoverdatatx.n_slices);
+    recoverdatatx.fill(0.0);
+    fcube *pdatatp(&datatp);
+    fcube *pdatatx(&recoverdatatx);
+    fmat *pptrace_coord(&ptrace_coord);
+    fmat *ppline_coord(&pline_coord);
+    fmat *pntrace_coord(&ntrace_coord);
+    fmat *pnline_coord(&nline_coord);
+
+    thread *pcal;
+    pcal=new thread[ncpu];
+    for(k=0;k<ncpu;k++){
+        pcal[k]=thread(slantstack3d_recover_L_pthread,pdatatx,pdatatp,\
+            pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
+                dt, k);
+    }
+    i=ncpu;
+    while(i<nt){
+        for(k=0;k<ncpu;k++){
+            if(pcal[k].joinable() && i<nt){
+                pcal[k].join();
+                pcal[k]=thread(slantstack3d_recover_L_pthread,pdatatx,pdatatp,\
+                    pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
+                    dt, i);
+                i++;
+                cout<<i<<endl;
+        }}
+    }
+    for(k=0;k<ncpu;k++){
+        pcal[k].join();
+    }
 }
 
 void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
@@ -150,18 +297,27 @@ for(k=0;k<n3;k++){
                     }
     }}}}}
 }
-
+//////////////////////////////////////////////////////////////
 void slantstack3d_stack(struct slantstack3d &par){
     slantstack3d_stack_LT_operator(par.datatp,par.datatx,\
     par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
     par.dt);
+}
+void slantstack3d_stack_multithread(struct slantstack3d &par){
+    slantstack3d_stack_LT_operator(par.datatp,par.datatx,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.dt,par.numthread);
 }
 void slantstack3d_recover(struct slantstack3d &par){
     slantstack3d_recover_L_operator(par.recoverdatatx,par.datatp,\
     par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
     par.dt);
 }
-
+void slantstack3d_recover_multithread(struct slantstack3d &par){
+    slantstack3d_recover_L_operator(par.recoverdatatx,par.datatp,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.dt,par.numthread);
+}
 /////////////////////////slantstack_CG3d///////////////////////////
 inline float fcube_inner_product(fcube data1, fcube data2){
     int ni(data1.n_rows),nj(data1.n_cols),nk(data1.n_slices),i,j,k;
@@ -204,11 +360,11 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
 
     datatp_k=par.datatp/par.nline/par.ntrace;
     slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k,\
-    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-    par.dt);
+        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.dt,par.numthread);
     slantstack3d_stack_LT_operator(A_datatp_k,recoverdatatx_uk,\
-    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-    par.dt);
+        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.dt,par.numthread);
     //regularization
     A_datatp_k=A_datatp_k+datatp_k*par.factor_l2;
 
@@ -221,10 +377,10 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
 
     slantstack3d_recover_L_operator(recoverdatatx_uk,gradient_cg_pk,\
         par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-        par.dt);
+        par.dt,par.numthread);
     slantstack3d_stack_LT_operator(A_gradient_cg_pk,recoverdatatx_uk,\
         par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-        par.dt);
+        par.dt,par.numthread);
     //regularization
     A_gradient_cg_pk=A_gradient_cg_pk+gradient_cg_pk*par.factor_l2;
         
@@ -251,10 +407,10 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
 
         slantstack3d_recover_L_operator(recoverdatatx_uk,gradient_cg_pk,\
             par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-            par.dt);
+            par.dt,par.numthread);
         slantstack3d_stack_LT_operator(A_gradient_cg_pk,recoverdatatx_uk,\
             par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-            par.dt);
+            par.dt,par.numthread);
         //regularization
         A_gradient_cg_pk=A_gradient_cg_pk+gradient_cg_pk*par.factor_l2;
         
