@@ -93,6 +93,8 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
     for(k=0;k<ncpu;k++){
         pcal[k].join();
     }
+    delete [] pcal;
+
 ////////////////////////////////////////////////////////////////////
     for(i=0;i<nt;i++){
         for(j=0;j<nx;j++){
@@ -230,6 +232,7 @@ void multiple_code2d(fmat& u2, fmat& u1, fmat& green,\
     for(k=0;k<ncpu;k++){
         pcal[k].join();
     }
+    delete [] pcal;
 
     for(k=0;k<n2;k++){
         //u1cx.row(k)=fft(u1.col(k).t(),n1);
@@ -371,6 +374,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
             pcal[k].join();
         }
     }
+    delete [] pcal;
 }
 ////////////function: tx2fx or fx2tx/////////////
 void tx2fx_3d_pthread(cx_fcube *data3d_out,fcube *data3d,int i)
@@ -414,6 +418,7 @@ void tx2fx_3d_thread(cx_fcube &data3d_out,fcube &data3d, int ncpu)
         k=i-(n1-ncpu);
         pcal[k].join();
     }
+    delete [] pcal;
 }
 
 void fx2tx_3d_pthread(fcube *data3d_out,cx_fcube *data3d,int i)
@@ -456,6 +461,7 @@ void fx2tx_3d_thread(fcube &data3d_out,cx_fcube &data3d, int ncpu)
         k=i-(n1-ncpu);
         pcal[k].join();
     }
+    delete [] pcal;
 }
 
 
