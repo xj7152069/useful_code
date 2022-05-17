@@ -153,6 +153,7 @@ void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
     for(k=0;k<ncpu;k++){
         pcal[k].join();
     }
+    delete [] pcal;
 }
 
 void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
@@ -260,6 +261,7 @@ void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
     for(k=0;k<ncpu;k++){
         pcal[k].join();
     }
+    delete [] pcal;
 }
 
 void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
