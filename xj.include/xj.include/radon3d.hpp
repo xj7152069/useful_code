@@ -549,8 +549,11 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
 }
 
 void beamforminginv3d_beamget_thread(struct linerradon3d * par,\
- struct beamforminginv3d * par2, int pncpu, int pnf)
+ struct beamforminginv3d * par2, int pncpu, int pnf,\
+ bool regularization)
 {
+    beamforminginv3d_hessianget_thread(\
+        par,par2,pncpu,pnf,regularization,true);
     int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
     float df(par[0].df),dx(par[0].dx),dy(par[0].dy),\
@@ -592,15 +595,7 @@ void beamforminginv3d_beamget_thread(struct linerradon3d * par,\
 //inv function of radon
 void beamforminginv3d(struct linerradon3d & par, bool regularization=true)
 {
-    int numf(par.nf2-par.nf1),ncpu(par.numthread);
-    int kf,kcpu,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
-    float fx,fy,fpx,fpy;
-    float w,pi(3.1415926);
-    float df(par.df),dx(par.dx),dy(par.dy),\
-        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
-        p0y(par.p0y),dz(par.dz);
-    int nx(par.nx),npx(par.npx),nf(par.nf),\
-        ny(par.ny),npy(par.npy);
+    int numf(par.nf2-par.nf1),ncpu(par.numthread),kf,kcpu;
 
     struct beamforminginv3d par2;
     struct linerradon3d * ppar;
@@ -608,31 +603,26 @@ void beamforminginv3d(struct linerradon3d & par, bool regularization=true)
     beamforminginv3d_parset(ppar[0], par2);
     beamforminginv3d_getdigfmat(ppar[0], par2);
 
-thread *pcal;
-pcal=new thread[ncpu];
-for(kf=0;kf<numf;kf+=ncpu)  
-{
-    for(kcpu=0;kcpu<ncpu;kcpu++)  
-    {
-        pcal[kcpu]=thread(beamforminginv3d_hessianget_thread,\
-            &par,&par2,kcpu,kf+kcpu+par.nf1,regularization,true);
+    thread *pcal;
+    pcal=new thread[ncpu];
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
+                kcpu,kcpu+par.nf1,regularization);
     }
-    for(kcpu=0;kcpu<ncpu;kcpu++)  
-    {
+    kf=ncpu+par.nf1;
+    while(kf<par.nf2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+            if(pcal[kcpu].joinable()&&kf<par.nf2){
+                pcal[kcpu].join();
+                pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
+                kcpu,kf,regularization);
+                kf++;
+        }}
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++){
         pcal[kcpu].join();
     }
 
-////////////////////////////////////////
-    for(kcpu=0;kcpu<ncpu;kcpu++)  
-    {
-        pcal[kcpu]=thread(beamforminginv3d_beamget_thread,\
-            &par,&par2,kcpu,kf+kcpu+par.nf1);
-    }
-    for(kcpu=0;kcpu<ncpu;kcpu++)  
-    {
-        pcal[kcpu].join();
-    }
-}
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
 }
@@ -641,14 +631,7 @@ for(kf=0;kf<numf;kf+=ncpu)
 void beamformingLSinv3d(struct linerradon3d & par)
 {
     int numf(par.nf2-par.nf1),ncpu(par.numthread);
-    int kf,kcpu,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
-    float fx,fy,fpx,fpy;
-    float w,pi(3.1415926);
-    float df(par.df),dx(par.dx),dy(par.dy),\
-        dpx(par.dpx),dpy(par.dpy),p0x(par.p0x),\
-        p0y(par.p0y),dz(par.dz);
-    int nx(par.nx),npx(par.npx),nf(par.nf),\
-        ny(par.ny),npy(par.npy);
+    int kf,kcpu,i,j;//cout<<"ok"<<endl;
 
     struct beamforminginv3d par2;
     struct linerradon3d * ppar;
@@ -658,31 +641,26 @@ void beamformingLSinv3d(struct linerradon3d & par)
     if(!par.lsinvmat)
         {beamforminginv3d_getdigfmat(ppar[0], par2);}
 
-thread *pcal;
-pcal=new thread[ncpu];
-for(kf=0;kf<numf;kf+=ncpu)  
-{
-    for(kcpu=0;kcpu<ncpu;kcpu++)  
-    {
-        pcal[kcpu]=thread(beamforminginv3d_LS_hessianget_thread,\
-            &par,&par2,kcpu,kf+kcpu+par.nf1);
+    thread *pcal;
+    pcal=new thread[ncpu];
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
+                kcpu,kcpu+par.nf1,true);
     }
-    for(kcpu=0;kcpu<ncpu;kcpu++)  
-    {
+    kf=ncpu+par.nf1;
+    while(kf<par.nf2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+            if(pcal[kcpu].joinable()&&kf<par.nf2){
+                pcal[kcpu].join();
+                pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
+                kcpu,kf,true);
+                kf++;
+        }}
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++){
         pcal[kcpu].join();
     }
 
-////////////////////////////////////////
-    for(kcpu=0;kcpu<ncpu;kcpu++)  
-    {
-        pcal[kcpu]=thread(beamforminginv3d_beamget_thread,\
-            &par,&par2,kcpu,kf+kcpu+par.nf1);
-    }
-    for(kcpu=0;kcpu<ncpu;kcpu++)  
-    {
-        pcal[kcpu].join();
-    }
-}
     par.lsinvmat=true;
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
@@ -730,27 +708,26 @@ void linerradon(struct linerradon3d & par)
 {
     tx_to_fx3d_radon3d_thread(par);
     
-    int pn(par.numthread),pnf1,pnf2,k;
+    int ncpu(par.numthread),pnf1,pnf2,k,kcpu,kf;
     float dnf;
     thread *pcal;
-    pcal=new thread[pn];
-    dnf=float(par.nf2-par.nf1)/pn;
-    for(k=0;k<pn-1;k++)
-    {
-        pnf1=round(par.nf1+k*dnf);
-        pnf2=round(par.nf1+(k+1)*dnf);
-        pcal[k]=thread(linerradon_fthread,&par,pnf1,pnf2);
+    pcal=new thread[ncpu];
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        pcal[kcpu]=thread(linerradon_fthread,&par,kcpu+par.nf1,kcpu+par.nf1+1);
     }
-    k=pn-1;
-    pnf1=round(par.nf1+k*dnf);
-    pnf2=par.nf2;
-    pcal[k]=thread(linerradon_fthread,&par,pnf1,pnf2);
-
-    for(k=0;k<pn;k++)
-    {
-        pcal[k].join();
+    kf=ncpu+par.nf1;
+    while(kf<par.nf2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+            if(pcal[kcpu].joinable()&&kf<par.nf2){
+                pcal[kcpu].join();
+                pcal[kcpu]=thread(linerradon_fthread,&par,kf,kf+1);
+                kf++;
+        }}
     }
-
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        pcal[kcpu].join();
+    }
+    
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
     delete [] pcal;
@@ -812,26 +789,24 @@ void rebuildsignal(struct linerradon3d & par)
 {
     tp_to_fp3d_linerradon3d(par);
 
-    int pn(par.numthread),pnf1,pnf2,k;
+    int ncpu(par.numthread),pnf1,pnf2,k,kf,kcpu;
     float dnf;
     thread *pcal;
-    pcal=new thread[pn];
-    dnf=float(par.nf2-par.nf1)/pn;
-
-    for(k=0;k<pn-1;k++)
-    {
-        pnf1=round(par.nf1+k*dnf);
-        pnf2=round(par.nf1+(k+1)*dnf);
-        pcal[k]=thread(rebuildsignal_fthread,&par,pnf1,pnf2);
+    pcal=new thread[ncpu];
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        pcal[kcpu]=thread(rebuildsignal_fthread,&par,kcpu+par.nf1,kcpu+par.nf1+1);
     }
-    k=pn-1;
-    pnf1=round(par.nf1+k*dnf);
-    pnf2=par.nf2;
-    pcal[k]=thread(rebuildsignal_fthread,&par,pnf1,pnf2);
-
-    for(k=0;k<pn;k++)
-    {
-        pcal[k].join();
+    kf=ncpu+par.nf1;
+    while(kf<par.nf2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+            if(pcal[kcpu].joinable()&&kf<par.nf2){
+                pcal[kcpu].join();
+                pcal[kcpu]=thread(rebuildsignal_fthread,&par,kf,kf+1);
+                kf++;
+        }}
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        pcal[kcpu].join();
     }
    
     //fx_to_tx3d_linerradon3d(par);
@@ -1079,10 +1054,26 @@ void cxfmatget_Ap(cx_fmat & Ap,cx_fmat & A,cx_fmat & p)
         Ap(kpx,kpy)=a(0,0);
     }}
 }
+inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat mat2)
+{
+    int nz,nx;
+    nz=mat1.n_rows;
+    nx=mat1.n_cols;
+    mat2.set_imag(-imag(mat2));
+
+    cx_fmat a(1,1,fill::zeros);
+    int i,j;
+    for(i=0;i<nz;i++){
+        a+=mat1.row(i)*mat2.row(i).st();
+    }
+    return a;
+}
 void beamformingCG3d_fthread(struct linerradon3d * par,\
- struct beamforminginv3d * par2, int kcpu, int kf,\
+ struct beamforminginv3d * par2, int kcpu, int kf,bool regularization,\
  int iterations_num=25, float residual_ratio=0.5)
 {
+    beamforminginv3d_hessianget_thread(\
+        par,par2,kcpu,kf,regularization,false);
     int ip,jp,in,jn,k,iter(0);
     int np1(par->datafP.n_rows),np2(par->datafP.n_cols);
     cx_fmat gradient_rk,gradient_rk_1,\
@@ -1102,14 +1093,14 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
 
     iter=0;
     datatp_k=par[0].datafP.slice(kf);
-    //datatp_k=datatp_k/par[0].nx/par[0].ny;
     sum_num=sum(sum(sum(abs(datatp_k))));
     residual_pow=sum_num(0,0);
     residual_pow*=residual_ratio;
+    datatp_k.fill(0.0);
 
     cxfmatget_Ap(A_datatp_k,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
         datatp_k);
-    gradient_rk=datatp_k-A_datatp_k;
+    gradient_rk=par[0].datafP.slice(kf)-A_datatp_k;
     gradient_cg_pk=gradient_rk;
 
     //cal residual_pow
@@ -1118,14 +1109,14 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     cxfmatget_Ap(A_gradient_cg_pk,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
         gradient_cg_pk);
         
-    alpha_k=cx_fmatmul(gradient_rk,gradient_rk);
-    alpha_k=alpha_k/cx_fmatmul(gradient_cg_pk,A_gradient_cg_pk);
+    alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
+    alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
     //get new solution
     datatp_k_1=datatp_k+alpha_k(0,0)*gradient_cg_pk;
     gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
 
-    beta_k=cx_fmatmul(gradient_rk_1,gradient_rk_1);
-    beta_k=beta_k/cx_fmatmul(gradient_rk,gradient_rk);
+    beta_k=cx_fmatmul_CG(gradient_rk_1,gradient_rk_1);
+    beta_k=beta_k/cx_fmatmul_CG(gradient_rk,gradient_rk);
     gradient_cg_pk_1=gradient_rk_1+beta_k(0,0)*gradient_cg_pk;
     //updata
     datatp_k=datatp_k_1;
@@ -1142,15 +1133,15 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
         cxfmatget_Ap(A_gradient_cg_pk,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
             gradient_cg_pk);
         
-        alpha_k=cx_fmatmul(gradient_rk,gradient_rk);
-        alpha_k=alpha_k/cx_fmatmul(gradient_cg_pk,A_gradient_cg_pk);
+        alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
+        alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
         //get new solution
         datatp_k_1=datatp_k+alpha_k(0,0)*gradient_cg_pk;
         gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
 
-        beta_k=cx_fmatmul(gradient_rk_1,gradient_rk_1);
-        beta_k=beta_k/cx_fmatmul(gradient_rk,gradient_rk);
-        gradient_cg_pk_1=gradient_rk_1+beta_k(0,0)*gradient_cg_pk;
+        beta_k=cx_fmatmul_CG(gradient_rk_1,gradient_rk_1);
+        beta_k=beta_k/cx_fmatmul_CG(gradient_rk,gradient_rk);
+        gradient_cg_pk_1=gradient_rk_1+real(beta_k(0,0))*gradient_cg_pk;
         //updata
         datatp_k=datatp_k_1;
         gradient_rk=gradient_rk_1;
@@ -1176,23 +1167,26 @@ bool regularization=true)
     beamforminginv3d_parset(ppar[0], par2);
     beamforminginv3d_getdigfmat(ppar[0], par2);
     
-
-thread *pcal;
-pcal=new thread[ncpu];
-for(kf=0;kf<numf;kf+=ncpu){
+    thread *pcal;
+    pcal=new thread[ncpu];
     for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu]=thread(beamforminginv3d_hessianget_thread,\
-            &par,&par2,kcpu,kf+kcpu+par.nf1,regularization,false);
-    }
-    for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu].join();
         pcal[kcpu]=thread(beamformingCG3d_fthread,&par,&par2,\
-            kcpu,kf+kcpu+par.nf1,iterations_num,residual_ratio);
+                kcpu,kcpu+par.nf1,regularization,iterations_num,\
+                residual_ratio);
+    }
+    kf=ncpu+par.nf1;
+    while(kf<par.nf2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+            if(pcal[kcpu].joinable()&&kf<par.nf2){
+                pcal[kcpu].join();
+                pcal[kcpu]=thread(beamformingCG3d_fthread,&par,&par2,\
+                kcpu,kf,regularization,iterations_num,residual_ratio);
+                kf++;
+        }}
     }
     for(kcpu=0;kcpu<ncpu;kcpu++){
         pcal[kcpu].join();
     }
-}
 
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
