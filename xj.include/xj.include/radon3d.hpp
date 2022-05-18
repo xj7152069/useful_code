@@ -334,8 +334,7 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
     int k,i;
     float maxpower,minpower(0);
     cx_fmat cxmat(par.npx,par.npy);
-    for(k=par.rulef1;k<par.rulef2;k++)
-    {
+    for(k=par.rulef1;k<par.rulef2;k++){
         parinv.digw_fmat_npxnpy+=abs(cxmat=par.datafP.slice(k));
     } 
 
@@ -362,7 +361,7 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
             for(i=0;i<par.npx;i++){
                 par.p_power(i,k)=1.0/(1.0+exp(100*(0.5-par.p_power(i,k))));
             }
-            //datawrite(par.p_power,par.npx,par.npy,"dig.bin");
+            datawrite(par.p_power,par.npx,par.npy,"dig.bin");
         }
     }
     else{
@@ -566,6 +565,7 @@ void beamforminginv3d_beamget_thread(struct linerradon3d * par,\
     float kx1(-(nx*dx)/2.0);
 
     kf=pnf;
+    cout<<"now is inv: "<<kf<<endl;
     if(kf<par[0].nf2) 
     {
         cx_fmat datafp(npx,npy),a(1,1);
@@ -1054,17 +1054,16 @@ void cxfmatget_Ap(cx_fmat & Ap,cx_fmat & A,cx_fmat & p)
         Ap(kpx,kpy)=a(0,0);
     }}
 }
-inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat mat2)
+inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat & mat2)
 {
     int nz,nx;
     nz=mat1.n_rows;
     nx=mat1.n_cols;
-    mat2.set_imag(-imag(mat2));
 
     cx_fmat a(1,1,fill::zeros);
     int i,j;
     for(i=0;i<nz;i++){
-        a+=mat1.row(i)*mat2.row(i).st();
+        a+=mat1.row(i)*mat2.row(i).t();
     }
     return a;
 }
@@ -1096,7 +1095,9 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     sum_num=sum(sum(sum(abs(datatp_k))));
     residual_pow=sum_num(0,0);
     residual_pow*=residual_ratio;
-    datatp_k.fill(0.0);
+    //datatp_k.fill(0.0);
+    datatp_k.set_real(2*real(datatp_k)/par[0].nx/par[0].ny);
+    datatp_k.set_imag(2*imag(datatp_k)/par[0].nx/par[0].ny);
 
     cxfmatget_Ap(A_datatp_k,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
         datatp_k);
@@ -1149,12 +1150,12 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     }
     par[0].datafP.slice(kf)=datatp_k;
 
-    cout<<"iteration times: "<<iter<<"|| residual level:"<<\
+    cout<<"kf="<<kf<<"||iteration times: "<<iter<<"||residual level:"<<\
         residual_k/residual_pow<<endl;
 }
 
 void beamformingCG3d(struct linerradon3d & par,\
-int iterations_num=25, float residual_ratio=0.5,\
+int iterations_num=45, float residual_ratio=0.1,\
 bool regularization=true)
 {
     int ncpu(par.numthread),numf(par.nf2-par.nf1-ncpu);
