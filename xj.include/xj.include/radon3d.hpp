@@ -1069,7 +1069,7 @@ inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat & mat2)
 }
 void beamformingCG3d_fthread(struct linerradon3d * par,\
  struct beamforminginv3d * par2, int kcpu, int kf,bool regularization,\
- int iterations_num=25, float residual_ratio=0.5)
+ int iterations_num=45, float residual_ratio=0.1)
 {
     beamforminginv3d_hessianget_thread(\
         par,par2,kcpu,kf,regularization,false);
