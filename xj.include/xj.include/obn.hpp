@@ -32,6 +32,7 @@ struct demultiple2d
     int n1w,d1w;
 };
 ////////////////////////////////////////////////////////////////
+bool*** newboolmat(int x1, int x2, int x3);
 void single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
@@ -268,36 +269,37 @@ void multiple_code2d_pthread(cx_fmat* u2cx, cx_fmat* u1cx, fmat* green,\
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
-void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat& green,\
- int i1, int j1, int nf1, float df)
+void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* green,\
+ int isx, int jsy, int kf, float df,bool *finish_work)
 {
     int n1(u1[0].n_rows),n2(u1[0].n_cols);
     int i,j;
     float w,pi(3.1415926);
     cx_float a;
     
-    w=-2.0*pi*df*nf1;
+    w=-2.0*pi*df*kf;
     for(i=0;i<n1;i++){
         for(j=0;j<n2;j++){
             a.real(0.0);
-            a.imag(w*green(i,j));
+            a.imag(w*green[0](i,j));
             a=exp(a);
-            u2[0](i,j,nf1)+=a*u1[0](i1,j1,nf1);
+            u2[0](i,j,kf)+=a*u1[0](isx,jsy,kf);
+            }
         }
-    }
+    finish_work[0]=true;
 }
 
 void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
  fmat* seabase_depth,fmat *coordx_data,fmat *coordy_data, int isx, int jsy,\
  float source_x, float source_y, float df, int fn1, int fn2,float water_velocity,\
- bool * finish_work)
+ int ncpu)
 {
     int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
     int i,j,k,i1,j1,i2,j2,sx,sy;
     float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
     float l_min(0.000001),l_sum(0.0),l_trace;
     fmat green(n1,n2);
-    //fmat* pgreen(&green);
+    fmat* pgreen(&green);
 
     sy=jsy;
     sx=isx;
@@ -335,10 +337,34 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
             green(i,j)=l_trace/water_velocity;
         }
     }
-    for(k=fn1;k<fn2;k++){
-        multiple_code3d_onepoint_onefrequence(u2,u1,green,isx,jsy,(k),df);
+
+    thread *pcal;
+    pcal=new thread[ncpu];
+    bool *finish_work;
+    finish_work=new bool[ncpu];
+    for(k=0;k<ncpu;k++){
+        finish_work[k]=false;
+        pcal[k]=thread(multiple_code3d_onepoint_onefrequence,
+            u2,u1,pgreen,isx,jsy,(k+fn1),df,&(finish_work[k]));
     }
-    finish_work[0]=false;
+    i=ncpu+fn1;
+    while(i<fn2){
+        for(k=0;k<ncpu;k++){
+        if(pcal[k].joinable() && i<fn2 && finish_work[k]){
+            pcal[k].join();
+            finish_work[k]=false;
+            pcal[k]=thread(multiple_code3d_onepoint_onefrequence,
+                u2,u1,pgreen,isx,jsy,(i),df,&(finish_work[k]));
+            i++;
+        }}
+    }
+    for(k=0;k<ncpu;k++){
+        if(pcal[k].joinable()){
+            pcal[k].join();
+    }}
+    delete [] pcal;
+    delete [] finish_work;
+
 }
 
 void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
@@ -356,44 +382,15 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
     fmat *pcoordy_data(&coordy_data);
     fmat *pseabase(&seabase_depth);
 
-    bool* finish_work;
-    finish_work=new bool[ncpu];
-
-    thread *pcal;
-    pcal=new thread[ncpu];
     for(jy=0;jy<n2;jy++){
-        cout<<jy<<endl;
-        sy=jy;
-        for(k=0;k<ncpu;k++){
-            pcal[k]=thread(multiple_code3d_onepoint_allfrequence,\
+        cout<<"now is run line: "<<jy<<endl;
+        for(ix=0;ix<n1;ix++){
+            multiple_code3d_onepoint_allfrequence(\
                 pu2,pu1,pseabase,pcoordx_data,pcoordy_data,\
-                k,sy,coordx_data(k,sy), coordy_data(k,sy), df,fn1,fn2,\
-                water_velocity,&(finish_work[k]));
-            finish_work[k]=false;
-        }
-        i=ncpu;js=0;
-        while(i<n1){
-            for(k=0;k<ncpu;k++){
-                if(pcal[k].joinable() && i<n1 && finish_work[k]){
-                    pcal[k].join();
-                    pcal[k]=thread(multiple_code3d_onepoint_allfrequence,\
-                        pu2,pu1,pseabase,pcoordx_data,pcoordy_data,\
-                        i,sy,coordx_data(i,sy), coordy_data(i,sy),df,fn1,fn2,\
-                        water_velocity,&(finish_work[k]));
-                    finish_work[k]=false;
-                    i++;
-                }   
-                else{
-                    continue;
-                }
-            }
-        }
-        for(k=0;k<ncpu;k++){
-            if(pcal[k].joinable()){
-            pcal[k].join();}
+                ix,jy,coordx_data(ix,jy), coordy_data(ix,jy),df,fn1,fn2,\
+                water_velocity,ncpu);
         }
     }
-    delete [] pcal;
 }
 ////////////function: tx2fx or fx2tx/////////////
 void tx2fx_3d_pthread(cx_fcube *data3d_out,fcube *data3d,int i)
@@ -679,5 +676,21 @@ void get_taup3d_CCA(fcube &filterdata, fcube &data1, fcube &data2,\
         filterdata(i,j,k)=data1(i,j,k)-data1(i,j,k)*(Butterworth);
     }}}
 }
+bool*** newboolmat(int x1, int x2, int x3)
+{
+    bool ***p;
+    int i,j,k;
+    p=new bool**[x1];   
+    for(j=0;j<x1;j++){
+        p[j]=new bool*[x2];
+        for(i=0;i<x2;i++){
+            p[j][i]=new bool[x3];
+            for(k=0;k<x3;k++){
+                p[j][i][k]=true;
+            }
+        }}
+    return p;
+}
+
 ///////////////////////////////////////////////////////////////////////
 #endif
