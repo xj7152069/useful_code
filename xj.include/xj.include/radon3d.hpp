@@ -359,7 +359,7 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
             (maxpower-minpower);
         for(k=0;k<par.npy;k++){
             for(i=0;i<par.npx;i++){
-                par.p_power(i,k)=1.0/(1.0+exp(100*(0.5-par.p_power(i,k))));
+                par.p_power(i,k)=1.0/(1.0+exp(10*(0.5-par.p_power(i,k))));
             }
             datawrite(par.p_power,par.npx,par.npy,"dig.bin");
         }
@@ -549,7 +549,7 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
 
 void beamforminginv3d_beamget_thread(struct linerradon3d * par,\
  struct beamforminginv3d * par2, int pncpu, int pnf,\
- bool regularization)
+ bool regularization,bool *finish_thread)
 {
     beamforminginv3d_hessianget_thread(\
         par,par2,pncpu,pnf,regularization,true);
@@ -590,6 +590,7 @@ void beamforminginv3d_beamget_thread(struct linerradon3d * par,\
         }
         par[0].datafP.slice(kf)=datafp;
     }
+    finish_thread[0]=true;
 }
 
 //inv function of radon
@@ -603,25 +604,33 @@ void beamforminginv3d(struct linerradon3d & par, bool regularization=true)
     beamforminginv3d_parset(ppar[0], par2);
     beamforminginv3d_getdigfmat(ppar[0], par2);
 
+    bool* finish_thread;
+    finish_thread=new bool[ncpu];
     thread *pcal;
     pcal=new thread[ncpu];
     for(kcpu=0;kcpu<ncpu;kcpu++){
+        finish_thread[kcpu]=false;
         pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
-                kcpu,kcpu+par.nf1,regularization);
+                kcpu,kcpu+par.nf1,regularization,&(finish_thread[kcpu]));
     }
     kf=ncpu+par.nf1;
     while(kf<par.nf2){
         for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(pcal[kcpu].joinable()&&kf<par.nf2){
+            if(pcal[kcpu].joinable()&&kf<par.nf2&&finish_thread[kcpu]){
                 pcal[kcpu].join();
+                finish_thread[kcpu]=false;
                 pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
-                kcpu,kf,regularization);
+                kcpu,kf,regularization,&(finish_thread[kcpu]));
                 kf++;
         }}
     }
     for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu].join();
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
     }
+
+    delete[] pcal;
+    delete[] finish_thread;
 
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
@@ -641,33 +650,41 @@ void beamformingLSinv3d(struct linerradon3d & par)
     if(!par.lsinvmat)
         {beamforminginv3d_getdigfmat(ppar[0], par2);}
 
+    bool* finish_thread;
+    finish_thread=new bool[ncpu];
     thread *pcal;
     pcal=new thread[ncpu];
     for(kcpu=0;kcpu<ncpu;kcpu++){
+        finish_thread[kcpu]=false;
         pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
-                kcpu,kcpu+par.nf1,true);
+                kcpu,kcpu+par.nf1,true,&(finish_thread[kcpu]));
     }
     kf=ncpu+par.nf1;
     while(kf<par.nf2){
         for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(pcal[kcpu].joinable()&&kf<par.nf2){
+            if(pcal[kcpu].joinable()&&kf<par.nf2&&(finish_thread[kcpu])){
                 pcal[kcpu].join();
+                finish_thread[kcpu]=false;
                 pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
-                kcpu,kf,true);
+                kcpu,kf,true,&(finish_thread[kcpu]));
                 kf++;
         }}
     }
     for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu].join();
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
     }
 
     par.lsinvmat=true;
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
+    delete[] pcal;
+    delete[] finish_thread;
 }
 
 ///////////////linerradon 3D transform: slant stack///////////////
-void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
+void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
+ bool *finish_thread)
 {
     int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
@@ -702,6 +719,7 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2)
             }
         }
     }
+    finish_thread[0]=true;
 }
 
 void linerradon(struct linerradon3d & par)
@@ -710,27 +728,35 @@ void linerradon(struct linerradon3d & par)
     
     int ncpu(par.numthread),pnf1,pnf2,k,kcpu,kf;
     float dnf;
+    bool* finish_thread;
+    finish_thread=new bool[ncpu];
     thread *pcal;
     pcal=new thread[ncpu];
     for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu]=thread(linerradon_fthread,&par,kcpu+par.nf1,kcpu+par.nf1+1);
+        finish_thread[kcpu]=false;
+        pcal[kcpu]=thread(linerradon_fthread,\
+            &par,kcpu+par.nf1,kcpu+par.nf1+1,&(finish_thread[kcpu]));
     }
     kf=ncpu+par.nf1;
     while(kf<par.nf2){
         for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(pcal[kcpu].joinable()&&kf<par.nf2){
+            if(pcal[kcpu].joinable() && kf<par.nf2 && finish_thread[kcpu]){
                 pcal[kcpu].join();
-                pcal[kcpu]=thread(linerradon_fthread,&par,kf,kf+1);
+                finish_thread[kcpu]=false;
+                pcal[kcpu]=thread(linerradon_fthread,\
+                    &par,kf,kf+1,&(finish_thread[kcpu]));
                 kf++;
         }}
     }
     for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu].join();
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
     }
     
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
-    delete [] pcal;
+    delete[] pcal;
+    delete[] finish_thread;
 }
 
 ////////////////////rebuild 3D data/////////////////////////
@@ -745,7 +771,8 @@ void rebuildsignal_getA(cx_fmat & A, cx_fmat & basex,\
         A(kpx,kpy)=basex(kx,kpx)*basey(ky,kpy);
     }}
 }
-void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
+void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
+ bool *finish_thread)
 {
     int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
@@ -782,7 +809,7 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2)
             }
         }
     }
-
+    finish_thread[0]=true;
 }
 
 void rebuildsignal(struct linerradon3d & par)
@@ -791,28 +818,36 @@ void rebuildsignal(struct linerradon3d & par)
 
     int ncpu(par.numthread),pnf1,pnf2,k,kf,kcpu;
     float dnf;
+    bool* finish_thread;
+    finish_thread=new bool[ncpu];
     thread *pcal;
     pcal=new thread[ncpu];
     for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu]=thread(rebuildsignal_fthread,&par,kcpu+par.nf1,kcpu+par.nf1+1);
+        finish_thread[kcpu]=false;
+        pcal[kcpu]=thread(rebuildsignal_fthread,\
+            &par,kcpu+par.nf1,kcpu+par.nf1+1,&(finish_thread[kcpu]));
     }
     kf=ncpu+par.nf1;
     while(kf<par.nf2){
         for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(pcal[kcpu].joinable()&&kf<par.nf2){
+            if(pcal[kcpu].joinable()&&kf<par.nf2&&finish_thread[kcpu]){
                 pcal[kcpu].join();
-                pcal[kcpu]=thread(rebuildsignal_fthread,&par,kf,kf+1);
+                finish_thread[kcpu]=false;
+                pcal[kcpu]=thread(rebuildsignal_fthread,\
+                    &par,kf,kf+1,&(finish_thread[kcpu]));
                 kf++;
         }}
     }
     for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu].join();
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
     }
    
     //fx_to_tx3d_linerradon3d(par);
     fx_to_tx3d_radon3d_thread(par);
     par.realrebuildtx=real(par.rebuildtx);
-    delete [] pcal;
+    delete[] pcal;
+    delete[] finish_thread;
 }
 
 ///////////////////////////////////////////////////////////
@@ -1068,8 +1103,9 @@ inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat & mat2)
     return a;
 }
 void beamformingCG3d_fthread(struct linerradon3d * par,\
- struct beamforminginv3d * par2, int kcpu, int kf,bool regularization,\
- int iterations_num=45, float residual_ratio=0.1)
+ struct beamforminginv3d * par2,bool *finish_thread,\
+ int kcpu, int kf,bool regularization,\
+ int iterations_num=25, float residual_ratio=0.5)
 {
     beamforminginv3d_hessianget_thread(\
         par,par2,kcpu,kf,regularization,false);
@@ -1149,7 +1185,7 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
         gradient_cg_pk=gradient_cg_pk_1;
     }
     par[0].datafP.slice(kf)=datatp_k;
-
+    finish_thread[0]=true;
     cout<<"kf="<<kf<<"||iteration times: "<<iter<<"||residual level:"<<\
         residual_k/residual_pow<<endl;
 }
@@ -1168,30 +1204,37 @@ bool regularization=true)
     beamforminginv3d_parset(ppar[0], par2);
     beamforminginv3d_getdigfmat(ppar[0], par2);
     
+    bool* finish_thread;
+    finish_thread=new bool[ncpu];
     thread *pcal;
     pcal=new thread[ncpu];
     for(kcpu=0;kcpu<ncpu;kcpu++){
+        finish_thread[kcpu]=false;
         pcal[kcpu]=thread(beamformingCG3d_fthread,&par,&par2,\
-                kcpu,kcpu+par.nf1,regularization,iterations_num,\
-                residual_ratio);
+            &(finish_thread[kcpu]),kcpu,kcpu+par.nf1,regularization,\
+            iterations_num,residual_ratio);
     }
     kf=ncpu+par.nf1;
     while(kf<par.nf2){
         for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(pcal[kcpu].joinable()&&kf<par.nf2){
+            if(pcal[kcpu].joinable()&&kf<par.nf2&&finish_thread[kcpu]){
                 pcal[kcpu].join();
+                finish_thread[kcpu]=false;
                 pcal[kcpu]=thread(beamformingCG3d_fthread,&par,&par2,\
-                kcpu,kf,regularization,iterations_num,residual_ratio);
+                    &(finish_thread[kcpu]),\
+                    kcpu,kf,regularization,iterations_num,residual_ratio);
                 kf++;
         }}
     }
     for(kcpu=0;kcpu<ncpu;kcpu++){
-        pcal[kcpu].join();
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
     }
 
     fp_to_tp3d_linerradon3d(par);
     par.realdataTP=real(par.dataTP);
-    delete [] pcal;
+    delete[] pcal;
+    delete[] finish_thread;
 }
 
 fmat smoothdig(fmat dig,int l,int n)

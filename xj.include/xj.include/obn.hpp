@@ -265,7 +265,6 @@ void multiple_code2d_pthread(cx_fmat* u2cx, cx_fmat* u1cx, fmat* green,\
         }
         u2cx[0].col(k)=codemat*u1cx[0].col(k);
     }
-    
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
