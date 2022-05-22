@@ -169,7 +169,7 @@ void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
 
     thread *pcal;
     pcal=new thread[ncpu];
-    for(k=0;k<ncpu;k++){
+    for(k=0;k<min(ncpu,nt);k++){
         end_of_thread[k]=false;
         pcal[k]=thread(slantstack3d_stack_LT_pthread,pdatatp,pdatatx,\
             pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
@@ -177,7 +177,7 @@ void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
     }
     i=ncpu;
     while(i<nt){
-        for(k=0;k<min(ncpu,nt);k++){
+        for(k=0;k<ncpu;k++){
             if(pcal[k].joinable() && i<nt && end_of_thread[k]){
                 pcal[k].join();
                 end_of_thread[k]=false;
