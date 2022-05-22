@@ -566,42 +566,90 @@ float** get_selfcov_mat1d(T1 * s, int n)
     delete []s2;
     return covmat;
 }
-
-float getrandonnoise(float N=1.0)
+////////////function: tx2fx or fx2tx/////////////
+void tx2fx_3d_pthread(cx_fcube *data3d_out,fcube *data3d,int i)
 {
-    float k,n;
-	if(srand_seed==666)
+    int j,n1(data3d[0].n_rows),n2(data3d[0].n_cols),n3(data3d[0].n_slices);
+    cx_fmat datafx(n2,n3);
+    fmat data(n2,n3);
+    data=data3d[0].row(i);
+    for(j=0;j<n2;j++)
     {
-        srand((int)time(0));  /*根据当前时间设置“随机数种子”*/
+        datafx.row(j)=fft(data.row(j),n3);
     }
-    else
-    {
-        srand(srand_seed);
-    }   
-    k=rand();
-    srand_seed=int(k)%1000000000;
-    n=(float(int(k)%1000000)*0.000001*N-N/2);
-    return n;
+    data3d_out[0].row(i)=datafx;
+}
+void tx2fx_3d_thread(cx_fcube &data3d_out,fcube &data3d, int ncpu)
+{
+    int i,j,k;
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices);
+    cx_fcube *pdata3d_out=&data3d_out;
+    fcube *pdata3d=&data3d;
+    thread *pcal;
+    pcal=new thread[ncpu];
+    
+    for(i=0;i<(n1-ncpu);i+=ncpu){
+        for(k=0;k<ncpu;k++){
+            pcal[k]=thread(tx2fx_3d_pthread,pdata3d_out,pdata3d,i+k);
+        }
+        for(k=0;k<ncpu;k++){
+            if(pcal[k].joinable()){
+                pcal[k].join();}
+        }
+    } 
+    for(i=(n1-ncpu);i<(n1);i++){
+        k=i-(n1-ncpu);
+        pcal[k]=thread(tx2fx_3d_pthread,pdata3d_out,pdata3d,i);
+    }
+    for(i=(n1-ncpu);i<(n1);i++){
+        k=i-(n1-ncpu);
+        if(pcal[k].joinable()){
+            pcal[k].join();}
+    }
+    delete [] pcal;
 }
 
-float getgaussonnoise(float N=1.0, float p=1.0)
+void fx2tx_3d_pthread(fcube *data3d_out,cx_fcube *data3d,int i)
 {
-    float n,k;
-    if(srand_seed==666)
+    int j,n1(data3d[0].n_rows),n2(data3d[0].n_cols),n3(data3d[0].n_slices);
+    cx_fmat data(n2,n3),datafx(n2,n3);
+    datafx=data3d[0].row(i);
+    for(j=0;j<n2;j++)
     {
-        srand((int)time(0));  /*根据当前时间设置“随机数种子”*/
+        data.row(j)=ifft(datafx.row(j),n3);
     }
-    else
-    {
-        srand(srand_seed);
-    }   
-    k=rand();
-    srand_seed=int(k)%1000000000;
-    //cout<<k<<endl;
-    n=(float(int(k)%1000000)*0.000001-0.5);
-    n=N*exp(-(n*n/2.0/p));
-    return n;
+    data3d_out[0].row(i)=real(data);
 }
+void fx2tx_3d_thread(fcube &data3d_out,cx_fcube &data3d, int ncpu)
+{
+    int i,j,k;
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices);
+    fcube *pdata3d_out=&data3d_out;
+    cx_fcube *pdata3d=&data3d;
+    thread *pcal;
+    pcal=new thread[ncpu];
+    
+    for(i=0;i<(n1-ncpu);i+=ncpu){
+        for(k=0;k<ncpu;k++){
+            pcal[k]=thread(fx2tx_3d_pthread,pdata3d_out,pdata3d,i+k);
+        }
+        for(k=0;k<ncpu;k++){
+            if(pcal[k].joinable()){
+                pcal[k].join();}
+        }
+    } 
+    for(i=(n1-ncpu);i<(n1);i++){
+        k=i-(n1-ncpu);
+        pcal[k]=thread(fx2tx_3d_pthread,pdata3d_out,pdata3d,i);
+    }
+    for(i=(n1-ncpu);i<(n1);i++){
+        k=i-(n1-ncpu);
+        if(pcal[k].joinable()){
+            pcal[k].join();}
+    }
+    delete [] pcal;
+}
+
 
 #endif
 
