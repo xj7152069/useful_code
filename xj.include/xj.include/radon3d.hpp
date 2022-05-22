@@ -45,10 +45,6 @@ the interval of ray-parameter， (unit is s/m) .*/
 ///////////////////////////////////////////////////////////////////
 fmat smoothdig(fmat dig,int l,int n);
 void cal_p_power_3d(struct linerradon3d & par);
-void tx_to_fx3d_linerradon3d(struct linerradon3d & par);
-void tp_to_fp3d_linerradon3d(struct linerradon3d & par);
-void fx_to_tx3d_linerradon3d(struct linerradon3d & par);
-void fp_to_tp3d_linerradon3d(struct linerradon3d & par);
 void linerradon(struct linerradon3d & par);
 inline cx_fmat cx_fmatmul(cx_fmat & mat1, cx_fmat & mat2);
 inline cx_dmat cx_hessianelement1d(float w,\
@@ -78,16 +74,16 @@ allAreal[99],allAimag[99]
 struct linerradon3d
 {
     int nz,nx,ny,nf,npx,npy,nf1,nf2,numthread,rulef1,rulef2;
-    float dz,dx,dy,df,dpx,dpy,p0x,p0y,px_center,py_center,dig_n;
+    float dz,dx,dy,df,dpx,dpy,p0x,p0y,dig_n;
 /*****************************************************/
     fcube data,realdataTP,realrebuildtx;
     cx_fcube datafx,rebuildfx,datafP,rebuildfp,dataTP,rebuildtx;
 /*****************************************************/
-    fmat p_power,py_coord,px_coord,x_coord,y_coord;
+    fmat p_power,py_coord,px_coord,x_coord,y_coord,coordx3d,coordy3d;
     char allAreal[99],allAimag[99];
     float dig_n1,dig_n2,kerpar1;
-    float x_center,y_center;
-    bool lsinvmat;
+    float coordx0,coordy0;
+    bool regularization;
     //cx_fmat Acol1,Arow1;
 };
 //设置一组常用的初始化参数
@@ -98,39 +94,25 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     par.kerpar1=0;
     par.nx=nx,par.nz=nz,par.ny=ny,par.nf=nf;
     par.dx=10,par.dy=10,par.dz=0.001;
-    par.npx=par.nz,par.dpx=2*par.dz/par.nx/par.dx;
-    par.npy=par.nz,par.dpy=2*par.dz/par.ny/par.dy;
-    par.x_center=0;par.y_center=0;
-    par.px_center=0;par.py_center=0;
-    //par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
-    //par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.nf1=0;par.nf2=par.nf/2;
     par.rulef1=0;par.rulef2=par.nf/2;
     par.numthread=1;
     par.dig_n=(1);
     par.dig_n1=(1);
     par.dig_n2=(1);
-    par.allAreal[0]='\0';
-    strcat(par.allAreal,"./allAreal.bin");
-    par.allAimag[0]='\0';
-    strcat(par.allAimag,"./allAimag.bin");
-    par.lsinvmat=false;
+
     par.dig_n=par.dig_n*par.nx*par.ny;
     par.dig_n1=par.dig_n1*par.nx*par.ny;
     par.dig_n2=par.dig_n2*par.nx*par.ny;
+    par.coordx3d.zeros(par.nx,par.ny);
+    par.coordy3d.zeros(par.nx,par.ny);
     par.x_coord.zeros(par.nx,1);
     par.y_coord.zeros(par.ny,1);
     int k;
-    for(k=0;k<par.nx;k++)
-    {
-        par.x_coord(k,0)=k*par.dx-(int(par.nx/2)*par.dx)+par.x_center;
-    }
-    for(k=0;k<par.ny;k++)
-    {
-        par.y_coord(k,0)=k*par.dy-(int(par.ny/2)*par.dy)+par.y_center;
-    }
+    
     par.dig_n1=0.0;  //L1
     par.kerpar1=0.0;     //kernel function par
+    par.regularization=true;
 } 
 void beamforming_parset(int nx, int ny, int nz,\
     struct linerradon3d & par)
@@ -150,8 +132,6 @@ void beamforming_parset(int nx, int ny, int nz,\
 void beamforming_parupdate(struct linerradon3d & par)
 { 
     par.df=1.0/par.dz/par.nf;
-    //par.p0x=-par.dpx*int(par.npx/2)+par.px_center;
-    //par.p0y=-par.dpy*int(par.npy/2)+par.py_center;
     par.data.zeros(par.nx,par.ny,par.nz);
     par.datafP.zeros(par.npx,par.npy,par.nf);
     par.datafx.zeros(par.nx,par.ny,par.nf);
@@ -159,46 +139,36 @@ void beamforming_parupdate(struct linerradon3d & par)
     par.realdataTP.zeros(par.npx,par.npy,par.nz);
     par.rebuildfp.zeros(par.npx,par.npy,par.nf);
     par.rebuildfx.zeros(par.nx,par.ny,par.nf);
-    par.rebuildtx.zeros(par.nx,par.ny,par.nz);
     par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
     par.p_power.zeros(par.npx,par.npy);
     par.nf1=1;
     par.rulef1=1;
     par.nf2=int(par.nf2/par.df);
     par.rulef2= par.nf2;
-    if(par.nf2>par.nf/2)
-    {
+    if(par.nf2>par.nf/2){
         par.nf2=par.nf/2;
     }
-    if(par.rulef2>par.nf2/2)
-    {
+    if(par.rulef2>par.nf2/2){
         par.rulef2=par.nf2/2;
     }
-    par.allAreal[0]='\0';
-    strcat(par.allAreal,"./allAreal.bin");
-    par.allAimag[0]='\0';
-    strcat(par.allAimag,"./allAimag.bin");
-    par.lsinvmat=false;
 
     par.px_coord.zeros(par.npx,1);
     par.py_coord.zeros(par.npy,1);
     
     int k;
-    for(k=0;k<par.npx;k++)
-    {
+    for(k=0;k<par.npx;k++){
         par.px_coord(k,0)=k*par.dpx+par.p0x;
     }
-    for(k=0;k<par.npy;k++)
-    {
+    for(k=0;k<par.npy;k++){
         par.py_coord(k,0)=k*par.dpy+par.p0y;
     }
+    for(k=0;k<par.nx;k++){
+        par.x_coord(k,0)=k*par.dx+par.coordx0;
+    }
+    for(k=0;k<par.ny;k++){
+        par.y_coord(k,0)=k*par.dy+par.coordy0;
+    }
 
-    /*
-    ofstream outf1;
-    outf1.open(par.allAreal);
-    outf1.close();
-    outf1.open(par.allAimag);
-    outf1.close();*/
 }
 
 void beamforming_cleardata(struct linerradon3d & par)
@@ -206,103 +176,7 @@ void beamforming_cleardata(struct linerradon3d & par)
     par.dataTP.fill(0.0);
     par.realdataTP.fill(0.0);
     par.rebuildfx.fill(0.0);
-    par.rebuildtx.fill(0.0);
     par.realrebuildtx.fill(0.0);
-}
-
-////////////function: tx2fx or fx2tx/////////////
-void tx_to_fx3d_radon3d_pthread(int i, struct linerradon3d * par)
-{
-    int j;
-    cx_fmat datafx(par[0].ny,par[0].nf);
-    fmat data(par[0].ny,par[0].nz);
-    data=par[0].data.row(i);
-    for(j=0;j<par[0].ny;j++)
-    {
-        datafx.row(j)=fft(data.row(j),par[0].nf);
-    }
-    par[0].datafx.row(i)=datafx;
-}
-void tx_to_fx3d_radon3d_thread(struct linerradon3d & par)
-{
-    int i,k;
-    thread *pcal;
-    pcal=new thread[par.numthread];
-    
-    for(i=0;i<(par.nx-par.numthread);i+=par.numthread)
-    {
-        for(k=0;k<par.numthread;k++)
-        {
-            pcal[k]=thread(tx_to_fx3d_radon3d_pthread,i+k,&par);
-        }
-        for(k=0;k<par.numthread;k++)
-        {
-            pcal[k].join();
-        }
-    } 
-    for(i=(par.nx-par.numthread);i<(par.nx);i++)
-    {
-        k=i-(par.nx-par.numthread);
-        pcal[k]=thread(tx_to_fx3d_radon3d_pthread,i,&par);
-    }
-    for(i=(par.nx-par.numthread);i<(par.nx);i++)
-    {
-        k=i-(par.nx-par.numthread);
-        pcal[k].join();
-    }
-    
-    fmat datapower(par.nf,1);
-    for(i=0;i<par.nf;i++)
-    {
-        datapower(i,0)=sum(sum(abs(par.datafx.slice(i))));
-    }
-    datawrite(datapower,par.nf,1,"./fpower.bin");
-}
-
-void fx_to_tx3d_radon3d_pthread(int i, struct linerradon3d * par)
-{
-    cx_fmat data(par[0].ny,par[0].nf),datafx(par[0].ny,par[0].nf),\
-        data2(par[0].ny,par[0].nz);
-    int j;
-    datafx=par[0].rebuildfx.row(i);
-    for(j=0;j<par[0].ny;j++)
-    {
-        data.row(j)=ifft(datafx.row(j),par[0].nf);
-    }
-    for(j=0;j<par[0].nz;j++)
-    {
-        data2.col(j)=data.col(j);
-    }
-    par[0].rebuildtx.row(i)=data2;
-    par[0].realrebuildtx.row(i)=real(data2);
-}
-void fx_to_tx3d_radon3d_thread(struct linerradon3d & par)
-{
-    int i,k;
-    thread *pcal;
-    pcal=new thread[par.numthread];
-    
-    for(i=0;i<(par.nx-par.numthread);i+=par.numthread)
-    {
-        for(k=0;k<par.numthread;k++)
-        {
-            pcal[k]=thread(fx_to_tx3d_radon3d_pthread,i+k,&par);
-        }
-        for(k=0;k<par.numthread;k++)
-        {
-            pcal[k].join();
-        }
-    } 
-    for(i=(par.nx-par.numthread);i<(par.nx);i++)
-    {
-        k=i-(par.nx-par.numthread);
-        pcal[k]=thread(fx_to_tx3d_radon3d_pthread,i,&par);
-    }
-    for(i=(par.nx-par.numthread);i<(par.nx);i++)
-    {
-        k=i-(par.nx-par.numthread);
-        pcal[k].join();
-    }
 }
 
 ////////////beamforminginv3d use c++ thread/////////////////
@@ -320,8 +194,7 @@ void beamforminginv3d_parset(struct linerradon3d & par,\
     parinv.hessianinv_cxfmat_p1ncpu_npxynpxy=new cx_fmat[ncpu];
     int i,j,k,n;
     n=par.npx*par.npy;
-    for(k=0;k<ncpu;k++)
-    {
+    for(k=0;k<ncpu;k++){
         parinv.hessianinv_cxfmat_p1ncpu_npxynpxy[k].zeros(n,n);
     }
 }
@@ -361,7 +234,7 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
             for(i=0;i<par.npx;i++){
                 par.p_power(i,k)=1.0/(1.0+exp(10*(0.5-par.p_power(i,k))));
             }
-            datawrite(par.p_power,par.npx,par.npy,"dig.bin");
+            //datawrite(par.p_power,par.npx,par.npy,"dig.bin");
         }
     }
     else{
@@ -387,102 +260,6 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
     par.p_power=parinv.digw_fmat_npxnpy;
 }
 
-//get mat LS-LTL
-void beamforminginv3d_LS_hessianget_thread(struct linerradon3d * par,\
- struct beamforminginv3d * par2, int pncpu, int pnf)
-{
-    int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
-    float fx,fy,fpx,fpy;
-    float w,pi(3.1415926);
-    float df(par[0].df),dx(par[0].dx),dy(par[0].dy),\
-        dpx(par[0].dpx),dpy(par[0].dpy),p0x(par[0].p0x),\
-        p0y(par[0].p0y),dz(par[0].dz),dig_n(par[0].dig_n);
-    int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
-        ny(par[0].ny),npy(par[0].npy);
-    ifstream inf1,inf2;
-    ofstream outf1,outf2;
-
-    float ky1(-(int(ny/2)*dy));
-    float kx1(-(int(nx/2)*dx));
-    cx_fmat a(1,1),A(nx,ny),B(nx,ny);
-    fmat hess(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
-            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols);
-
-    kf=pnf;
-    if(kf<par[0].nf2) {
-        if(!par[0].lsinvmat){
-            w=2.0*pi*df*(kf); 
-            for(kpx=0;kpx<npx;kpx++){
-            for(kpy=0;kpy<npy;kpy++){
-                i=kpx*npy+kpy;
-                //A=basex.col(kpx)*basey.col(kpy).st(); //
-                float fpx1(par[0].px_coord(kpx,0));
-                float fpy1(par[0].py_coord(kpy,0));
-                for(kpx2=0;kpx2<npx;kpx2++){
-                for(kpy2=0;kpy2<npy;kpy2++){
-                    j=kpx2*npy+kpy2;
-                    //B=basex.col(kpx2)*basey.col(kpy2).st();
-                    //B.set_imag(-imag(B));
-                    float fpx2(par[0].px_coord(kpx2,0));
-                    float fpy2(par[0].py_coord(kpy2,0));
-                    a=cx_hessianelement2d(w,nx,kx1,dx,fpx1-fpx2,\
-                        ny,ky1,dy,fpy1-fpy2);
-                    //a=cx_fmatmul(A,B);
-                    par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,j)=a(0,0);
-                    par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](j,i)=a(0,0); 
-                }
-                }        
-                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,i)+=par->p_power(kpx,kpy);
-                kpx2=npx;kpy2=npy;
-            }
-            } 
-            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]=\
-                inv(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]);
-
-            outf1.open(par[0].allAreal,ios::app);
-            outf1.seekp((kf-par[0].nf1)\
-                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows\
-                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols\
-                *sizeof(float),ios::beg);
-            datawrite(hess=real(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]),\
-                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
-                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols,outf1);
-            outf1.close();
-
-            outf1.open(par[0].allAimag,ios::app);
-            outf1.seekp((kf-par[0].nf1)\
-                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows\
-                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols\
-                *sizeof(float),ios::beg);
-            datawrite(hess=imag(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]),\
-                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
-                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols,outf1);
-            outf1.close();
-
-        }
-        else if(par[0].lsinvmat){
-            inf1.open(par[0].allAreal);
-            inf1.seekg((kf-par[0].nf1)\
-                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows\
-                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols\
-                *sizeof(float),ios::beg);
-            hess=dataread(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
-                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols,inf1);
-            inf1.close();
-            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].set_real(hess);
-
-            inf1.open(par[0].allAimag);
-            inf1.seekg((kf-par[0].nf1)\
-                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows\
-                *par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols\
-                *sizeof(float),ios::beg);
-            hess=dataread(par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_rows,\
-                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].n_cols,inf1);
-            inf1.close();
-            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu].set_imag(hess);
-        }
-    }
-}
 //get mat LTL
 void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
  struct beamforminginv3d * par2, int pncpu, int pnf, bool regularization,\
@@ -503,42 +280,74 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
     cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros); //
 
     kf=pnf;
-    if(kf<par[0].nf2) {
+    if(kf<par[0].nf2){
         w=2.0*pi*df*(kf); 
-        if(!regularization){
-        basey.zeros(ny,npy);basex.zeros(nx,npx); //
-        basey.set_imag(w*(par->y_coord*par->py_coord.t())); //
-        basex.set_imag(w*(par->x_coord*par->px_coord.t())); //
-        basey=exp(basey);basex=exp(basex); //
-        }
-        for(kpx=0;kpx<npx;kpx++){
-        for(kpy=0;kpy<npy;kpy++){
-            i=kpx*npy+kpy;
-            if(!regularization){
-            A=basex.col(kpx)*basey.col(kpy).st();
-            }
-            float fpx1(par[0].px_coord(kpx,0));
-            float fpy1(par[0].py_coord(kpy,0));
+        if(regularization)
+        {
+            for(kpx=0;kpx<npx;kpx++){
+            for(kpy=0;kpy<npy;kpy++){
+                i=kpx*npy+kpy;
+                float fpx1(par[0].px_coord(kpx,0));
+                float fpy1(par[0].py_coord(kpy,0));
             for(kpx2=0;kpx2<npx;kpx2++){
             for(kpy2=0;kpy2<npy;kpy2++){
                 j=kpx2*npy+kpy2;
-                if(!regularization){
-                B=basex.col(kpx2)*basey.col(kpy2).st();
-                B.set_imag(-imag(B));
-                a=cx_fmatmul(A,B);
-                }
-                else{
                 float fpx2(par[0].px_coord(kpx2,0));
                 float fpy2(par[0].py_coord(kpy2,0));
                 a=cx_hessianelement2d(w,nx,kx1,dx,fpx1-fpx2,\
                     ny,ky1,dy,fpy1-fpy2);
-                }
                 par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,j)=a(0,0);
                 par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](j,i)=a(0,0); 
             }}        
-            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,i)+=par->p_power(kpx,kpy);
+            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,i)\
+                +=par->p_power(kpx,kpy);
             kpx2=npx;kpy2=npy;
-        }}
+            }}
+        }
+        else
+        {
+            cx_fmat hessian_small(npx*2-1,npy*2-1);
+            float fpx1,fpy1,fpx2,fpy2,fpxmax,fpxmin,fpymax,fpymin;
+            int nkpx,nkpy;
+            fpxmax=par[0].px_coord.max()-par[0].px_coord.min();
+            fpxmin=par[0].px_coord.min()-par[0].px_coord.max();
+            fpymax=par[0].py_coord.max()-par[0].py_coord.min();
+            fpymin=par[0].py_coord.min()-par[0].py_coord.max();
+            basey.zeros(nx,ny);basex.zeros(nx,ny);
+            for(fpx2=fpxmin;fpx2<=fpxmax;fpx2+=dpx){
+                kpx2=round(fpx2/dpx)+npx-1;
+                basex.fill(0);
+                basex.set_imag(w*par->coordx3d*fpx2);  
+                basex=exp(basex); 
+            for(fpy2=fpymin;fpy2<=fpymax;fpy2+=dpy){
+                kpy2=round(fpy2/dpy)+npy-1;
+                basey.fill(0);
+                basey.set_imag(w*par->coordy3d*fpy2);
+                basey=exp(basey);
+                a=cx_fmatmul(basex,basey);
+                hessian_small(kpx2,kpy2)=a(0,0);
+            }}
+
+            for(kpx=0;kpx<npx;kpx++){
+            for(kpy=0;kpy<npy;kpy++){
+                i=kpx*npy+kpy;
+                fpx1=(par[0].px_coord(kpx,0));
+                fpy1=(par[0].py_coord(kpy,0));
+            for(kpx2=0;kpx2<npx;kpx2++){
+            for(kpy2=0;kpy2<npy;kpy2++){
+                j=kpx2*npy+kpy2;
+                fpx2=(par[0].px_coord(kpx2,0));
+                fpy2=(par[0].py_coord(kpy2,0));
+                nkpx=round((fpx1-fpx2)/dpx)+npx-1;
+                nkpy=round((fpy1-fpy2)/dpy)+npy-1;
+                a(0,0)=hessian_small(nkpx,nkpy);
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,j)=a(0,0);
+                par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](j,i)=a(0,0);
+            }}
+            par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,i)\
+                +=par->p_power(kpx,kpy);
+            }}
+        }
 
         if(doinv){
         par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu]=\
@@ -597,6 +406,7 @@ void beamforminginv3d_beamget_thread(struct linerradon3d * par,\
 void beamforminginv3d(struct linerradon3d & par, bool regularization=true)
 {
     int numf(par.nf2-par.nf1),ncpu(par.numthread),kf,kcpu;
+    regularization=par.regularization;
 
     struct beamforminginv3d par2;
     struct linerradon3d * ppar;
@@ -632,91 +442,59 @@ void beamforminginv3d(struct linerradon3d & par, bool regularization=true)
     delete[] pcal;
     delete[] finish_thread;
 
-    fp_to_tp3d_linerradon3d(par);
-    par.realdataTP=real(par.dataTP);
-}
-
-//LS-inv function of radon
-void beamformingLSinv3d(struct linerradon3d & par)
-{
-    int numf(par.nf2-par.nf1),ncpu(par.numthread);
-    int kf,kcpu,i,j;//cout<<"ok"<<endl;
-
-    struct beamforminginv3d par2;
-    struct linerradon3d * ppar;
-    ppar=&par;
-    par.dig_n1=0.0;
-    beamforminginv3d_parset(ppar[0], par2);
-    if(!par.lsinvmat)
-        {beamforminginv3d_getdigfmat(ppar[0], par2);}
-
-    bool* finish_thread;
-    finish_thread=new bool[ncpu];
-    thread *pcal;
-    pcal=new thread[ncpu];
-    for(kcpu=0;kcpu<ncpu;kcpu++){
-        finish_thread[kcpu]=false;
-        pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
-                kcpu,kcpu+par.nf1,true,&(finish_thread[kcpu]));
-    }
-    kf=ncpu+par.nf1;
-    while(kf<par.nf2){
-        for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(pcal[kcpu].joinable()&&kf<par.nf2&&(finish_thread[kcpu])){
-                pcal[kcpu].join();
-                finish_thread[kcpu]=false;
-                pcal[kcpu]=thread(beamforminginv3d_beamget_thread,&par,&par2,\
-                kcpu,kf,true,&(finish_thread[kcpu]));
-                kf++;
-        }}
-    }
-    for(kcpu=0;kcpu<ncpu;kcpu++){
-        if(pcal[kcpu].joinable()){
-        pcal[kcpu].join();}
-    }
-
-    par.lsinvmat=true;
-    fp_to_tp3d_linerradon3d(par);
-    par.realdataTP=real(par.dataTP);
-    delete[] pcal;
-    delete[] finish_thread;
+    fx2tx_3d_thread(par.realdataTP,par.datafP,par.numthread);
 }
 
 ///////////////linerradon 3D transform: slant stack///////////////
 void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
  bool *finish_thread)
 {
-    int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
+    int kf,kpx,kpy,kx,ky,i,j;//cout<<"ok"<<endl;
     float fx,fy,fpx,fpy;
     float w,pi(3.1415926);
-    float df(par->df),dx(par->dx),dy(par->dy),\
-        dpx(par->dpx),dpy(par->dpy),p0x(par->p0x),\
-        p0y(par->p0y),dz(par->dz);
     int nx(par->nx),npx(par->npx),nf(par->nf),\
         ny(par->ny),npy(par->npy);
 
-    cx_fmat forA(nx,ny),A(nx,ny),a(1,1),B(nx,ny),hesscxmat(npx*npy,npx*npy);
-    cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros);
-    cx_fmat ap(nx,ny,fill::zeros),bp(nx,ny,fill::zeros);
-    fmat hessfmat(npx*npy,npx*npy);
+    cx_fmat a(1,1),A,B;
+    cx_fmat basey,basex;
 
-    forA.fill(0.0);
     for(kf=pnf1;kf<pnf2;kf++)  
     {
         w=2.0*pi*par->df*kf; 
-        basey.zeros(ny,npy);basex.zeros(nx,npx);
-        basey.set_imag(w*(par->y_coord*par->py_coord.t()));  
-        basex.set_imag(w*(par->x_coord*par->px_coord.t()));  
-        basey=exp(basey);basex=exp(basex);
-        B=par->datafx.slice(kf); 
-        for(kpx=0;kpx<npx;kpx++)
-        {
-            for(kpy=0;kpy<npy;kpy++)
-            {
-                A=basex.col(kpx)*basey.col(kpy).st();
-                a=cx_fmatmul(A,B);
-                par->datafP(kpx,kpy,kf)=a(0,0);
+        if(par->regularization){
+            A.zeros(nx,ny);B.zeros(nx,ny);
+            basey.zeros(ny,npy);basex.zeros(nx,npx);
+            basey.set_imag(w*(par->y_coord*par->py_coord.t()));  
+            basex.set_imag(w*(par->x_coord*par->px_coord.t()));  
+            basey=exp(basey);basex=exp(basex);
+            B=par->datafx.slice(kf); 
+            for(kpx=0;kpx<npx;kpx++){
+                for(kpy=0;kpy<npy;kpy++){
+                    A=basex.col(kpx)*basey.col(kpy).st();
+                    a=cx_fmatmul(A,B);
+                    par->datafP(kpx,kpy,kf)=a(0,0);
+                }
             }
+        }
+        else{
+            basey.zeros(nx,ny);basex.zeros(nx,ny);
+            B.zeros(nx,ny);
+            B=par->datafx.slice(kf); 
+            for(kpx=0;kpx<npx;kpx++){
+                float pxcoord(par->px_coord(kpx,0));
+            for(kpy=0;kpy<npy;kpy++){
+                float pycoord(par->py_coord(kpy,0));
+                cx_float fzero;
+                basex.fill(0),basey.fill(0);  
+                basex.set_imag(w*par->coordx3d*pxcoord);  
+                basey.set_imag(w*par->coordy3d*pycoord);
+                basey=exp(basey);basex=exp(basex);
+            for(kx=0;kx<nx;kx++){
+            for(ky=0;ky<ny;ky++){
+                fzero+=B(kx,ky)*basex(kx,ky)*basey(kx,ky);
+            }}
+                par->datafP(kpx,kpy,kf)=fzero;
+            }}
         }
     }
     finish_thread[0]=true;
@@ -724,7 +502,7 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
 
 void linerradon(struct linerradon3d & par)
 {
-    tx_to_fx3d_radon3d_thread(par);
+    tx2fx_3d_thread(par.datafx,par.data,par.numthread);
     
     int ncpu(par.numthread),pnf1,pnf2,k,kcpu,kf;
     float dnf;
@@ -753,8 +531,8 @@ void linerradon(struct linerradon3d & par)
         pcal[kcpu].join();}
     }
     
-    fp_to_tp3d_linerradon3d(par);
-    par.realdataTP=real(par.dataTP);
+    //fp_to_tp3d_linerradon3d(par);
+    fx2tx_3d_thread(par.realdataTP,par.datafP,par.numthread);
     delete[] pcal;
     delete[] finish_thread;
 }
@@ -775,38 +553,51 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
  bool *finish_thread)
 {
     int kf,kpx,kpy,kx,ky;//cout<<"ok"<<endl;
-    float fx,fy,fpx,fpy;
     float w,pi(3.1415926);
-    float df(par->df),dx(par->dx),dy(par->dy),\
-        dpx(par->dpx),dpy(par->dpy),p0x(par->p0x),\
-        p0y(par->p0y),dz(par->dz);
     int nx(par->nx),npx(par->npx),nf(par->nf),\
         ny(par->ny),npy(par->npy);
 
-    cx_fmat forA(npx,npy),A(npx,npy),a(1,1),B(npx,npy);
-    cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros);
+    cx_fmat A,a(1,1),B;
+    cx_fmat basey,basex;
 
-    forA.fill(0.0);
     for(kf=pnf1;kf<pnf2;kf++)  
     {
         w=2.0*pi*par->df*kf; 
-        basey.zeros(ny,npy);basex.zeros(nx,npx);
-        basey.set_imag(w*(par->y_coord*par->py_coord.t()));  
-        basex.set_imag(w*(par->x_coord*par->px_coord.t()));  
-        basey=exp(basey);basex=exp(basex);
-        //cout<<"now is running kf = "<<kf<<endl;
-        B=par->datafP.slice(kf);
-        for(kx=0;kx<nx;kx++)
-        {
-            for(ky=0;ky<ny;ky++)
-            {
+        if(par->regularization){
+            A.zeros(npx,npy);B.zeros(npx,npy);
+            basey.zeros(ny,npy);basex.zeros(nx,npx);
+            basey.set_imag(w*(par->y_coord*par->py_coord.t()));  
+            basex.set_imag(w*(par->x_coord*par->px_coord.t()));  
+            basey=exp(basey);basex=exp(basex);
+            B=par->datafP.slice(kf);
+            for(kx=0;kx<nx;kx++){
+            for(ky=0;ky<ny;ky++){
                 A=basex.row(kx).st()*basey.row(ky);
-                //rebuildsignal_getA(A,basex,basey,kx,ky,npx,npy);
                 A.set_imag(-imag(A));
                 a=cx_fmatmul(A,B);
-                par->rebuildfx(kx,ky,kf).real(4*real(a(0,0)));
-                par->rebuildfx(kx,ky,kf).imag(4*imag(a(0,0)));
-            }
+                par->rebuildfx(kx,ky,kf)=a(0,0);
+            }}
+        }
+        else{
+            B.zeros(npx,npy);
+            B=par->datafP.slice(kf);
+            for(kx=0;kx<nx;kx++){
+            for(ky=0;ky<ny;ky++){
+                float xcoord(par->coordx3d(kx,ky));
+                float ycoord(par->coordy3d(kx,ky));
+                cx_float fzero;
+            for(kpx=0;kpx<npx;kpx++){
+                float pxcoord(par->px_coord(kpx,0));
+            for(kpy=0;kpy<npy;kpy++){
+                float pycoord(par->py_coord(kpy,0));
+                cx_float fbasey,fbasex;
+                fbasex.imag(-w*xcoord*pxcoord);  
+                fbasey.imag(-w*ycoord*pycoord);  
+                fbasey=exp(fbasey);fbasex=exp(fbasex);
+                fzero+=B(kpx,kpy)*fbasex*fbasey;
+            }}
+                par->rebuildfx(kx,ky,kf)=fzero;
+            }}
         }
     }
     finish_thread[0]=true;
@@ -814,7 +605,8 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
 
 void rebuildsignal(struct linerradon3d & par)
 {
-    tp_to_fp3d_linerradon3d(par);
+    //tp_to_fp3d_linerradon3d(par);
+    tx2fx_3d_thread(par.datafP,par.realdataTP,par.numthread);
 
     int ncpu(par.numthread),pnf1,pnf2,k,kf,kcpu;
     float dnf;
@@ -843,148 +635,13 @@ void rebuildsignal(struct linerradon3d & par)
         pcal[kcpu].join();}
     }
    
-    //fx_to_tx3d_linerradon3d(par);
-    fx_to_tx3d_radon3d_thread(par);
-    par.realrebuildtx=real(par.rebuildtx);
+    fx2tx_3d_thread(par.realrebuildtx,par.rebuildfx,par.numthread);
+    par.realrebuildtx=4*par.realrebuildtx;
     delete[] pcal;
     delete[] finish_thread;
 }
 
 ///////////////////////////////////////////////////////////
-inline void tx_to_fx2d_pthread(cx_fmat * datafx, fmat * data, int n, int nf)
-{
-    datafx[0].row(n)=fft(data[0].row(n),nf);
-}
-void tx_to_fx2d(cx_fmat & datafx, fmat & data, int ny, int nf, int numthread=1)
-{
-    int i,k;
-    thread *pcal;
-    pcal=new thread[numthread];
-    cx_fmat * pdatafx;fmat * pdata;
-    pdatafx=&datafx;pdata=&data;
-    
-    for(i=0;i<(ny-numthread);i+=numthread)
-    {
-        for(k=0;k<numthread;k++)
-        {
-            pcal[k]=thread(tx_to_fx2d_pthread,pdatafx,pdata,i+k,nf);
-        }
-        for(k=0;k<numthread;k++)
-        {
-            pcal[k].join();
-        }
-    } 
-    for(i=(ny-numthread);i<(ny);i++)
-    {
-        k=i-(ny-numthread);
-        pcal[k]=thread(tx_to_fx2d_pthread,pdatafx,pdata,i,nf);
-    }
-    for(i=(ny-numthread);i<(ny);i++)
-    {
-        k=i-(ny-numthread);
-        pcal[k].join();
-    }
-}
-inline void fx_to_tx2d_pthread(cx_fmat * data2, cx_fmat * datafx, int n, int nf)
-{
-    data2[0].row(n)=ifft(datafx[0].row(n),nf);
-}
-void fx_to_tx2d(cx_fmat & data, cx_fmat & datafx, int ny, int nz,int numthread=1)
-{
-    int nf(datafx.n_cols);
-    int i,k;
-    thread *pcal;
-    pcal=new thread[numthread];
-    cx_fmat data2(ny,nf);
-    cx_fmat * pdatafx;
-    pdatafx=&datafx;
-    
-    for(i=0;i<(ny-numthread);i+=numthread)
-    {
-        for(k=0;k<numthread;k++)
-        {
-            pcal[k]=thread(fx_to_tx2d_pthread,&data2,pdatafx,i+k,nf);
-        }
-        for(k=0;k<numthread;k++)
-        {
-            pcal[k].join();
-        }
-    } 
-    for(i=(ny-numthread);i<(ny);i++)
-    {
-        k=i-(ny-numthread);
-        pcal[k]=thread(fx_to_tx2d_pthread,&data2,pdatafx,i,nf);
-    }
-    for(i=(ny-numthread);i<(ny);i++)
-    {
-        k=i-(ny-numthread);
-        pcal[k].join();
-    }
-    
-    for(i=0;i<nz;i++)
-    {
-        data.col(i)=data2.col(i);
-    } 
-}
-void tp_to_fp3d_linerradon3d(struct linerradon3d & par)
-{
-    int i;
-    fmat data(par.npx,par.nz);
-    cx_fmat datafp(par.npx,par.nf);
-
-    for(i=0;i<par.npy;i++)
-    {
-        tx_to_fx2d(datafp, data=par.realdataTP.col(i),\
-            par.npx, par.nf,par.numthread);
-        par.datafP.col(i)=datafp;
-    }    
-}
-
-void tx_to_fx3d_linerradon3d(struct linerradon3d & par)
-{
-    int i;
-    fmat data(par.nx,par.nz),datapower(par.nf,1,fill::zeros);
-    cx_fmat datafx(par.nx,par.nf);
-
-    for(i=0;i<par.ny;i++)
-    {
-        tx_to_fx2d(datafx, data=par.data.col(i),\
-            par.nx, par.nf,par.numthread);
-        par.datafx.col(i)=datafx;
-    }
-    for(i=0;i<par.nf;i++)
-    {
-        datapower(i,0)=sum(sum(abs(par.datafx.slice(i))));
-    }
-    //datawrite(datapower,par.nf,1,"./fpower.bin");
-}
-void fx_to_tx3d_linerradon3d(struct linerradon3d & par)
-{
-    int i;
-    cx_fmat data(par.nx,par.nz);
-    cx_fmat datafx(par.nx,par.nf);
-
-    for(i=0;i<par.ny;i++)
-    {
-        fx_to_tx2d(data,datafx=par.rebuildfx.col(i),\
-            par.nx, par.nz,par.numthread);
-        par.rebuildtx.col(i)=data;
-    } 
-}
-void fp_to_tp3d_linerradon3d(struct linerradon3d & par)
-{
-    int i;
-    cx_fmat data(par.npx,par.nz);
-    cx_fmat datafp(par.npx,par.nf);
-
-    for(i=0;i<par.npy;i++)
-    {
-        fx_to_tx2d(data,datafp=par.datafP.col(i),\
-            par.npx, par.nz,par.numthread);
-        par.dataTP.col(i)=data;
-    } 
-}
-
 inline cx_fmat cx_fmatmul(cx_fmat & mat1, cx_fmat & mat2)
 {
     int nz,nx;
@@ -1186,7 +843,7 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     }
     par[0].datafP.slice(kf)=datatp_k;
     finish_thread[0]=true;
-    cout<<"kf="<<kf<<"||iteration times: "<<iter<<"||residual level:"<<\
+    cout<<"kf="<<kf<<" ||iteration times:"<<iter<<" ||err level:"<<\
         residual_k/residual_pow<<endl;
 }
 
@@ -1231,8 +888,7 @@ bool regularization=true)
         pcal[kcpu].join();}
     }
 
-    fp_to_tp3d_linerradon3d(par);
-    par.realdataTP=real(par.dataTP);
+    fx2tx_3d_thread(par.realdataTP,par.datafP,par.numthread);
     delete[] pcal;
     delete[] finish_thread;
 }
