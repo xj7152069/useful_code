@@ -13,7 +13,7 @@
 #include <math.h>
 #include <thread>
 #include <future>
-#include "./armadillo-9.800.2/include/armadillo"
+#include "../xjc.h"
 using namespace std;
 using namespace arma;
 
@@ -71,7 +71,7 @@ struct slantstack3d
     float d_trace,d_line,dt,dp_trace,dp_line,\
         ptrace_coord0,pline_coord0,line_coord0,trace_coord0;
     fcube datatx,datatp,recoverdatatx;
-    fmat weighted_fmat,pline_coord,ptrace_coord,nline_coord,ntrace_coord;
+    fmat weighted_fmat,pline_coord,ptrace_coord,nline_coordy,ntrace_coordx;
     float factor_l1,factor_l2;
 };
 //Sets a General parameters of initialization parameters
@@ -89,8 +89,8 @@ void slantstack3d_parupdate(struct slantstack3d & par)
 { 
     par.datatx.zeros(par.ntrace,par.nline,par.nt);
     par.recoverdatatx.zeros(par.ntrace,par.nline,par.nt);
-    par.ntrace_coord.zeros(par.ntrace,1);
-    par.nline_coord.zeros(par.nline,1);
+    par.ntrace_coordx.zeros(par.ntrace,par.nline);
+    par.nline_coordy.zeros(par.ntrace,par.nline);
     par.datatp.zeros(par.np_trace,par.np_line,par.nt);
     par.ptrace_coord.zeros(par.np_trace,1);
     par.pline_coord.zeros(par.np_line,1);
@@ -104,15 +104,6 @@ void slantstack3d_parupdate(struct slantstack3d & par)
     {
         par.pline_coord(k,0)=k*par.dp_line+par.pline_coord0;
     }
-    for(k=0;k<par.ntrace;k++)
-    {
-        par.ntrace_coord(k,0)=k*par.d_trace+par.trace_coord0;
-    }
-    for(k=0;k<par.nline;k++)
-    {
-        par.nline_coord(k,0)=k*par.d_line+par.line_coord0;
-    }
-
 }
 
 void slantstack3d_cleardata(struct slantstack3d & par)
@@ -125,7 +116,7 @@ void slantstack3d_cleardata(struct slantstack3d & par)
 
 void slantstack3d_stack_LT_pthread(fcube *datatp,fcube *datatx,\
  fmat *ptrace_coord,fmat *pline_coord,fmat *ntrace_coord,fmat *nline_coord,\
- float dt, int kt)
+ float dt, int kt,bool *end_of_thread)
 {
 
     int ip,jp,in,jn,k,ntaoceil,ntaofloor;
@@ -139,9 +130,9 @@ k=kt;
     for(ip=0;ip<np1;ip++){
         for(jp=0;jp<np2;jp++){
             for(in=0;in<n1;in++){
-                dtao1=ntrace_coord[0](in,0)*ptrace_coord[0](ip,0);
                 for(jn=0;jn<n2;jn++){
-                    dtao2=nline_coord[0](jn,0)*pline_coord[0](jp,0);
+                    dtao1=ntrace_coord[0](in,jn)*ptrace_coord[0](ip,0);
+                    dtao2=nline_coord[0](in,jn)*pline_coord[0](jp,0);
                     dtao12=dtao1+dtao2;
                     ntao12=(tao0+dtao12)/dt;
                     if(ntao12<(n3-1) && ntao12>0){
@@ -158,6 +149,7 @@ k=kt;
                             +datatx[0](in,jn,ntaofloor)*wfloor;
                     }
     }}}}}
+    end_of_thread[0]=true;
 }
 
 void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
@@ -172,30 +164,36 @@ void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
     fmat *ppline_coord(&pline_coord);
     fmat *pntrace_coord(&ntrace_coord);
     fmat *pnline_coord(&nline_coord);
+    bool *end_of_thread;
+    end_of_thread=new bool[ncpu];
 
     thread *pcal;
     pcal=new thread[ncpu];
     for(k=0;k<ncpu;k++){
+        end_of_thread[k]=false;
         pcal[k]=thread(slantstack3d_stack_LT_pthread,pdatatp,pdatatx,\
             pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
-                dt, k);
+                dt, k,&(end_of_thread[k]));
     }
     i=ncpu;
     while(i<nt){
-        for(k=0;k<ncpu;k++){
-            if(pcal[k].joinable() && i<nt){
+        for(k=0;k<min(ncpu,nt);k++){
+            if(pcal[k].joinable() && i<nt && end_of_thread[k]){
                 pcal[k].join();
+                end_of_thread[k]=false;
                 pcal[k]=thread(slantstack3d_stack_LT_pthread,pdatatp,pdatatx,\
                     pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
-                    dt, i);
+                    dt, i,&(end_of_thread[k]));
                 i++;
                 //cout<<i<<endl;
         }}
     }
-    for(k=0;k<ncpu;k++){
-        pcal[k].join();
+    for(k=0;k<min(ncpu,nt);k++){
+        if(pcal[k].joinable()){
+        pcal[k].join();}
     }
     delete [] pcal;
+    delete [] end_of_thread;
 }
 
 void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
@@ -213,9 +211,9 @@ for(k=0;k<n3;k++){
     for(ip=0;ip<np1;ip++){
         for(jp=0;jp<np2;jp++){
             for(in=0;in<n1;in++){
-                dtao1=ntrace_coord(in,0)*ptrace_coord(ip,0);
                 for(jn=0;jn<n2;jn++){
-                    dtao2=nline_coord(jn,0)*pline_coord(jp,0);
+                    dtao1=ntrace_coord(in,jn)*ptrace_coord(ip,0);
+                    dtao2=nline_coord(in,jn)*pline_coord(jp,0);
                     dtao12=dtao1+dtao2;
                     ntao12=(tao0+dtao12)/dt;
                     if(ntao12<(n3-1) && ntao12>0){
@@ -235,7 +233,7 @@ for(k=0;k<n3;k++){
 /////////////////////////////////////////////////////////////////////////
 void slantstack3d_recover_L_pthread(fcube *recoverdatatx,fcube *datatp,\
  fmat *ptrace_coord,fmat *pline_coord,fmat *ntrace_coord,fmat *nline_coord,\
- float dt,int kt)
+ float dt,int kt,bool *end_of_thread)
 {
     int ip,jp,in,jn,k,ntaoceil,ntaofloor;
     float tao0,dtao1,dtao2,dtao12,ntao12,wceil,wfloor,wsum,wmin(0.000000001);
@@ -248,9 +246,9 @@ k=kt;
     for(in=0;in<n1;in++){
         for(jn=0;jn<n2;jn++){
             for(ip=0;ip<np1;ip++){
-                dtao1=ntrace_coord[0](in,0)*ptrace_coord[0](ip,0);
                 for(jp=0;jp<np2;jp++){
-                    dtao2=nline_coord[0](jn,0)*pline_coord[0](jp,0);
+                    dtao1=ntrace_coord[0](in,jn)*ptrace_coord[0](ip,0);
+                    dtao2=nline_coord[0](in,jn)*pline_coord[0](jp,0);
                     dtao12=dtao1+dtao2;
                     ntao12=(tao0-dtao12)/dt;
                     if(ntao12<(n3-1) && ntao12>0){
@@ -267,6 +265,7 @@ k=kt;
                             +datatp[0](ip,jp,ntaofloor)*wfloor;
                     }
     }}}}}
+    end_of_thread[0]=true;
 }
 void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
  fmat &ptrace_coord,fmat &pline_coord,fmat &ntrace_coord,fmat &nline_coord,\
@@ -280,30 +279,35 @@ void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
     fmat *ppline_coord(&pline_coord);
     fmat *pntrace_coord(&ntrace_coord);
     fmat *pnline_coord(&nline_coord);
+    bool *end_of_thread;
+    end_of_thread=new bool[ncpu];
 
     thread *pcal;
     pcal=new thread[ncpu];
-    for(k=0;k<ncpu;k++){
+    for(k=0;k<min(ncpu,nt);k++){
+        end_of_thread[k]=false;
         pcal[k]=thread(slantstack3d_recover_L_pthread,pdatatx,pdatatp,\
             pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
-                dt, k);
+                dt, k,&(end_of_thread[k]));
     }
     i=ncpu;
     while(i<nt){
         for(k=0;k<ncpu;k++){
-            if(pcal[k].joinable() && i<nt){
+            if(pcal[k].joinable() && i<nt && end_of_thread[k]){
                 pcal[k].join();
+                end_of_thread[k]=false;
                 pcal[k]=thread(slantstack3d_recover_L_pthread,pdatatx,pdatatp,\
                     pptrace_coord,ppline_coord,pntrace_coord,pnline_coord,\
-                    dt, i);
+                    dt, i,&(end_of_thread[k]));
                 i++;
                 //cout<<i<<endl;
         }}
     }
-    for(k=0;k<ncpu;k++){
+    for(k=0;k<min(ncpu,nt);k++){
         pcal[k].join();
     }
     delete [] pcal;
+    delete [] end_of_thread;
 }
 
 void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
@@ -321,9 +325,9 @@ for(k=0;k<n3;k++){
     for(in=0;in<n1;in++){
         for(jn=0;jn<n2;jn++){
             for(ip=0;ip<np1;ip++){
-                dtao1=ntrace_coord(in,0)*ptrace_coord(ip,0);
                 for(jp=0;jp<np2;jp++){
-                    dtao2=nline_coord(jn,0)*pline_coord(jp,0);
+                    dtao1=ntrace_coord(in,jn)*ptrace_coord(ip,0);
+                    dtao2=nline_coord(in,jn)*pline_coord(jp,0);
                     dtao12=dtao1+dtao2;
                     ntao12=(tao0-dtao12)/dt;
                     if(ntao12<(n3-1) && ntao12>0){
@@ -344,22 +348,22 @@ for(k=0;k<n3;k++){
 //////////////////////////////////////////////////////////////
 void slantstack3d_stack(struct slantstack3d &par){
     slantstack3d_stack_LT_operator(par.datatp,par.datatx,\
-    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
     par.dt);
 }
 void slantstack3d_stack_multithread(struct slantstack3d &par){
     slantstack3d_stack_LT_operator(par.datatp,par.datatx,\
-    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
     par.dt,par.numthread);
 }
 void slantstack3d_recover(struct slantstack3d &par){
     slantstack3d_recover_L_operator(par.recoverdatatx,par.datatp,\
-    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
     par.dt);
 }
 void slantstack3d_recover_multithread(struct slantstack3d &par){
     slantstack3d_recover_L_operator(par.recoverdatatx,par.datatp,\
-    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+    par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
     par.dt,par.numthread);
 }
 /////////////////////////slantstack_CG3d///////////////////////////
@@ -404,10 +408,10 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
 
     datatp_k=par.datatp/par.nline/par.ntrace;
     slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k,\
-        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt,par.numthread);
     slantstack3d_stack_LT_operator(A_datatp_k,recoverdatatx_uk,\
-        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt,par.numthread);
     //regularization
     A_datatp_k=A_datatp_k+datatp_k*par.factor_l2;
@@ -420,10 +424,10 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
     residual_k=sum_num(0,0);
 
     slantstack3d_recover_L_operator(recoverdatatx_uk,gradient_cg_pk,\
-        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt,par.numthread);
     slantstack3d_stack_LT_operator(A_gradient_cg_pk,recoverdatatx_uk,\
-        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+        par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt,par.numthread);
     //regularization
     A_gradient_cg_pk=A_gradient_cg_pk+gradient_cg_pk*par.factor_l2;
@@ -443,17 +447,16 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
     gradient_cg_pk=gradient_cg_pk_1;
 
     while(iter<iterations_num && residual_k>residual_pow){
-        //cout<<iter<<"||"<<residual_k/residual_pow<<endl;
         iter++;
         //cal residual_pow
         sum_num=sum(sum(sum(abs(gradient_rk))));
         residual_k=sum_num(0,0);
 
         slantstack3d_recover_L_operator(recoverdatatx_uk,gradient_cg_pk,\
-            par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+            par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
             par.dt,par.numthread);
         slantstack3d_stack_LT_operator(A_gradient_cg_pk,recoverdatatx_uk,\
-            par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
+            par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
             par.dt,par.numthread);
         //regularization
         A_gradient_cg_pk=A_gradient_cg_pk+gradient_cg_pk*par.factor_l2;
@@ -473,85 +476,9 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
         gradient_cg_pk=gradient_cg_pk_1;
     }
     par.datatp=datatp_k;
-    cout<<iter<<"||"<<residual_k/residual_pow<<endl;
+    cout<<"iterations times:"<<iter<<" || "<<\
+        "err level:"<<residual_k/residual_pow<<endl;
 
-}
-
-void slantstack3d_stack_HSCG_invL_operator(struct slantstack3d &par,\
- int iterations_num=9, int residual_ratio=0.01)
-{
-
-    int ip,jp,in,jn,k,iter(0);
-    int n1(par.datatx.n_rows),n2(par.datatx.n_cols),n3(par.datatx.n_slices),\
-        np1(par.datatp.n_rows),np2(par.datatp.n_cols);
-    fcube gradient_gk,gradient_gk_1,\
-        gradient_cg_dk,gradient_cg_dk_1,\
-        datatp_k,datatp_k_1,\
-        recoverdatatx_uk;
-    fmat sum_num(1,1);
-    float beta_k,alpha_k,residual_pow,residual_k;
-    datatp_k.copy_size(par.datatp);
-    datatp_k_1.copy_size(par.datatp);
-    gradient_gk.copy_size(par.datatp);
-    gradient_gk_1.copy_size(par.datatp);
-    gradient_cg_dk.copy_size(par.datatp);
-    gradient_cg_dk_1.copy_size(par.datatp); 
-    recoverdatatx_uk.copy_size(par.datatx);
-    datatp_k_1=par.datatp;
-
-    iter=0;alpha_k=0.00005;
-
-    slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k_1,\
-    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-    par.dt);
-    recoverdatatx_uk=recoverdatatx_uk-par.datatx;
-    //cal residual_pow
-    sum_num=sum(sum(sum(abs(recoverdatatx_uk))));
-    residual_pow=sum_num(0,0);
-    residual_k=residual_pow;
-    residual_pow*=residual_ratio;
-    //
-    slantstack3d_stack_LT_operator(gradient_gk,recoverdatatx_uk,\
-    par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-    par.dt);
-    //updata radient
-    beta_k=1.0;
-    gradient_gk_1=gradient_gk;
-    //updata radient_cg
-    gradient_cg_dk=-gradient_gk;
-    gradient_cg_dk_1=gradient_cg_dk;
-    //updata solution
-    datatp_k=datatp_k_1+alpha_k*gradient_cg_dk;
-    datatp_k_1=datatp_k;
-
-    while(iter<iterations_num || residual_k<residual_pow){
-        cout<<iter<<"||"<<residual_k<<endl;
-        iter++;
-        slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k_1,\
-        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-        par.dt);
-        recoverdatatx_uk=recoverdatatx_uk-par.datatx;
-        //cal residual_pow
-        sum_num=sum(sum(sum(abs(recoverdatatx_uk))));
-        residual_k=sum_num(0,0);
-        //
-        slantstack3d_stack_LT_operator(gradient_gk,recoverdatatx_uk,\
-        par.ptrace_coord,par.pline_coord,par.ntrace_coord,par.nline_coord,\
-        par.dt);
-        //updata radient
-        beta_k=fcube_inner_product(gradient_gk,\
-            gradient_gk-gradient_gk_1);
-        beta_k=beta_k/fcube_inner_product(gradient_cg_dk_1,\
-            gradient_gk-gradient_gk_1);
-        gradient_gk_1=gradient_gk;
-        //updata radient_cg
-        gradient_cg_dk=-gradient_gk+beta_k*gradient_cg_dk_1;
-        gradient_cg_dk_1=gradient_cg_dk;
-        //updata solution
-        datatp_k=datatp_k_1+alpha_k*gradient_cg_dk;
-        datatp_k_1=datatp_k;
-    }
-    par.datatp=datatp_k;
 }
 
 // 2-D Slant-stack in the time - space domain.
@@ -624,7 +551,8 @@ Conjugate gradient method iteration error, The smaller the more accurate
     slantstack3d_parupdate(par);
 //Seismic trace coordinates
     for(k=0;k<par.ntrace;k++){
-        par.ntrace_coord(k,0)=coor[k]-x0;
+        par.ntrace_coordx(k,0)=coor[k]-x0;
+        par.nline_coordy(k,0)=0;
     }
 //////////////////////////////////////////////////////////////////
 //data input, (row,col,slice) of par.data is (nx,ny,nz)
