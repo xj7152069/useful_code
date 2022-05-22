@@ -760,9 +760,9 @@ inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat & mat2)
     return a;
 }
 void beamformingCG3d_fthread(struct linerradon3d * par,\
- struct beamforminginv3d * par2,bool *finish_thread,\
+ struct beamforminginv3d * par2,bool *convergence,\
  int kcpu, int kf,bool regularization,\
- int iterations_num=25, float residual_ratio=0.5)
+ int iterations_num, float residual_ratio,bool *finish_thread)
 {
     beamforminginv3d_hessianget_thread(\
         par,par2,kcpu,kf,regularization,false);
@@ -789,8 +789,8 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     residual_pow=sum_num(0,0);
     residual_pow*=residual_ratio;
     //datatp_k.fill(0.0);
-    datatp_k.set_real(2*real(datatp_k)/par[0].nx/par[0].ny);
-    datatp_k.set_imag(2*imag(datatp_k)/par[0].nx/par[0].ny);
+    datatp_k.set_real(real(datatp_k)/par[0].nx/par[0].ny);
+    datatp_k.set_imag(imag(datatp_k)/par[0].nx/par[0].ny);
 
     cxfmatget_Ap(A_datatp_k,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
         datatp_k);
@@ -841,10 +841,16 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
         gradient_rk=gradient_rk_1;
         gradient_cg_pk=gradient_cg_pk_1;
     }
-    par[0].datafP.slice(kf)=datatp_k;
+    if((residual_k(0,0)/residual_pow(0,0))>(0.5/residual_ratio))
+        {par[0].datafP.slice(kf).fill(0);
+            convergence[0]=false;}
+        else{
+            par[0].datafP.slice(kf)=datatp_k;
+            convergence[0]=true;
+        }
     finish_thread[0]=true;
     cout<<"kf="<<kf<<" ||iteration times:"<<iter<<" ||err level:"<<\
-        residual_k/residual_pow<<endl;
+        residual_k(0,0)/residual_pow(0,0)<<" ("<<convergence[0]<<endl;
 }
 
 void beamformingCG3d(struct linerradon3d & par,\
@@ -861,15 +867,16 @@ bool regularization=true)
     beamforminginv3d_parset(ppar[0], par2);
     beamforminginv3d_getdigfmat(ppar[0], par2);
     
-    bool* finish_thread;
+    bool *finish_thread,*convergence;
+    convergence=new bool[par.nf];
     finish_thread=new bool[ncpu];
     thread *pcal;
     pcal=new thread[ncpu];
     for(kcpu=0;kcpu<ncpu;kcpu++){
         finish_thread[kcpu]=false;
         pcal[kcpu]=thread(beamformingCG3d_fthread,&par,&par2,\
-            &(finish_thread[kcpu]),kcpu,kcpu+par.nf1,regularization,\
-            iterations_num,residual_ratio);
+            &(convergence[kcpu+par.nf1]),kcpu,kcpu+par.nf1,regularization,\
+            iterations_num,residual_ratio,&(finish_thread[kcpu]));
     }
     kf=ncpu+par.nf1;
     while(kf<par.nf2){
@@ -878,8 +885,8 @@ bool regularization=true)
                 pcal[kcpu].join();
                 finish_thread[kcpu]=false;
                 pcal[kcpu]=thread(beamformingCG3d_fthread,&par,&par2,\
-                    &(finish_thread[kcpu]),\
-                    kcpu,kf,regularization,iterations_num,residual_ratio);
+                    &(convergence[kf]),kcpu,kf,regularization,\
+                    iterations_num,residual_ratio,&(finish_thread[kcpu]));
                 kf++;
         }}
     }
@@ -887,10 +894,32 @@ bool regularization=true)
         if(pcal[kcpu].joinable()){
         pcal[kcpu].join();}
     }
-
+/*
+    float wup,wdown,wsum;
+    for(i=par.nf1+1;i<par.nf2;i++){
+        if(!convergence[i]){
+            k=0;
+            for(j=i+1;j<par.nf2;j++){
+                k++;
+                if(convergence[j]){
+                    wdown=1.0/k;
+                    wup=1.0;
+                    wsum=wdown+wup;
+                    wdown=wdown/wsum;
+                    wup=wup/wsum;
+                    //par.datafP.slice(i).set_imag\
+                        (wup*imag(par.datafP.slice(i-1))\
+                        +wdown*imag(par.datafP.slice(j)));
+                    //par.datafP.slice(i).set_real\
+                        (wup*real(par.datafP.slice(i-1))\
+                        +wdown*real(par.datafP.slice(j)));
+                    break;
+                }}}}
+*/
     fx2tx_3d_thread(par.realdataTP,par.datafP,par.numthread);
     delete[] pcal;
     delete[] finish_thread;
+    delete[] convergence;
 }
 
 fmat smoothdig(fmat dig,int l,int n)
