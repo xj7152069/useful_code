@@ -169,6 +169,51 @@ void dataread(fmat & data_mat, int nz, int nx, ifstream &inf)
     }
 }
 
+void dataread3d_bycol_transpose(fcube & data3d, const char * filename)
+{
+    char str[99];
+    strcpy(str, filename);
+    ifstream infile;
+    int i,j,k;
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices); 
+    fmat datacol_transpose(n3,n1);
+    fmat datacol(n1,n3);
+    float read_data;
+
+    infile.open(str,ios::binary);
+    if(!infile) cout<<"file open error: "<<str<<endl;
+    for(i=0;i<n2;i++){
+    for(j=0;j<n1;j++){
+        for(i=0;i<n3;i++){
+        inf.read((char *)&read_data, sizeof(read_data));  
+        datacol_transpose(i,j)=read_data;
+        }
+    }
+    datacol=datacol_transpose.t();
+    data3d.col(k)=datacol;
+    }
+    infile.close();
+}
+void dataread3d_bycol_transpose(fcube & data3d, ifstream &inf)
+{
+    int i,j,k;
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices); 
+    fmat datacol_transpose(n3,n1);
+    fmat datacol(n1,n3);
+    float read_data;
+
+    for(i=0;i<n2;i++){
+    for(j=0;j<n1;j++){
+        for(i=0;i<n3;i++){
+        inf.read((char *)&read_data, sizeof(read_data));  
+        datacol_transpose(j,i)=read_data;
+        }
+    }
+    datacol=datacol_transpose.t();
+    data3d.col(k)=datacol;
+    }
+}
+
 fmat dataread(int nz, int nx, ifstream &inf)
 {
     int i,j;
