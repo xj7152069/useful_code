@@ -19,7 +19,9 @@ using namespace std;
 using namespace arma;
 // 2-D Linear Radon Transform in the frequence - space domain.
 int Beamforming_LS_2D(float **trace, int ntrace, int ns, float dt,\
- float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr);
+ float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr,\
+ float fmax,float frule,int ncpu, bool regularization,\
+ float factor_L2, int iterations_num, float residual_ratio);
 /* discription.
 This function will do the local slant-stack over local traces .
 float
@@ -87,12 +89,12 @@ struct linerradon3d
     //cx_fmat Acol1,Arow1;
 };
 //设置一组常用的初始化参数
-void beamforming_parset(int nx, int ny, int nz, int nf,\
+void beamforming_parset(int nx, int ny, int nz,\
     struct linerradon3d & par)
 {
     par.rulef1=5,par.rulef2=30;
     par.kerpar1=0;
-    par.nx=nx,par.nz=nz,par.ny=ny,par.nf=nf;
+    par.nx=nx,par.nz=nz,par.ny=ny,par.nf=nz;
     par.dx=10,par.dy=10,par.dz=0.001;
     par.nf1=0;par.nf2=par.nf/2;
     par.rulef1=0;par.rulef2=par.nf/2;
@@ -114,20 +116,6 @@ void beamforming_parset(int nx, int ny, int nz, int nf,\
     par.kerpar1=0.0;     //kernel function par
     par.regularization=true;
 } 
-void beamforming_parset(int nx, int ny, int nz,\
-    struct linerradon3d & par)
-{
-    struct linerradon3d * ppar;
-    ppar=&par;
-    int nf(1);
-    //处理频率采样数，使其为2的幂次方
-    while (nf<nz)
-    {
-        nf*=2;
-    }
-    //cout<<"nf = "<<nf<<endl;
-    beamforming_parset(nx,ny,nz,nf,ppar[0]);
-}
 
 void beamforming_parupdate(struct linerradon3d & par)
 { 
@@ -144,7 +132,7 @@ void beamforming_parupdate(struct linerradon3d & par)
     par.nf1=1;
     par.rulef1=1;
     par.nf2=int(par.nf2/par.df);
-    par.rulef2= par.nf2;
+    par.rulef2=int(par.rulef2/par.df);
     if(par.nf2>par.nf/2){
         par.nf2=par.nf/2;
     }
@@ -156,6 +144,8 @@ void beamforming_parupdate(struct linerradon3d & par)
     par.py_coord.zeros(par.npy,1);
     
     int k;
+    par.coordx0=(-par.dx*par.nx/2),par.coordy0=(-par.dy*par.ny/2);
+    //par.p0x=(-par.dpx*par.npx/2),par.p0y=(-par.dpy*par.npy/2);
     for(k=0;k<par.npx;k++){
         par.px_coord(k,0)=k*par.dpx+par.p0x;
     }
@@ -280,6 +270,7 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
     cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros); //
 
     kf=pnf;
+
     if(kf<par[0].nf2){
         w=2.0*pi*df*(kf); 
         if(regularization)
@@ -346,6 +337,7 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
             }}
             par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[pncpu](i,i)\
                 +=par->p_power(kpx,kpy);
+
             }}
         }
 
@@ -766,6 +758,7 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
 {
     beamforminginv3d_hessianget_thread(\
         par,par2,kcpu,kf,regularization,false);
+
     int ip,jp,in,jn,k,iter(0);
     int np1(par->datafP.n_rows),np2(par->datafP.n_cols);
     cx_fmat gradient_rk,gradient_rk_1,\
@@ -841,7 +834,8 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
         gradient_rk=gradient_rk_1;
         gradient_cg_pk=gradient_cg_pk_1;
     }
-    if((residual_k(0,0)/residual_pow(0,0))>(0.5/residual_ratio))
+    if((residual_k(0,0)/residual_pow(0,0))>(0.5/residual_ratio)\
+        ||isnan(residual_k(0,0)))
         {par[0].datafP.slice(kf).fill(0);
             convergence[0]=false;}
         else{
@@ -858,6 +852,8 @@ int iterations_num=45, float residual_ratio=0.1,\
 bool regularization=true)
 {
     int ncpu(par.numthread),numf(par.nf2-par.nf1-ncpu);
+    regularization=par.regularization;
+
     int kcpu,kf,k,i,j;//cout<<"ok"<<endl;
     float pi(3.1415926);
 
@@ -941,7 +937,8 @@ fmat smoothdig(fmat dig,int l,int n)
 // 2-D Linear Radon Transform in the frequence - space domain.
 int Beamforming_LS_2D(float **trace, int ntrace, int ns, float dt,\
  float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr,\
- float fmax=150, int ncpu=1)
+ float fmax=150,float frule=50,int ncpu=1, bool regularization=false,\
+ float factor_L2=0.1, int iterations_num=45, float residual_ratio=0.1)
 {
 /* discription.
 This function will do the local slant-stack over local traces .
@@ -968,11 +965,11 @@ the interval of ray-parameter， (unit is s/m) .*/
     struct linerradon3d par;
 
     int i,j,k;
-    int nz2(ns),nz(ns),nx(ntrace),ny(1),nf(0);
+    int nz2(ns),nz(ns),nx(ntrace),ny(1),nf(ns);
 //////////////////////////radon par-set////////////////////////////
     beamforming_parset(nx,ny,nz,par);
     par.dpx=dpsr;
-    par.dpy=dpsr;
+    par.dpy=0;
     par.dz=dt;
 
 //The default px of central channel is zero
@@ -981,21 +978,26 @@ the interval of ray-parameter， (unit is s/m) .*/
     par.npy=1;
     par.p0y=0.0;   
 
-    //ncpu
+//ncpu
     par.numthread=ncpu;
 
-//Frequency calculation range (number)
-    par.nf2=fmax; 
-//Low frequency constraint range (number)
-    par.rulef2=fmax/2;
 //regularization parameter
-    par.dig_n2=nx*ny*0.1;  //L2, Tikhonov 
+    par.dig_n2=nx*ny*factor_L2;  //L2, Tikhonov 
 //Seismic trace coordinates
-    for(k=0;k<par.nx;k++){
-        par.x_coord(k,0)=coor[k]-x0;
-    }
+    for(i=0;i<nx;i++){
+        for(j=0;j<ny;j++){
+            par.coordx3d(i,j)=coor[i]-x0;
+            par.coordy3d(i,j)=0;
+        }}
+    par.regularization=regularization;
 //Parameters updated
     beamforming_parupdate(par);
+//Frequency calculation range (number)
+    par.nf2=int(fmax/par.df); 
+    par.nf1=1; 
+//Low frequency constraint range (number)
+    par.rulef2=int(frule/par.df);
+    par.rulef1=1;
 
 //////////////////////////////////////////////////////////////////
 //data input, (row,col,slice) of par.data is (nx,ny,nz)
@@ -1010,8 +1012,9 @@ for(i=0;i<ntrace;i++){
 //////////////////////////////////////////////////
     linerradon(par); 
     //inv radon
-    beamforming_cleardata(par);
-    beamforminginv3d(par,0);
+    //beamforming_cleardata(par);
+    //beamforminginv3d(par,0);
+    beamformingCG3d(par,iterations_num,residual_ratio);
     //recover data
     rebuildsignal(par);
 
@@ -1030,6 +1033,122 @@ for(i=0;i<npsr;i++){
 //npx: X Ray parameters sampling nummber
 //npy: Y Ray parameters sampling nummber
 //nz: time sampling nummber
+
+    return 0;
+}
+int Beamforming_CG_2D(fmat &tauppanel,fmat &recoverdata,fmat &recovererr,\
+ fmat trace, fmat coor, int ns, int ntrace, float dt,int npsr,float psrmin, float dpsr,\
+ float fmax=150,float frule=50,int ncpu=1, float factor_L2=0.1,float factor_L1=10,\
+ int iterations_num=45, float residual_ratio=0.1)
+{
+    struct linerradon3d par;
+    int i,j,k;
+    int nz(ns),nx(ntrace),ny(1),nf(ns);
+//////////////////////////radon par-set////////////////////////////
+    beamforming_parset(nx,ny,nz,par);
+    par.dpx=dpsr;
+    par.dpy=dpsr;
+    par.dz=dt;
+
+//The default px of central channel is zero
+    par.npx=npsr;
+    par.p0x=psrmin;
+    par.npy=1;
+    par.p0y=0.0;  
+
+//ncpu
+    par.numthread=ncpu;
+
+//regularization parameter
+    par.dig_n2=nx*ny*factor_L2;  //L2, Tikhonov 
+    par.dig_n1=nx*ny*factor_L1;  //L1,
+//Seismic trace coordinates
+    for(i=0;i<nx;i++){
+        for(j=0;j<ny;j++){
+            par.coordx3d(i,j)=coor(i,j);
+            par.coordy3d(i,j)=0;
+        }}
+    par.regularization=false;
+//Parameters updated
+    beamforming_parupdate(par);
+//Frequency calculation range (number)
+    par.nf2=int(fmax/par.df); 
+    par.nf1=1; 
+//Low frequency constraint range (number)
+    par.rulef2=int(frule/par.df);
+    par.rulef1=1;
+
+    par.data.col(0)=trace;
+//////////////////////////////////////////////////
+    linerradon(par); 
+
+    beamformingCG3d(par,iterations_num,residual_ratio);
+    //beamforminginv3d(par);
+    //recover data
+    rebuildsignal(par);
+
+    tauppanel=par.realdataTP.col(0);
+    recoverdata=par.realrebuildtx.col(0);
+    recovererr=recoverdata-trace;
+
+    return 0;
+}
+
+int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
+ fcube& trace, fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
+ int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
+ float fmax=150,float frule=50,int ncpu=1, float factor_L2=0.1,float factor_L1=10,\
+ int iterations_num=45, float residual_ratio=0.1)
+{
+    struct linerradon3d par;
+    int i,j,k;
+    int nz(ns),nx(ntrace),ny(nline),nf(ns);
+//////////////////////////radon par-set////////////////////////////
+    beamforming_parset(nx,ny,nz,par);
+    par.dpx=dpx;
+    par.dpy=dpy;
+    par.dz=dt;
+
+//The default px of central channel is zero
+    par.npx=npx;
+    par.p0x=pxmin;
+    par.npy=npy;
+    par.p0y=pymin;  
+
+//ncpu
+    par.numthread=ncpu;
+
+//regularization parameter
+    par.dig_n2=nx*ny*factor_L2;  //L2, Tikhonov 
+    par.dig_n1=nx*ny*factor_L1;  //L1,
+//Seismic trace coordinates
+    for(i=0;i<nx;i++){
+        for(j=0;j<ny;j++){
+            par.coordx3d(i,j)=coordx(i,j);
+            par.coordy3d(i,j)=coordy(i,j);
+        }}
+    par.regularization=false;
+//Parameters updated
+    beamforming_parupdate(par);
+//Frequency calculation range (number)
+    par.nf2=int(fmax/par.df); 
+    par.nf1=1; 
+//Low frequency constraint range (number)
+    par.rulef2=int(frule/par.df);
+    par.rulef1=1;
+
+    par.data=trace;
+//////////////////////////////////////////////////
+    linerradon(par); 
+
+    beamformingCG3d(par,iterations_num,residual_ratio);
+    //beamforminginv3d(par);
+    //recover data
+    rebuildsignal(par);
+
+    tauppanel=par.realdataTP;
+    recoverdata=par.realrebuildtx;
+    recovererr=recoverdata-trace;
 
     return 0;
 }
