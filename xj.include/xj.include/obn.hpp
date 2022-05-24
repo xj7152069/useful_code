@@ -273,14 +273,15 @@ void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* gre
 {
     int n1(u1[0].n_rows),n2(u1[0].n_cols);
     int i,j;
-    float w,pi(3.1415926);
+    float w,pi(3.1415926),t;
     cx_float a;
     
     w=-2.0*pi*df*kf;
     for(i=0;i<n1;i++){
         for(j=0;j<n2;j++){
+            t=green[0](i,j);
             a.real(0.0);
-            a.imag(w*green[0](i,j));
+            a.imag(w*t);
             a=exp(a);
             u2[0](i,j,kf)+=a*u1[0](isx,jsy,kf);
             }
