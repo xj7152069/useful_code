@@ -267,7 +267,9 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
     float ky1(-(int(ny/2)*dy));
     float kx1(-(int(nx/2)*dx));
     cx_fmat a(1,1),A(nx,ny),B(nx,ny);
-    cx_fmat basey(ny,npy,fill::zeros),basex(nx,npx,fill::zeros); //
+    fmat hess1;
+    fmat hess2;
+    fmat hess3;
 
     kf=pnf;
 
@@ -298,25 +300,46 @@ void beamforminginv3d_hessianget_thread(struct linerradon3d * par,\
         else
         {
             cx_fmat hessian_small(npx*2-1,npy*2-1);
+            cx_fcube basey3d;
+            cx_fmat basex,basey;
+            cx_fmat basepy0,basepx0;
+            cx_fmat basedpy,basedpx;
             float fpx1,fpy1,fpx2,fpy2,fpxmax,fpxmin,fpymax,fpymin;
             int nkpx,nkpy;
             fpxmax=par[0].px_coord.max()-par[0].px_coord.min();
             fpxmin=par[0].px_coord.min()-par[0].px_coord.max();
             fpymax=par[0].py_coord.max()-par[0].py_coord.min();
             fpymin=par[0].py_coord.min()-par[0].py_coord.max();
+
             basey.zeros(nx,ny);basex.zeros(nx,ny);
+            basey3d.zeros(nx,ny,2*npy);
+            basepy0.zeros(nx,ny);basepx0.zeros(nx,ny);
+            basedpy.zeros(nx,ny);basedpx.zeros(nx,ny);
+            basepx0.set_imag(w*par->coordx3d*(fpxmin-dpx));  
+            basepy0.set_imag(w*par->coordy3d*(fpymin));
+            basedpx.set_imag(w*par->coordx3d*dpx);  
+            basedpy.set_imag(w*par->coordy3d*dpy);
+            basedpy=exp(basedpy);basedpx=exp(basedpx);
+            basepy0=exp(basepy0);basepx0=exp(basepx0);
+
+            basex=basepx0;
             for(fpx2=fpxmin;fpx2<=fpxmax;fpx2+=dpx){
                 kpx2=round(fpx2/dpx)+npx-1;
-                basex.fill(0);
-                basex.set_imag(w*par->coordx3d*fpx2);  
-                basex=exp(basex); 
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    basex(kx,ky)=basex(kx,ky)*basedpx(kx,ky);
+                }}
+                if(fpx2==fpxmin)
+                {basey3d.slice(0)=basepy0;}
             for(fpy2=fpymin;fpy2<=fpymax;fpy2+=dpy){
                 kpy2=round(fpy2/dpy)+npy-1;
-                basey.fill(0);
-                basey.set_imag(w*par->coordy3d*fpy2);
-                basey=exp(basey);
-                a=cx_fmatmul(basex,basey);
+                a=cx_fmatmul(basex,basey=basey3d.slice(kpy2));
                 hessian_small(kpx2,kpy2)=a(0,0);
+                if(fpx2==fpxmin){
+                    for(kx=0;kx<nx;kx++){
+                    for(ky=0;ky<ny;ky++){
+                    basey3d(kx,ky,kpy2+1)=basey3d(kx,ky,kpy2)*basedpy(kx,ky);
+                }}}
             }}
 
             for(kpx=0;kpx<npx;kpx++){
@@ -448,7 +471,10 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
         ny(par->ny),npy(par->npy);
 
     cx_fmat a(1,1),A,B;
-    cx_fmat basey,basex;
+    cx_fcube basey3d;
+    cx_fmat basex,basey;
+    cx_fmat basepy0,basepx0;
+    cx_fmat basedpy,basedpx;
 
     for(kf=pnf1;kf<pnf2;kf++)  
     {
@@ -469,22 +495,33 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
             }
         }
         else{
-            basey.zeros(nx,ny);basex.zeros(nx,ny);
+            basey3d.zeros(nx,ny,npy+1);basex.zeros(nx,ny);
+            basepy0.zeros(nx,ny);basepx0.zeros(nx,ny);
+            basedpy.zeros(nx,ny);basedpx.zeros(nx,ny);
+            basepx0.set_imag(w*par->coordx3d*(par->px_coord(0,0)-par->dpx));  
+            basepy0.set_imag(w*par->coordy3d*(par->py_coord(0,0)));
+            basedpx.set_imag(w*par->coordx3d*par->dpx);  
+            basedpy.set_imag(w*par->coordy3d*par->dpy);
+            basedpy=exp(basedpy);basedpx=exp(basedpx);
+            basepy0=exp(basepy0);basepx0=exp(basepx0);
             B.zeros(nx,ny);
             B=par->datafx.slice(kf); 
+            basex=basepx0;
             for(kpx=0;kpx<npx;kpx++){
-                float pxcoord(par->px_coord(kpx,0));
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    basex(kx,ky)=basex(kx,ky)*basedpx(kx,ky);
+                }}
+                if(kpx==0)
+                {basey3d.slice(0)=basepy0;}
             for(kpy=0;kpy<npy;kpy++){
-                float pycoord(par->py_coord(kpy,0));
                 cx_float fzero;
-                basex.fill(0),basey.fill(0);  
-                basex.set_imag(w*par->coordx3d*pxcoord);  
-                basey.set_imag(w*par->coordy3d*pycoord);
-                basey=exp(basey);basex=exp(basex);
-            for(kx=0;kx<nx;kx++){
-            for(ky=0;ky<ny;ky++){
-                fzero+=B(kx,ky)*basex(kx,ky)*basey(kx,ky);
-            }}
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    fzero+=B(kx,ky)*basex(kx,ky)*basey3d(kx,ky,kpy);
+                    if(kpx==0)
+                    {basey3d(kx,ky,kpy+1)=basey3d(kx,ky,kpy)*basedpy(kx,ky);}
+                }}
                 par->datafP(kpx,kpy,kf)=fzero;
             }}
         }
@@ -550,7 +587,10 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
         ny(par->ny),npy(par->npy);
 
     cx_fmat A,a(1,1),B;
+    cx_fcube basey3d;
     cx_fmat basey,basex;
+    cx_fmat basepy0,basepx0;
+    cx_fmat basedpy,basedpx;
 
     for(kf=pnf1;kf<pnf2;kf++)  
     {
@@ -571,25 +611,35 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
             }}
         }
         else{
+            basey3d.zeros(nx,ny,npy+1);basex.zeros(nx,ny);
+            basepy0.zeros(nx,ny);basepx0.zeros(nx,ny);
+            basedpy.zeros(nx,ny);basedpx.zeros(nx,ny);
+            basepx0.set_imag(-w*par->coordx3d*(par->px_coord(0,0)-par->dpx));  
+            basepy0.set_imag(-w*par->coordy3d*(par->py_coord(0,0)));
+            basedpx.set_imag(-w*par->coordx3d*par->dpx);  
+            basedpy.set_imag(-w*par->coordy3d*par->dpy);
+            basedpy=exp(basedpy);basedpx=exp(basedpx);
+            basepy0=exp(basepy0);basepx0=exp(basepx0);
             B.zeros(npx,npy);
+            A.zeros(nx,ny);
             B=par->datafP.slice(kf);
+            basex=basepx0;
+            for(kpx=0;kpx<npx;kpx++){
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    basex(kx,ky)=basex(kx,ky)*basedpx(kx,ky);
+                }}
+            for(kpy=0;kpy<npy;kpy++){
+                if(kpx==0)
+                {basey3d.slice(0)=basepy0;}
             for(kx=0;kx<nx;kx++){
             for(ky=0;ky<ny;ky++){
-                float xcoord(par->coordx3d(kx,ky));
-                float ycoord(par->coordy3d(kx,ky));
-                cx_float fzero;
-            for(kpx=0;kpx<npx;kpx++){
-                float pxcoord(par->px_coord(kpx,0));
-            for(kpy=0;kpy<npy;kpy++){
-                float pycoord(par->py_coord(kpy,0));
-                cx_float fbasey,fbasex;
-                fbasex.imag(-w*xcoord*pxcoord);  
-                fbasey.imag(-w*ycoord*pycoord);  
-                fbasey=exp(fbasey);fbasex=exp(fbasex);
-                fzero+=B(kpx,kpy)*fbasex*fbasey;
+                A(kx,ky)+=(B(kpx,kpy)*basex(kx,ky)*basey3d(kx,ky,kpy));
+                if(kpx==0)
+                {basey3d(kx,ky,kpy+1)=basey3d(kx,ky,kpy)*basedpy(kx,ky);}
             }}
-                par->rebuildfx(kx,ky,kf)=fzero;
             }}
+            par->rebuildfx.slice(kf)=A;
         }
     }
     finish_thread[0]=true;
