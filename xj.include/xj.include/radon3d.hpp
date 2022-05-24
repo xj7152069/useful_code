@@ -1195,7 +1195,7 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
  fcube& trace, fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
  int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
  float fmax=150,float frule=50,int ncpu=1, float factor_L2=0.1,float factor_L1=1,\
- int iterations_num=45, float residual_ratio=0.1)
+ int iterations_num=45, float residual_ratio=0.1, bool dorecover=false)
 {
     struct linerradon3d par;
     int i,j,k;
@@ -1240,13 +1240,67 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
 
     beamformingCG3d(par,iterations_num,residual_ratio);
     //beamforminginv3d(par);
+    tauppanel=par.realdataTP;
+
+    if(dorecover){
+        //recover data
+        rebuildsignal(par);
+        recoverdata=par.realrebuildtx;
+        recovererr=recoverdata-trace;
+    }
+    
+
+    return 0;
+}
+
+int Beamforming_recoverdata_3D(fcube &recoverdata,fcube &tauppanel,\
+ fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
+ int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
+ float fmax=150,float frule=50,int ncpu=1)
+{
+    struct linerradon3d par;
+    int i,j,k;
+    int nz(ns),nx(ntrace),ny(nline),nf(ns);
+//////////////////////////radon par-set////////////////////////////
+    beamforming_parset(nx,ny,nz,par);
+    par.dpx=dpx;
+    par.dpy=dpy;
+    par.dz=dt;
+
+//The default px of central channel is zero
+    par.npx=npx;
+    par.p0x=pxmin;
+    par.npy=npy;
+    par.p0y=pymin;  
+
+//ncpu
+    par.numthread=ncpu;
+
+//Seismic trace coordinates
+    for(i=0;i<nx;i++){
+        for(j=0;j<ny;j++){
+            par.coordx3d(i,j)=coordx(i,j);
+            par.coordy3d(i,j)=coordy(i,j);
+        }}
+    par.regularization=false;
+//Parameters updated
+    beamforming_parupdate(par);
+//Frequency calculation range (number)
+    par.nf2=int(fmax/par.df); 
+    par.nf1=1; 
+//Low frequency constraint range (number)
+    par.rulef2=int(frule/par.df);
+    par.rulef1=1;
+
+//////////////////////////////////////////////////
+
+    par.realdataTP=tauppanel;
+    
     //recover data
     rebuildsignal(par);
-
-    tauppanel=par.realdataTP;
     recoverdata=par.realrebuildtx;
-    recovererr=recoverdata-trace;
 
+    
     return 0;
 }
 
