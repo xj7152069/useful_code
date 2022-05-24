@@ -154,6 +154,27 @@ fmat dataread(int nz, int nx, const char * filename)
     return data_mat;
 }
 
+void dataread(fmat & data_mat,int nz, int nx, const char * filename)
+{
+   char str[99];
+   strcpy(str, filename);
+
+   int i,j;
+   float read_data;
+   ifstream infile; 
+
+   infile.open(str,ios::binary);
+   if(!infile) cout<<"file open error: "<<str<<endl;
+      for(j=0;j<nx;j++)
+         {for(i=0;i<nz;i++)
+            {
+            infile.read((char *)&read_data, sizeof(read_data));  
+            data_mat(i,j)=read_data;
+            }
+         }
+    infile.close();
+}
+
 void dataread(fmat & data_mat, int nz, int nx, ifstream &inf)
 {
     int i,j;
