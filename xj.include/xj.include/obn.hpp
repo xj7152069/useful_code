@@ -297,9 +297,8 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
     int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
     int i,j,k,i1,j1,i2,j2,sx,sy;
     float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
-    float l_min(0.000001),l_sum(0.0),l_trace;
+    float l_min(0.0001),l_sum(0.0),l_trace;
     fmat green(n1,n2);
-    fmat* pgreen(&green);
 
     sy=jsy;
     sx=isx;
@@ -338,14 +337,18 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
         }
     }
 
+    fmat* pgreen;
+    pgreen=new fmat[ncpu];
+
     thread *pcal;
     pcal=new thread[ncpu];
     bool *finish_work;
     finish_work=new bool[ncpu];
     for(k=0;k<ncpu;k++){
         finish_work[k]=false;
+        pgreen[k]=green;
         pcal[k]=thread(multiple_code3d_onepoint_onefrequence,
-            u2,u1,pgreen,isx,jsy,(k+fn1),df,&(finish_work[k]));
+            u2,u1,&(pgreen[k]),isx,jsy,(k+fn1),df,&(finish_work[k]));
     }
     i=ncpu+fn1;
     while(i<fn2){
@@ -354,7 +357,7 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
             pcal[k].join();
             finish_work[k]=false;
             pcal[k]=thread(multiple_code3d_onepoint_onefrequence,
-                u2,u1,pgreen,isx,jsy,(i),df,&(finish_work[k]));
+                u2,u1,&(pgreen[k]),isx,jsy,(i),df,&(finish_work[k]));
             i++;
         }}
     }
@@ -363,6 +366,7 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
             pcal[k].join();
     }}
     delete [] pcal;
+    delete [] pgreen;
     delete [] finish_work;
 
 }
@@ -468,6 +472,8 @@ void get_taup2d_CCA(fmat &filterdata, fmat &datacov_out, fmat &data1, fmat &data
     float agcpow1,agcpow2,Butterworth;
     fmat datacov1(nx,ny,fill::zeros);
     fmat datacov2(nx,ny,fill::zeros);
+    fmat datacov1_unit(nx,ny,fill::zeros);
+    fmat datacov2_unit(nx,ny,fill::zeros);
     fmat filter(nx,ny,fill::zeros);
 
     for(i=wx;i<nx-wx;i++){
@@ -486,15 +492,30 @@ void get_taup2d_CCA(fmat &filterdata, fmat &datacov_out, fmat &data1, fmat &data
         agcpow1=0;
         agcpow2=0;
     }}
+/*
+    for(i=wx;i<nx-wx;i++){
+    for(j=wy;j<ny-wy;j++){
+        agcpow1=0;
+        agcpow2=0;
+        for(i1=-wx;i1<=wx;i1++){
+        for(j1=-wy;j1<=wy;j1++){
+            agcpow1+=datacov1(i+i1,j+j1);
+            agcpow2+=datacov2(i+i1,j+j1);
+        }}
+        datacov1_unit(i,j)=datacov1(i,j)/(agcpow1);
+        datacov2_unit(i,j)=datacov2(i,j)/(agcpow2);
+    }}
+    datacov2=datacov2_unit;
+    datacov1=datacov1_unit;
+*/
     datacov1=fmatsmooth(datacov1,nx,ny,Butterworth_smooth);
     datacov1=datacov1/datacov1.max();
     datacov2=fmatsmooth(datacov2,nx,ny,Butterworth_smooth);
     datacov2=datacov2/datacov2.max();
-
     for(i=wx;i<nx-wx;i++){
     for(j=wy;j<ny-wy;j++){
         filter(i,j)=Butterworth_factor*datacov1(i,j)/datacov2(i,j);
-        Butterworth=1/sqrt(1+pow(filter(i,j),Butterworth_n));
+        Butterworth=1/sqrt(1+pow(filter(i,j),Butterworth_n));  
         filterdata(i,j)=data1(i,j)-data1(i,j)*(Butterworth);
         datacov_out(i,j)=Butterworth;
     }}

@@ -131,6 +131,56 @@ fmat matmul(fmat mat1, T1 n, int nz, int nx)
     return a;
 }
 
+inline fmat getsubfmat(fmat & data, int n1x1,int n1x2,int n2x1,int n2x2 ){
+    int submatn1(n1x2-n1x1+1),submatn2(n2x2-n2x1+1);
+    fmat submat(submatn1,submatn2);
+    int i,j;
+    for(i=n1x1;i<=n1x2;i++){
+    for(j=n2x1;j<=n2x2;j++){
+        submat(i-n1x1,j-n2x1)=data(i,j);
+    }}
+    return submat;
+}
+
+inline void copydata2subfmat(fmat & data, fmat & subdata,\
+ int n1x1,int n1x2,int n2x1,int n2x2 ){
+    int submatn1(n1x2-n1x1+1),submatn2(n2x2-n2x1+1);
+    int i,j;
+    for(i=n1x1;i<=n1x2;i++){
+    for(j=n2x1;j<=n2x2;j++){
+        data(i,j)=subdata(i-n1x1,j-n2x1);
+    }}
+}
+
+inline void adddata2subfmat(fmat & data, fmat & subdata,\
+ int n1x1,int n1x2,int n2x1,int n2x2 ){
+    int submatn1(n1x2-n1x1+1),submatn2(n2x2-n2x1+1);
+    int i,j;
+    for(i=n1x1;i<=n1x2;i++){
+    for(j=n2x1;j<=n2x2;j++){
+        data(i,j)+=subdata(i-n1x1,j-n2x1);
+    }}
+}
+
+inline void muldata2subfmat(fmat & data, fmat & subdata,\
+ int n1x1,int n1x2,int n2x1,int n2x2 ){
+    int submatn1(n1x2-n1x1+1),submatn2(n2x2-n2x1+1);
+    int i,j;
+    for(i=n1x1;i<=n1x2;i++){
+    for(j=n2x1;j<=n2x2;j++){
+        data(i,j)*=subdata(i-n1x1,j-n2x1);
+    }}
+}
+inline void mul2subfmat(fmat & data, float subdata,\
+ int n1x1,int n1x2,int n2x1,int n2x2 ){
+    int submatn1(n1x2-n1x1+1),submatn2(n2x2-n2x1+1);
+    int i,j;
+    for(i=n1x1;i<=n1x2;i++){
+    for(j=n2x1;j<=n2x2;j++){
+        data(i,j)*=subdata;
+    }}
+}
+/////////////////////////////////////////////////////////
 fmat dataread(int nz, int nx, const char * filename)
 {
    char str[99];
