@@ -593,5 +593,57 @@ for(i=0;i<ntrace;i++){
     }
     return 0;
 }
+int Slantstack_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
+ fcube& trace, fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
+ int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
+ int ncpu=1, float factor_L2=0.1,int iterations_num=45, float residual_ratio=0.1,\
+ bool dorecover=false,bool docginv=true)
+{
+    struct slantstack3d par;
+
+    int i,j,k;
+    int nz2(ns),nz(ns),nx(ntrace),ny(nline),nf(0);
+//////////////////////////radon par-set////////////////////////////
+    slantstack3d_parset(nx,ny,nz,par);
+    par.dp_trace=dpx;
+    par.dp_line=dpy;
+    par.dt=dt;
+
+//The default px of central channel is zero
+    par.np_trace=npx;
+    par.ptrace_coord0=pxmin;
+    par.np_line=npy;
+    par.pline_coord0=pymin;  
+
+//ncpu
+    par.numthread=ncpu;
+
+//regularization parameter
+    par.factor_l2=nx*ny*factor_L2;  //L2, Tikhonov 
+//Parameters updated
+    slantstack3d_parupdate(par);
+//Seismic trace coordinates
+    for(i=0;i<nx;i++){
+    for(j=0;j<ny;j++){
+        par.ntrace_coordx(i,j)=coordx(i,j);
+        par.nline_coordy(i,j)=coordy(i,j);
+    }}
+//////////////////////////////////////////////////
+    par.datatx=trace;
+    slantstack3d_stack_multithread(par);
+    if(docginv){
+        slantstack3d_stack_CG_invL_operator\
+        (par,iterations_num,residual_ratio);
+    }
+    tauppanel=par.datatp;
+
+    if(dorecover){
+        slantstack3d_recover_multithread(par);
+        recoverdata=par.recoverdatatx;
+        recovererr=recoverdata-trace;
+    }
+    
+    return 0;
+}
 
 #endif
