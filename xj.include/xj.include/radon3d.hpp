@@ -79,7 +79,7 @@ struct linerradon3d
     float dz,dx,dy,df,dpx,dpy,p0x,p0y,dig_n;
 /*****************************************************/
     fcube data,realdataTP,realrebuildtx;
-    cx_fcube datafx,rebuildfx,datafP,rebuildfp,dataTP,rebuildtx;
+    cx_fcube datafx,rebuildfx,datafP;
 /*****************************************************/
     fmat p_power,py_coord,px_coord,x_coord,y_coord,coordx3d,coordy3d;
     char allAreal[99],allAimag[99];
@@ -122,12 +122,10 @@ void beamforming_parupdate(struct linerradon3d & par)
     par.df=1.0/par.dz/par.nf;
     par.data.zeros(par.nx,par.ny,par.nz);
     par.datafP.zeros(par.npx,par.npy,par.nf);
-    par.datafx.zeros(par.nx,par.ny,par.nf);
-    par.dataTP.zeros(par.npx,par.npy,par.nz);
+    //par.datafx.zeros(par.nx,par.ny,par.nf);
     par.realdataTP.zeros(par.npx,par.npy,par.nz);
-    par.rebuildfp.zeros(par.npx,par.npy,par.nf);
-    par.rebuildfx.zeros(par.nx,par.ny,par.nf);
-    par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
+    //par.rebuildfx.zeros(par.nx,par.ny,par.nf);
+    //par.realrebuildtx.zeros(par.nx,par.ny,par.nz);
     par.p_power.zeros(par.npx,par.npy);
     par.nf1=1;
     par.rulef1=1;
@@ -163,10 +161,7 @@ void beamforming_parupdate(struct linerradon3d & par)
 
 void beamforming_cleardata(struct linerradon3d & par)
 {
-    par.dataTP.fill(0.0);
-    par.realdataTP.fill(0.0);
-    par.rebuildfx.fill(0.0);
-    par.realrebuildtx.fill(0.0);
+
 }
 
 ////////////beamforminginv3d use c++ thread/////////////////
@@ -498,7 +493,7 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
             basey3d.zeros(nx,ny,npy+1);basex.zeros(nx,ny);
             basepy0.zeros(nx,ny);basepx0.zeros(nx,ny);
             basedpy.zeros(nx,ny);basedpx.zeros(nx,ny);
-            basepx0.set_imag(w*par->coordx3d*(par->px_coord(0,0)-par->dpx));  
+            basepx0.set_imag(w*par->coordx3d*(par->px_coord(0,0)));  
             basepy0.set_imag(w*par->coordy3d*(par->py_coord(0,0)));
             basedpx.set_imag(w*par->coordx3d*par->dpx);  
             basedpy.set_imag(w*par->coordy3d*par->dpy);
@@ -507,20 +502,27 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
             B.zeros(nx,ny);
             B=par->datafx.slice(kf); 
             basex=basepx0;
-            for(kpx=0;kpx<npx;kpx++){
-                for(kx=0;kx<nx;kx++){
-                for(ky=0;ky<ny;ky++){
-                    basex(kx,ky)=basex(kx,ky)*basedpx(kx,ky);
-                }}
-                if(kpx==0)
+            for(kpx=0;kpx<1;kpx++){
                 {basey3d.slice(0)=basepy0;}
             for(kpy=0;kpy<npy;kpy++){
                 cx_float fzero;
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
                     fzero+=B(kx,ky)*basex(kx,ky)*basey3d(kx,ky,kpy);
-                    if(kpx==0)
                     {basey3d(kx,ky,kpy+1)=basey3d(kx,ky,kpy)*basedpy(kx,ky);}
+                }}
+                par->datafP(kpx,kpy,kf)=fzero;
+            }}
+            for(kpx=1;kpx<npx;kpx++){
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    basex(kx,ky)=basex(kx,ky)*basedpx(kx,ky);
+                }}
+            for(kpy=0;kpy<npy;kpy++){
+                cx_float fzero;
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    fzero+=B(kx,ky)*basex(kx,ky)*basey3d(kx,ky,kpy);
                 }}
                 par->datafP(kpx,kpy,kf)=fzero;
             }}
@@ -531,6 +533,7 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
 
 void linerradon(struct linerradon3d & par)
 {
+    par.datafx.set_size(par.nx,par.ny,par.nf);
     tx2fx_3d_thread(par.datafx,par.data,par.numthread);
     
     int ncpu(par.numthread),pnf1,pnf2,k,kcpu,kf;
@@ -562,6 +565,8 @@ void linerradon(struct linerradon3d & par)
     
     //fp_to_tp3d_linerradon3d(par);
     fx2tx_3d_thread(par.realdataTP,par.datafP,par.numthread);
+    par.datafx.set_size(1,1,1);
+
     delete[] pcal;
     delete[] finish_thread;
 }
@@ -614,7 +619,7 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
             basey3d.zeros(nx,ny,npy+1);basex.zeros(nx,ny);
             basepy0.zeros(nx,ny);basepx0.zeros(nx,ny);
             basedpy.zeros(nx,ny);basedpx.zeros(nx,ny);
-            basepx0.set_imag(-w*par->coordx3d*(par->px_coord(0,0)-par->dpx));  
+            basepx0.set_imag(-w*par->coordx3d*(par->px_coord(0,0)));  
             basepy0.set_imag(-w*par->coordy3d*(par->py_coord(0,0)));
             basedpx.set_imag(-w*par->coordx3d*par->dpx);  
             basedpy.set_imag(-w*par->coordy3d*par->dpy);
@@ -624,19 +629,24 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
             A.zeros(nx,ny);
             B=par->datafP.slice(kf);
             basex=basepx0;
-            for(kpx=0;kpx<npx;kpx++){
+            for(kpx=0;kpx<1;kpx++){
+            for(kpy=0;kpy<npy;kpy++){
+                {basey3d.slice(0)=basepy0;}
+            for(kx=0;kx<nx;kx++){
+            for(ky=0;ky<ny;ky++){
+                A(kx,ky)+=(B(kpx,kpy)*basex(kx,ky)*basey3d(kx,ky,kpy));
+                {basey3d(kx,ky,kpy+1)=basey3d(kx,ky,kpy)*basedpy(kx,ky);}
+            }}
+            }}
+            for(kpx=1;kpx<npx;kpx++){
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
                     basex(kx,ky)=basex(kx,ky)*basedpx(kx,ky);
                 }}
             for(kpy=0;kpy<npy;kpy++){
-                if(kpx==0)
-                {basey3d.slice(0)=basepy0;}
             for(kx=0;kx<nx;kx++){
             for(ky=0;ky<ny;ky++){
                 A(kx,ky)+=(B(kpx,kpy)*basex(kx,ky)*basey3d(kx,ky,kpy));
-                if(kpx==0)
-                {basey3d(kx,ky,kpy+1)=basey3d(kx,ky,kpy)*basedpy(kx,ky);}
             }}
             }}
             par->rebuildfx.slice(kf)=A;
@@ -648,6 +658,7 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
 void rebuildsignal(struct linerradon3d & par)
 {
     //tp_to_fp3d_linerradon3d(par);
+    par.rebuildfx.zeros(par.nx,par.ny,par.nf);
     tx2fx_3d_thread(par.datafP,par.realdataTP,par.numthread);
 
     int ncpu(par.numthread),pnf1,pnf2,k,kf,kcpu;
@@ -676,9 +687,11 @@ void rebuildsignal(struct linerradon3d & par)
         if(pcal[kcpu].joinable()){
         pcal[kcpu].join();}
     }
-   
+    par.realrebuildtx.set_size(par.nx,par.ny,par.nz);
     fx2tx_3d_thread(par.realrebuildtx,par.rebuildfx,par.numthread);
     par.realrebuildtx=4*par.realrebuildtx;
+    par.rebuildfx.set_size(1,1,1);
+
     delete[] pcal;
     delete[] finish_thread;
 }
@@ -1302,7 +1315,6 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
         recovererr=recoverdata-trace;
     }
     
-
     return 0;
 }
 
