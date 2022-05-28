@@ -1289,12 +1289,15 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
     par.rulef1=1;
 
     par.data=trace;
+    trace.set_size(1,1,1);
+    tauppanel.set_size(1,1,1);
 //////////////////////////////////////////////////
     linerradon(par); 
 
     beamformingCG3d(par,iterations_num,residual_ratio);
     //beamforminginv3d(par);
     tauppanel=par.realdataTP;
+    trace=par.data;
 
     if(dorecover){
         //recover data
