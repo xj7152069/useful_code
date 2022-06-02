@@ -70,8 +70,8 @@ struct slantstack3d
     int ntrace,nline,nt,np_trace,np_line,numthread;
     float d_trace,d_line,dt,dp_trace,dp_line,\
         ptrace_coord0,pline_coord0,line_coord0,trace_coord0;
-    fcube datatx,datatp,recoverdatatx;
-    fmat weighted_fmat,pline_coord,ptrace_coord,nline_coordy,ntrace_coordx;
+    fcube weighted_fcube,datatx,datatp,recoverdatatx;
+    fmat pline_coord,ptrace_coord,nline_coordy,ntrace_coordx;
     float factor_l1,factor_l2;
 };
 //Sets a General parameters of initialization parameters
@@ -92,6 +92,7 @@ void slantstack3d_parupdate(struct slantstack3d & par)
     par.ntrace_coordx.zeros(par.ntrace,par.nline);
     par.nline_coordy.zeros(par.ntrace,par.nline);
     par.datatp.zeros(par.np_trace,par.np_line,par.nt);
+    par.weighted_fcube.zeros(par.np_trace,par.np_line,par.nt);
     par.ptrace_coord.zeros(par.np_trace,1);
     par.pline_coord.zeros(par.np_line,1);
     
@@ -378,19 +379,83 @@ inline float fcube_inner_product(fcube data1, fcube data2){
     return inner_num;
 } 
 
+//////////////////////////////////////////////////////////////////////
+void fcubemul(fcube& outdata, fcube& mat1, fcube& mat2)
+{
+    int i,j,k,nx,ny,nz;
+    ny=outdata.n_cols;
+    nx=outdata.n_rows;
+    nz=outdata.n_slices;
+
+    for(i=0;i<nx;i++){
+    for(j=0;j<ny;j++){
+    for(k=0;k<nz;k++){
+        outdata(i,j,k)=mat1(i,j,k)*mat2(i,j,k);
+    }}}
+}
+void get_weighted_fcube(fcube &filter, fcube &data1,\
+ int wx=5, int wy=5, int wz=10)
+{
+    int i,j,k,i1,j1,nx,ny,nz,k1,k2;
+    int win;
+    ny=data1.n_cols;
+    nx=data1.n_rows;
+    nz=data1.n_slices;
+    win=(nx-1)/2;
+    wx=min(win,wx);
+    win=(ny-1)/2;
+    wy=min(win,wy);
+    win=(nz-1)/2;
+    wz=min(win,wz);
+
+    float agcpow1;
+    for(i=wx;i<nx-wx;i++){
+    for(j=wy;j<ny-wy;j++){
+    for(k=wz;k<nz-wz;k++){
+        agcpow1=0;
+        for(i1=-wx;i1<=wx;i1++){
+        for(j1=-wy;j1<=wy;j1++){
+        for(k1=-wz;k1<=wz;k1++){
+            //agcpow1+=(data1(i+i1,j+j1,k+k1)*data1(i-i1,j+j1,k+k1)*\
+                data1(i+i1,j-j1,k+k1)*data1(i-i1,j-j1,k+k1))*\
+                (data1(i+i1,j+j1,k-k1)*data1(i-i1,j+j1,k-k1)*\
+                data1(i+i1,j-j1,k-k1)*data1(i-i1,j-j1,k-k1));
+            agcpow1+=data1(i+i1,j+j1,k+k1)*data1(i+i1,j+j1,k+k1);
+        }}}
+        filter(i,j,k)=sqrt(agcpow1);
+        agcpow1=0;
+    }}}
+    filter=(filter)/filter.max();
+    for(i=0;i<nx;i++){
+    for(j=0;j<ny;j++){
+    for(k=0;k<nz;k++){
+        filter(i,j,k)=1.0/(1.0+exp(10*(0.5-filter(i,j,k))));
+    }}}
+    filter=(filter)/filter.max();
+    filter+=0.00001;
+    filter=1.0/filter;
+    filter=(filter)/filter.max();
+}
+
 void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
  int iterations_num=9, float residual_ratio=1)
 {
+    get_weighted_fcube(par.weighted_fcube,par.datatp);
+    float dataxs(1.0);
+    par.weighted_fcube*=par.factor_l1;
+    par.weighted_fcube+=par.factor_l2;
+    datawrite3d_bycol_transpose(par.weighted_fcube,par.nt,par.np_trace,"weight.bin");
 
     int ip,jp,in,jn,k,iter(0);
     int n1(par.datatx.n_rows),n2(par.datatx.n_cols),n3(par.datatx.n_slices),\
         np1(par.datatp.n_rows),np2(par.datatp.n_cols);
     fcube gradient_rk,gradient_rk_1,\
         gradient_cg_pk,gradient_cg_pk_1,\
-        datatp_k,datatp_k_1,\
+        datatp_k,datatp_k_1,datatp_weighted,\
         recoverdatatx_uk,A_gradient_cg_pk,A_datatp_k;
     fmat sum_num(1,1);
     float beta_k,alpha_k,residual_pow,residual_k;
+    datatp_weighted.copy_size(par.datatp);
     datatp_k.copy_size(par.datatp);
     datatp_k_1.copy_size(par.datatp);
     gradient_rk.copy_size(par.datatp);
@@ -407,6 +472,8 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
     iter=0;
 
     datatp_k=par.datatp/par.nline/par.ntrace;
+//    fcubemul(datatp_weighted,datatp_k,par.weighted_fcube);
+//    datatp_k=datatp_weighted;
     slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k,\
         par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt,par.numthread);
@@ -414,7 +481,8 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
         par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt,par.numthread);
     //regularization
-    A_datatp_k=A_datatp_k+datatp_k*par.factor_l2;
+    fcubemul(datatp_weighted,datatp_k,par.weighted_fcube);
+    A_datatp_k=dataxs*A_datatp_k+datatp_weighted;
 
     gradient_rk=par.datatp-A_datatp_k;
     gradient_cg_pk=gradient_rk;
@@ -430,7 +498,8 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
         par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt,par.numthread);
     //regularization
-    A_gradient_cg_pk=A_gradient_cg_pk+gradient_cg_pk*par.factor_l2;
+    fcubemul(datatp_weighted,gradient_cg_pk,par.weighted_fcube);
+    A_gradient_cg_pk=dataxs*A_gradient_cg_pk+datatp_weighted;
         
     alpha_k=fcube_inner_product(gradient_rk,gradient_rk);
     alpha_k=alpha_k/fcube_inner_product(gradient_cg_pk,A_gradient_cg_pk);
@@ -459,7 +528,8 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
             par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
             par.dt,par.numthread);
         //regularization
-        A_gradient_cg_pk=A_gradient_cg_pk+gradient_cg_pk*par.factor_l2;
+        fcubemul(datatp_weighted,gradient_cg_pk,par.weighted_fcube);
+        A_gradient_cg_pk=dataxs*A_gradient_cg_pk+datatp_weighted;
         
         alpha_k=fcube_inner_product(gradient_rk,gradient_rk);
         alpha_k=alpha_k/fcube_inner_product(gradient_cg_pk,A_gradient_cg_pk);
@@ -485,7 +555,7 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
 int Slantstack_CG_2D(float **trace, int ntrace, int ns, float dt,\
  float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr,\
  float **recoverdata, bool dorecover=true, int ncpu=1,  \
- float factor_L2=1.0, int iterations_num=48, float residual_ratio=0.5)
+ float factor_L2=1.0,float factor_L1=1.0, int iterations_num=48, float residual_ratio=0.5)
 {
 /* discription.
 This function will do the local LRT over local traces .
@@ -546,6 +616,7 @@ Conjugate gradient method iteration error, The smaller the more accurate
 
 //regularization parameter
     par.factor_l2=nx*ny*factor_L2;  //L2, Tikhonov 
+    par.factor_l1=factor_L1;  //L1 
 
 //Parameters updated
     slantstack3d_parupdate(par);
@@ -596,8 +667,8 @@ for(i=0;i<ntrace;i++){
 int Slantstack_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
  fcube& trace, fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
  int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
- int ncpu=1, float factor_L2=0.1,int iterations_num=45, float residual_ratio=0.1,\
- bool dorecover=false,bool docginv=true)
+ int ncpu=1, float factor_L2=0.1,float factor_L1=0.1,int iterations_num=45,\
+ float residual_ratio=0.1, bool dorecover=false,bool docginv=true)
 {
     struct slantstack3d par;
 
@@ -619,7 +690,8 @@ int Slantstack_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
     par.numthread=ncpu;
 
 //regularization parameter
-    par.factor_l2=nx*ny*factor_L2;  //L2, Tikhonov 
+    par.factor_l2=factor_L2;  //L2, Tikhonov 
+    par.factor_l1=factor_L1;  //L1 
 //Parameters updated
     slantstack3d_parupdate(par);
 //Seismic trace coordinates
