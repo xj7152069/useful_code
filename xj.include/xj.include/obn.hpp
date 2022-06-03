@@ -188,8 +188,9 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
             }
             matd=mat1*matq;
             for(i=nw;i<nwt;i++){
-                dataup[0](i+kwt,k)+=datavz[0](i+kwt,k)-matd(i,0);
-                datadown[0](i+kwt,k)+=datavz[0](i+kwt,k)+matd(i,0);
+                dataup[0](i+kwt,k)=datavz[0](i+kwt,k)-matd(i,0);
+                datadown[0](i+kwt,k)=datavz[0](i+kwt,k)+matd(i,0);
+                //datadown[0](i+kwt,k)=datavz[0](i+kwt,k)-dataup[0](i+kwt,k);
             }
         }
     }
