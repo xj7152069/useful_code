@@ -345,6 +345,11 @@ fmat hilbert1D(fmat s, int n, float dt)
     {
         ss(i,0)=sh2[i];
     }
+    delete [] h2;
+    delete [] s2;
+    delete [] sh;
+    delete [] sh2;
+    delete [] h;
     return ss;
 }
 
