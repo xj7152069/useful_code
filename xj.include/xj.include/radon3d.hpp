@@ -979,14 +979,18 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     }
     if((residual_k(0,0)/residual_pow(0,0))>(0.5/residual_ratio)\
         ||isnan(residual_k(0,0)))
-        {par[0].datafP.slice(kf).fill(0);
-            convergence[0]=false;}
+        {
+            par[0].datafP.slice(kf).fill(0);
+            convergence[0]=false;
+            cout<<"kf="<<kf<<" ||iteration times:"<<iter<<" ||err level:"<<\
+            residual_k(0,0)/residual_pow(0,0)<<" ("<<convergence[0]<<endl;
+        }
         else{
             par[0].datafP.slice(kf)=datatp_k;
             convergence[0]=true;
         }
     finish_thread[0]=true;
-    cout<<"kf="<<kf<<" ||iteration times:"<<iter<<" ||err level:"<<\
+    //cout<<"kf="<<kf<<" ||iteration times:"<<iter<<" ||err level:"<<\
         residual_k(0,0)/residual_pow(0,0)<<" ("<<convergence[0]<<endl;
 }
 
@@ -1032,6 +1036,22 @@ bool regularization=true)
         if(pcal[kcpu].joinable()){
         pcal[kcpu].join();}
     }
+
+    cx_fmat s1,s2;
+    for(kf=par.nf1+1;kf<par.nf2-1;kf++){
+        if(!convergence[kf]&&convergence[kf-1]&&convergence[kf+1]){
+            s1=par.datafP.slice(kf-1);
+            s2=par.datafP.slice(kf+1);
+            par.datafP.slice(kf).set_real((real(s1)+real(s2))/2.0);
+            par.datafP.slice(kf).set_imag((imag(s1)+imag(s2))/2.0);
+            convergence[kf]=true;
+        }
+        else if(!convergence[kf]&&convergence[kf-1]){
+            par.datafP.slice(kf)=par.datafP.slice(kf-1);
+            convergence[kf]=true;
+        }
+    }
+
     fx2tx_3d_thread(par.realdataTP,par.datafP,par.numthread);
     delete[] pcal;
     delete[] finish_thread;
