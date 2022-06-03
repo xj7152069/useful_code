@@ -19,8 +19,8 @@ cx_fmat get_blackman_rightwin2d(cx_fmat win, float w, float wf);
 fmat get_blackman_upwin2d(fmat win, float w);
 fmat get_blackman_downwin2d(fmat win, float w);
 float Blackman(float n, float N);
-fmat hilbert1D(fmat &s, int n, float dt);
-fmat diff1D(fmat &s, int n, float dt);
+fmat hilbert1D(fmat s, int n, float dt);
+fmat diff1D(fmat s, int n, float dt);
 ///////////////////////////////////////////////////////////////////
 
 class agc2d{
@@ -277,7 +277,7 @@ void get_agc2d_thread(agc2d & agc)
 }
 */
 ///////////////////////////////////////////////////////////////////
-fmat diff1D(fmat &s, int n, float dt)
+fmat diff1D(fmat s, int n, float dt)
 {
     fmat ss(n,1);
     int i,j;
@@ -289,7 +289,7 @@ fmat diff1D(fmat &s, int n, float dt)
     return ss;
 }
 
-fmat hilbert1D(fmat &s, int n, float dt)
+fmat hilbert1D(fmat s, int n, float dt)
 {
     float *h, pi(3.1415926);
     int i,j,z,hn;
