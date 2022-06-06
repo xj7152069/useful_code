@@ -336,6 +336,7 @@ void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
 
         nwt=nt-5;
         dnwt=nwt-nw-5;
+        kwt=0;
         //cout<<nwt<<","<<dnwt<<"tracl = "<<k<<endl;
 
         //for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
