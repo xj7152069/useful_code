@@ -22,9 +22,11 @@ struct demultiple2d
     int agcwx,agcwy;
     fmat datap,datavz,datapagc,datavzagc;
     fmat datap2,datavz2;
-    fmat dataup,datadown;
 
     fmat data2d, datadict, datah, datad, datahd;
+    fmat dataup,datadown;
+    fmat datawinbeg,datawinend;
+
     int&n1=nx;
     int&n2=ny;
     int nwp,nwph,nwpd,nwphd;
@@ -59,9 +61,6 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
     int nwt,int dnwt,float zzh, int ncpu, bool multiple_win=true)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1,nx2,dnx;
-    //fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
-    //    matq(nw,1),mat2(nw,1),matd(nwt,1),matD(nw,nw),matq0(nw,1);
-    //fmat digmat(nw,nw,fill::zeros);
     fmat datap(nt,nx),datavz(nt,nx);
 
 ////////////////////////////////////////////////////////////////////
@@ -92,7 +91,8 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
         pdata, pdict,pdataph, pdatapd, pdataphd,\
         nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx,multiple_win);
     for(k=0;k<ncpu;k++){
-        pcal[k].join();
+        if(pcal[k].joinable())
+            pcal[k].join();
     }
     delete [] pcal;
 
@@ -122,7 +122,7 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     digmat.diag()+=1;
 
         for(k=nx1;k<nx2;k++){
-        cout<<"tracl = "<<k<<endl;
+        //cout<<"tracl = "<<k<<endl;
         for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
             mat1.fill(0.0);
 
@@ -178,7 +178,6 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
             
             digmat.fill(0);
             digmat.diag()+=(matD.max()*zzh+zzh);
-            //cout<<digmat(1,1)<<endl;
             if(kwt==0 || multiple_win){
                 matq=inv(matD+digmat)*mat1.t()*matd;
                 matq0=matq;
@@ -195,6 +194,302 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
         }
     }
 
+}
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
+    fmat* datavz, fmat* datap,fmat*dataph, fmat* datapd, fmat*dataphd,\
+    fmat * datawinbeg, fmat * datawinend,\
+    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
+    float zzh,int nx1,int nx2);
+void single_trace_dewave_withdatawin(fmat & dataup, fmat & datadown,\
+    fmat & data, fmat & dict,fmat &dataph, fmat &datapd, fmat &dataphd,\
+    fmat & datawinbeg, fmat & datawinend,\
+    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
+    float zzh, int ncpu)
+{
+    int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1,nx2,dnx;
+    fmat datap(nt,nx),datavz(nt,nx);
+
+////////////////////////////////////////////////////////////////////
+    float xs;
+    xs=data.max()-data.min();
+    datavz=data/(xs);
+    datap=dict/(dict.max()-dict.min());
+    dataph=dataph/(dataph.max()-dataph.min());
+    datapd=datapd/(datapd.max()-datapd.min());
+    dataphd=dataphd/(dataphd.max()-dataphd.min());
+////////////////////////////////////////////////////////////////////
+    fmat* pdataup=(&dataup); fmat* pdatadown=(&datadown);
+    fmat* pdatawinbeg=(&datawinbeg); fmat* pdatawinend=(&datawinend);
+    fmat* pdata=(&datavz); fmat* pdict=(&datap);
+    fmat* pdataph=(&dataph); fmat* pdatapd=(&datapd);
+    fmat* pdataphd=(&dataphd);
+    thread* pcal;
+    pcal=new thread[ncpu];
+    dnx=nx/ncpu;
+    nx1=0;
+    for(k=0;k<ncpu-1;k++){
+        nx2=nx1+dnx;
+        pcal[k]=thread(single_trace_dewave_withdatawin_pthread,pdataup, pdatadown,\
+            pdata, pdict,pdataph, pdatapd, pdataphd,pdatawinbeg, pdatawinend,\
+            nt, nx,nwp, nwph, nwpd, nwphd, zzh,nx1,nx2);
+        nx1=nx2;
+    }
+    pcal[ncpu-1]=thread(single_trace_dewave_withdatawin_pthread,pdataup, pdatadown,\
+        pdata, pdict,pdataph, pdatapd, pdataphd,pdatawinbeg, pdatawinend,\
+        nt, nx,nwp, nwph, nwpd, nwphd, zzh,nx1,nx);
+    for(k=0;k<ncpu;k++){
+        pcal[k].join();
+    }
+    delete [] pcal;
+
+////////////////////////////////////////////////////////////////////
+    for(i=0;i<nt;i++){
+        for(j=0;j<nx;j++){
+            if(isnan(abs(dataup(i,j))))
+                {dataup(i,j)=0;}
+            if(isnan(abs(datadown(i,j))))
+                {datadown(i,j)=0;}
+        }
+    }
+    datadown*=xs;
+    dataup*=xs;
+}
+
+void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
+    fmat* datavz, fmat* datap,fmat*dataph, fmat* datapd, fmat*dataphd,\
+    fmat * datawinbeg, fmat * datawinend,\
+    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
+    float zzh,int nx1,int nx2)
+{
+    int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),kwtbeg,kwtend,nwt,dnwt;
+    fmat matq0(nw,1);
+    
+    for(k=nx1;k<nx2;k++){
+        kwtbeg=datawinbeg[0](k,0);
+        kwtend=datawinend[0](k,0);
+        nwt=kwtend-kwtbeg;
+        {
+        fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
+            matq(nw,1),mat2(nw,1),matd(nwt,1),matD(nw,nw);
+        fmat digmat(nw,nw,fill::zeros);
+        digmat.diag()+=1;
+        kwt=kwtbeg;
+            mat1.fill(0.0);
+            mat0.fill(0.0);
+            for(i=kwt;i<kwt+nwt;i++){
+                for(j=kwt;j<kwt+nwp;j++){
+                    if((i-j)>=0)
+                        mat0(i-kwt,j-kwt)=datap[0](i-j+kwt,k);
+                }
+            }
+            for(j=kwt;j<kwt+nwp;j++){
+                mat1.col(j-kwt)=mat0.col(j-kwt);
+            }
+
+            mat0.fill(0.0);
+            for(i=kwt;i<kwt+nwt;i++){
+                for(j=kwt;j<kwt+nwph;j++){
+                    if((i-j)>=0)
+                        mat0(i-kwt,j-kwt)=dataph[0](i-j+kwt,k);
+                }
+            }
+            for(j=kwt;j<kwt+nwph;j++){
+                mat1.col(j-kwt+nwp)=mat0.col(j-kwt);
+            }
+
+            mat0.fill(0.0);
+            for(i=kwt;i<kwt+nwt;i++){
+                for(j=kwt;j<kwt+nwpd;j++){
+                    if((i-j)>=0)
+                        mat0(i-kwt,j-kwt)=datapd[0](i-j+kwt,k);
+                }
+            }
+            for(j=kwt;j<kwt+nwpd;j++){
+                mat1.col(j-kwt+nwp+nwph)=mat0.col(j-kwt);
+            }
+
+            mat0.fill(0.0);
+            for(i=kwt;i<kwt+nwt;i++){
+                for(j=kwt;j<kwt+nwphd;j++){
+                    if((i-j)>=0)
+                        mat0(i-kwt,j-kwt)=dataphd[0](i-j+kwt,k);
+                }
+            }
+            for(j=kwt;j<kwt+nwphd;j++){
+                mat1.col(j-kwt+nwp+nwph+nwpd)=mat0.col(j-kwt);
+            }
+            ///////////
+            
+            for(i=0;i<nwt;i++){
+                matd(i,0)=datavz[0](i+kwt,k);
+            }
+            matD=mat1.t()*mat1;
+            
+            digmat.fill(0);
+            digmat.diag()+=(matD.max()*zzh+zzh);
+
+            matq=inv(matD+digmat)*mat1.t()*matd;
+            matq0=matq;
+        }
+
+        nwt=nt-5;
+        dnwt=nwt-nw-5;
+        //cout<<nwt<<","<<dnwt<<"tracl = "<<k<<endl;
+
+        //for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
+        {fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
+            matq(nw,1),mat2(nw,1),matd(nwt,1),matD(nw,nw);
+            
+            mat1.fill(0.0);
+            mat0.fill(0.0);
+            for(i=kwt;i<kwt+nwt;i++){
+                for(j=kwt;j<kwt+nwp;j++){
+                    if((i-j)>=0)
+                        mat0(i-kwt,j-kwt)=datap[0](i-j+kwt,k);
+                }
+            }
+            for(j=kwt;j<kwt+nwp;j++){
+                mat1.col(j-kwt)=mat0.col(j-kwt);
+            }
+
+            mat0.fill(0.0);
+            for(i=kwt;i<kwt+nwt;i++){
+                for(j=kwt;j<kwt+nwph;j++){
+                    if((i-j)>=0)
+                        mat0(i-kwt,j-kwt)=dataph[0](i-j+kwt,k);
+                }
+            }
+            for(j=kwt;j<kwt+nwph;j++){
+                mat1.col(j-kwt+nwp)=mat0.col(j-kwt);
+            }
+
+            mat0.fill(0.0);
+            for(i=kwt;i<kwt+nwt;i++){
+                for(j=kwt;j<kwt+nwpd;j++){
+                    if((i-j)>=0)
+                        mat0(i-kwt,j-kwt)=datapd[0](i-j+kwt,k);
+                }
+            }
+            for(j=kwt;j<kwt+nwpd;j++){
+                mat1.col(j-kwt+nwp+nwph)=mat0.col(j-kwt);
+            }
+
+            mat0.fill(0.0);
+            for(i=kwt;i<kwt+nwt;i++){
+                for(j=kwt;j<kwt+nwphd;j++){
+                    if((i-j)>=0)
+                        mat0(i-kwt,j-kwt)=dataphd[0](i-j+kwt,k);
+                }
+            }
+            for(j=kwt;j<kwt+nwphd;j++){
+                mat1.col(j-kwt+nwp+nwph+nwpd)=mat0.col(j-kwt);
+            }
+            ///////////
+            
+            for(i=0;i<nwt;i++){
+                matd(i,0)=datavz[0](i+kwt,k);
+            }
+            matD=mat1.t()*mat1;
+            
+            {
+                matq=matq0;
+            }
+            matd=mat1*matq;
+            for(i=nw;i<nwt;i++){
+                dataup[0](i+kwt,k)=datavz[0](i+kwt,k)-matd(i,0);
+                datadown[0](i+kwt,k)=datavz[0](i+kwt,k)+matd(i,0);
+                //datadown[0](i+kwt,k)=datavz[0](i+kwt,k)-dataup[0](i+kwt,k);
+            }
+        }
+    }
+}
+void single_trace_dewave_withdatawin(struct demultiple2d & par, int ncpu=1)
+{
+    single_trace_dewave_withdatawin(par.dataup, par.datadown,\
+    par.data2d, par.datadict,par.datah, par.datad, par.datahd,\
+    par.datawinbeg, par.datawinend,\
+    par.n1,par.n2,par.nwp,par.nwph,par.nwpd,par.nwphd,\
+    par.lmd,ncpu);
+}
+//////////////////////////////////////////////////////////////////////
+fmat get_datawin_tp3d(int nt,int npx,int npy,float dt,\
+ float dpx,float dpy,float px0,float py0,float zr_obndepth,\
+ float v_water=1500.0,int nx=20001,int ny=20001,float dx=0.1,float dy=0.1)
+{
+    float v(v_water),zr(zr_obndepth);
+    int i,j,k,kx,ky,kpx,kpy;
+    fmat datatime0(npx,npy);
+    fmat datatime0x;
+    fmat datatime0y;
+
+    float xr,yr,t,t0,px,py;
+    datatime0.fill(0);
+    for(kx=0;kx<nx;kx++){
+        xr=(kx*dx);
+        for(ky=0;ky<ny;ky++){
+            yr=(ky*dy);
+            t=(1/v)*sqrt(zr*zr+xr*xr+yr*yr);
+            px=(1/v)*(xr/sqrt(zr*zr+xr*xr+yr*yr));
+            py=(1/v)*(yr/sqrt(zr*zr+xr*xr+yr*yr));
+            t0=t-px*xr-py*yr;
+            kpx=round((px-px0)/dpx);
+            kpy=round((py-py0)/dpy);
+            if(kpx<npx && kpy<npy && kpx>0 && kpy>0 && t0>0){
+                datatime0(kpx,kpy)=t0;}
+            kpx=round((-px-px0)/dpx);
+            kpy=round((py-py0)/dpy);
+            if(kpx<npx && kpy<npy && kpx>0 && kpy>0 && t0>0){
+                datatime0(kpx,kpy)=t0;}
+            kpx=round((px-px0)/dpx);
+            kpy=round((-py-py0)/dpy);
+            if(kpx<npx && kpy<npy && kpx>0 && kpy>0 && t0>0){
+                datatime0(kpx,kpy)=t0;}
+            kpx=round((-px-px0)/dpx);
+            kpy=round((-py-py0)/dpy);
+            if(kpx<npx && kpy<npy && kpx>0 && kpy>0 && t0>0){
+                datatime0(kpx,kpy)=t0;}
+    }}
+
+    datatime0x=datatime0;
+    datatime0y=datatime0;
+    for(kpy=0;kpy<npy;kpy++){
+        t0=0;
+    for(kpx=0;kpx<npx;kpx++){
+        if(datatime0y(kpx,kpy)>0)
+        {t0=datatime0y(kpx,kpy);}
+        else
+        {datatime0y(kpx,kpy)=t0;}
+    }
+    for(kpx=npx-1;kpx>=0;kpx--){
+        if(datatime0y(kpx,kpy)>0)
+        {t0=datatime0y(kpx,kpy);}
+        else
+        {datatime0y(kpx,kpy)=t0;}
+    }
+    }
+    for(kpx=0;kpx<npx;kpx++){
+        t0=0;
+    for(kpy=0;kpy<npy;kpy++){
+        if(datatime0x(kpx,kpy)>0)
+        {t0=datatime0x(kpx,kpy);}
+        else
+        {datatime0x(kpx,kpy)=t0;}
+    }
+    for(kpy=npy-1;kpy>=0;kpy--){
+        if(datatime0x(kpx,kpy)>0)
+        {t0=datatime0x(kpx,kpy);}
+        else
+        {datatime0x(kpx,kpy)=t0;}
+    }
+    }
+    for(kpx=0;kpx<npx;kpx++){
+    for(kpy=0;kpy<npy;kpy++){
+        datatime0(kpx,kpy)=max(datatime0y(kpx,kpy),datatime0x(kpx,kpy));
+        datatime0(kpx,kpy)=round(datatime0(kpx,kpy)/dt);
+    }}
+    return datatime0;
 }
 //////////////////////////////////////////////////////////////////////
 void multiple_code2d(fmat& u2, fmat& u1, fmat& green,\
