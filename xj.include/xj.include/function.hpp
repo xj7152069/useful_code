@@ -654,8 +654,70 @@ void fx2tx_3d_thread(fcube &data3d_out,cx_fcube &data3d, int ncpu)
     }
     delete [] pcal;
 }
+void medianfilter(float **mat, int n1, int n2, int w1=25, int w2=1, float lmd=5.0)
+{
+    fmat data(n1,n2),datapow(n1,n2),datapowfilter(n1,n2);
+    int i,j,k1,k2,k3,num((1+2*w1)*(1+2*w2));
+    float *win,avera;
+    fmat datawin(num,1);
 
+    for(i=0;i<n1;i++){
+        for(j=0;j<n2;j++){
+            data(i,j)=mat[i][j];
+        }
+    }
+    datapow=abs(data);
+    datapowfilter=datapow;
+    for(i=w1;i<n1-w1;i++){
+    for(j=w2;j<n2-w2;j++){
+        k3=0;
+    for(k1=-w1;k1<=w1;k1++){
+    for(k2=-w2;k2<=w2;k2++){
+        datawin(k3,0)=datapow(i+k1,j+k2);
+        k3++;
+    }}
+    avera=sum(sum(datawin))/num;
+    if(datapow(i,j)>=lmd*avera)
+        datapowfilter(i,j)=avera;
+    }}
+    for(i=0;i<n1;i++){
+        for(j=0;j<n2;j++){
+            mat[i][j]=mat[i][j]*datapowfilter(i,j)/(datapow(i,j)+0.00001);
+        }
+    }
+}
+void medianfilter(fmat & mat, int n1, int n2, int w1=25, int w2=1, float lmd=5.0)
+{
+    fmat data(n1,n2),datapow(n1,n2),datapowfilter(n1,n2);
+    int i,j,k1,k2,k3,num((1+2*w1)*(1+2*w2));
+    float *win,avera;
+    fmat datawin(num,1);
 
+    for(i=0;i<n1;i++){
+        for(j=0;j<n2;j++){
+            data(i,j)=mat(i,j);
+        }
+    }
+    datapow=abs(data);
+    datapowfilter=datapow;
+    for(i=w1;i<n1-w1;i++){
+    for(j=w2;j<n2-w2;j++){
+        k3=0;
+    for(k1=-w1;k1<=w1;k1++){
+    for(k2=-w2;k2<=w2;k2++){
+        datawin(k3,0)=datapow(i+k1,j+k2);
+        k3++;
+    }}
+    avera=sum(sum(datawin))/num;
+    if(datapow(i,j)>=lmd*avera)
+        datapowfilter(i,j)=avera;
+    }}
+    for(i=0;i<n1;i++){
+        for(j=0;j<n2;j++){
+            mat(i,j)=mat(i,j)*datapowfilter(i,j)/(datapow(i,j)+0.00001);
+        }
+    }
+}
 #endif
 
 

@@ -441,7 +441,7 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
  int iterations_num=9, float residual_ratio=1)
 {
     get_weighted_fcube(par.weighted_fcube,par.datatp);
-    float dataxs(1.0);
+    float dataxs(1.0),datamax;
     par.weighted_fcube*=par.factor_l1;
     par.weighted_fcube+=par.factor_l2;
     datawrite3d_bycol_transpose(par.weighted_fcube,par.nt,par.np_trace,"weight.bin");
@@ -465,15 +465,13 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
     recoverdatatx_uk.copy_size(par.datatx);
     A_gradient_cg_pk.copy_size(par.datatp);
     A_datatp_k.copy_size(par.datatp);
-    sum_num=sum(sum(sum(abs(par.datatp))));
-    residual_pow=sum_num(0,0);
-    residual_pow*=residual_ratio;
 
-    iter=0;
-
-    datatp_k=par.datatp/par.nline/par.ntrace;
-//    fcubemul(datatp_weighted,datatp_k,par.weighted_fcube);
-//    datatp_k=datatp_weighted;
+    iter=0;datamax=0;
+    for(k=0;k<par.ntrace;k++){
+        datamax+=par.datatx.row(k).max();
+    }
+    datamax/=par.ntrace;
+    datatp_k=datamax*(par.datatp/par.datatp.max());
     slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k,\
         par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt,par.numthread);
@@ -490,6 +488,8 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
     //cal residual_pow
     sum_num=sum(sum(sum(abs(gradient_rk))));
     residual_k=sum_num(0,0);
+    residual_pow=residual_k;
+    residual_pow*=residual_ratio;
 
     slantstack3d_recover_L_operator(recoverdatatx_uk,gradient_cg_pk,\
         par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
