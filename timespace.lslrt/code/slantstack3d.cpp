@@ -5,6 +5,7 @@
 #include <iostream>
 #include <math.h>
 #include "./slantstack3d.hpp"
+#define ARMA_ALLOW_FAKE_GCC
 #include "./armadillo.h"
 using namespace std;
 using namespace arma;
@@ -145,23 +146,23 @@ void slantstack3d_cleardata(struct slantstack3d & par)
 
 /////////////////////////slantstack3d_L_LT///////////////////////////
 void slantstack3d_stack_LT_operator(fcube &datatp,fcube &datatx,\
- fmat &ptrace_coord,fmat &pline_coord,fmat &ntrace_coord,fmat &nline_coord,\
+ fmat ptrace_coord,fmat pline_coord,fmat ntrace_coord,fmat nline_coord,\
  float dt){
 
-    int ip,jp,in,jn,k,ntaoceil,ntaofloor;
-    float tao0,dtao1,dtao2,dtao12,ntao12,wceil,wfloor,wsum,wmin(0.000000001);
     int n1(datatx.n_rows),n2(datatx.n_cols),n3(datatx.n_slices),\
         np1(datatp.n_rows),np2(datatp.n_cols);
     datatp.fill(0.0);
 
-for(k=0;k<n3;k++){
-    tao0=k*dt;
-    for(ip=0;ip<np1;ip++){
-    for(jp=0;jp<np2;jp++){
-    for(in=0;in<n1;in++){
-    for(jn=0;jn<n2;jn++){
+for(int k=0;k<n3;k++){
+    float tao0=k*dt;
+    for(int in=0;in<n1;in++){
+    for(int jn=0;jn<n2;jn++){
+    for(int jp=0;jp<np2;jp++){
+        float dtao2=nline_coord(in,jn)*pline_coord(jp,0);
+    for(int ip=0;ip<np1;ip++){
+        int ntaoceil,ntaofloor;
+        float dtao1,dtao12,ntao12,wceil,wfloor,wsum,wmin(0.000000001);
         dtao1=ntrace_coord(in,jn)*ptrace_coord(ip,0);
-        dtao2=nline_coord(in,jn)*pline_coord(jp,0);
         dtao12=dtao1+dtao2;
         ntao12=(tao0+dtao12)/dt;
         if(ntao12<(n3-1) && ntao12>0){
@@ -176,27 +177,33 @@ for(k=0;k<n3;k++){
                 +datatx(in,jn,ntaoceil)*wceil\
                 +datatx(in,jn,ntaofloor)*wfloor;
         }
+        else if(ntao12>=(n3-1)&&ntrace_coord(in,jn)>0){
+            break;
+        }
+        else if(ntao12<=(0)&&ntrace_coord(in,jn)<0){
+            break;
+        }
     }}}}}
 }
 /////////////////////////////////////////////////////////////////////////
 void slantstack3d_recover_L_operator(fcube &recoverdatatx,fcube &datatp,\
- fmat &ptrace_coord,fmat &pline_coord,fmat &ntrace_coord,fmat &nline_coord,\
+ fmat ptrace_coord,fmat pline_coord,fmat ntrace_coord,fmat nline_coord,\
  float dt){
 
-    int ip,jp,in,jn,k,ntaoceil,ntaofloor;
-    float tao0,dtao1,dtao2,dtao12,ntao12,wceil,wfloor,wsum,wmin(0.000000001);
     int n1(recoverdatatx.n_rows),n2(recoverdatatx.n_cols),\
         n3(recoverdatatx.n_slices),np1(datatp.n_rows),np2(datatp.n_cols);
     recoverdatatx.fill(0.0);
 
-for(k=0;k<n3;k++){
-    tao0=k*dt;
-    for(in=0;in<n1;in++){
-    for(jn=0;jn<n2;jn++){
-    for(ip=0;ip<np1;ip++){
-    for(jp=0;jp<np2;jp++){
+for(int k=0;k<n3;k++){
+    float tao0=k*dt;
+    for(int in=0;in<n1;in++){
+    for(int jn=0;jn<n2;jn++){
+    for(int jp=0;jp<np2;jp++){
+        float dtao2=nline_coord(in,jn)*pline_coord(jp,0);
+    for(int ip=0;ip<np1;ip++){
+        int ntaoceil,ntaofloor;
+        float dtao1,dtao12,ntao12,wceil,wfloor,wsum,wmin(0.000000001);
         dtao1=ntrace_coord(in,jn)*ptrace_coord(ip,0);
-        dtao2=nline_coord(in,jn)*pline_coord(jp,0);
         dtao12=dtao1+dtao2;
         ntao12=(tao0-dtao12)/dt;
         if(ntao12<(n3-1) && ntao12>0){
@@ -211,21 +218,27 @@ for(k=0;k<n3;k++){
                 +datatp(ip,jp,ntaoceil)*wceil\
                 +datatp(ip,jp,ntaofloor)*wfloor;
         }
+        else if(ntao12<=(0)&&ntrace_coord(in,jn)>0){
+            break;
+        }
+        else if(ntao12>=(n3-1)&&ntrace_coord(in,jn)<0){
+            break;
+        }
     }}}}}
 }
 //////////////////////////////////////////////////////////////
-void slantstack3d_stack(struct slantstack3d &par){
+inline void slantstack3d_stack(struct slantstack3d &par){
     slantstack3d_stack_LT_operator(par.datatp,par.datatx,\
     par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
     par.dt);
 }
-void slantstack3d_recover(struct slantstack3d &par){
+inline void slantstack3d_recover(struct slantstack3d &par){
     slantstack3d_recover_L_operator(par.recoverdatatx,par.datatp,\
     par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
     par.dt);
 }
 /////////////////////////slantstack_CG3d///////////////////////////
-inline float fcube_inner_product(fcube data1, fcube data2){
+float fcube_inner_product(fcube &data1, fcube &data2){
     int ni(data1.n_rows),nj(data1.n_cols),nk(data1.n_slices),i,j,k;
     float inner_num(0);
     for(i=0;i<ni;i++){
@@ -321,10 +334,7 @@ void get_weighted_fcube(fcube &filter, fcube &data1,\
 void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
  int iterations_num=25, float residual_ratio=0.1)
 {
-    get_weighted_fcube(par.weighted_fcube,par.datatp);
-    float dataxs(1.0),datamax;
-    par.weighted_fcube*=par.factor_l1;
-    par.weighted_fcube+=par.factor_l2;
+    
     //datawrite3d_bycol_transpose(par.weighted_fcube,par.nt,par.np_trace,"weight.bin");
 
     int ip,jp,in,jn,k,iter(0);
@@ -350,12 +360,20 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
     //residual_pow=sum_num(0,0);
     //residual_pow*=residual_ratio;
 
-    iter=0;datamax=0;
+    float datamax;
+    if(par.factor_l1>0.001){
+    get_weighted_fcube(par.weighted_fcube,par.datatp);
+    par.weighted_fcube*=par.factor_l1;
+    }
+    datamax=0;
     for(k=0;k<par.ntrace;k++){
         datamax+=par.datatx.row(k).max();
     }
     datamax/=par.ntrace;
     datatp_k=datamax*(par.datatp/par.datatp.max());
+    par.weighted_fcube+=(par.factor_l2*datamax);
+
+    iter=0;
     slantstack3d_recover_L_operator(recoverdatatx_uk,datatp_k,\
         par.ptrace_coord,par.pline_coord,par.ntrace_coordx,par.nline_coordy,\
         par.dt);
@@ -364,7 +382,7 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
         par.dt);
     //regularization
     fcubemul(datatp_weighted,datatp_k,par.weighted_fcube);
-    A_datatp_k=dataxs*A_datatp_k+datatp_weighted;
+    A_datatp_k=A_datatp_k+datatp_weighted;
 
     gradient_rk=par.datatp-A_datatp_k;
     gradient_cg_pk=gradient_rk;
@@ -383,7 +401,7 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
         par.dt);
     //regularization
     fcubemul(datatp_weighted,gradient_cg_pk,par.weighted_fcube);
-    A_gradient_cg_pk=dataxs*A_gradient_cg_pk+datatp_weighted;
+    A_gradient_cg_pk=A_gradient_cg_pk+datatp_weighted;
         
     alpha_k=fcube_inner_product(gradient_rk,gradient_rk);
     alpha_k=alpha_k/fcube_inner_product(gradient_cg_pk,A_gradient_cg_pk);
@@ -415,7 +433,7 @@ void slantstack3d_stack_CG_invL_operator(struct slantstack3d &par,\
             par.dt);
         //regularization
         fcubemul(datatp_weighted,gradient_cg_pk,par.weighted_fcube);
-        A_gradient_cg_pk=dataxs*A_gradient_cg_pk+datatp_weighted;
+        A_gradient_cg_pk=A_gradient_cg_pk+datatp_weighted;
         
         alpha_k=fcube_inner_product(gradient_rk,gradient_rk);
         alpha_k=alpha_k/fcube_inner_product(gradient_cg_pk,A_gradient_cg_pk);
