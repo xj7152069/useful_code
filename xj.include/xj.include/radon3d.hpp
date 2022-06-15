@@ -860,20 +860,18 @@ void beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
 void cxfmatget_Ap_small(cx_fmat & Ap, cx_fmat & A,cx_fmat & p,int pncpu,\
  struct linerradon3d * par)
 {
-    int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
+    int kf,kpx,kpy,kpx2,kpy2,kx,ky;//cout<<"ok"<<endl;
     float df(par[0].df),dpx(par[0].dpx),dpy(par[0].dpy),p0x(par[0].p0x);
     int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
         ny(par[0].ny),npy(par[0].npy);
 
     for(kpx=0;kpx<npx;kpx++){
     for(kpy=0;kpy<npy;kpy++){
-        i=kpx*npy+kpy;
         float fpx1=(par[0].px_coord(kpx,0));
         float fpy1=(par[0].py_coord(kpy,0));
         cx_float a;
     for(kpx2=0;kpx2<npx;kpx2++){
     for(kpy2=0;kpy2<npy;kpy2++){
-        j=kpx2*npy+kpy2;
         float fpx2=(par[0].px_coord(kpx2,0));
         float fpy2=(par[0].py_coord(kpy2,0));
         int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
@@ -925,12 +923,12 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
 
     iter=0;
     datatp_k=par[0].datafP.slice(kf);
-    sum_num=sum(sum(sum(abs(datatp_k))));
-    residual_pow=sum_num(0,0);
-    residual_pow*=residual_ratio;
     //datatp_k.fill(0.0);
     datatp_k.set_real(real(datatp_k)/par[0].nx/par[0].ny);
     datatp_k.set_imag(imag(datatp_k)/par[0].nx/par[0].ny);
+    sum_num=sum(sum(sum(abs(datatp_k))));
+    residual_pow=sum_num(0,0);
+    residual_pow*=residual_ratio;
 
     //cxfmatget_Ap(A_datatp_k,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
         datatp_k);
@@ -960,7 +958,6 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     residual_k=sum_num;
 
     while(iter<iterations_num && residual_k(0,0)>residual_pow(0,0)){
-        //cout<<iter<<"||"<<residual_k/residual_pow<<endl;
         iter++;
         //cxfmatget_Ap(A_gradient_cg_pk,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
             gradient_cg_pk);
@@ -983,6 +980,8 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
         sum_num=sum(sum(sum(abs(gradient_rk))));
         residual_k=sum_num;
     }
+    //cout<<kf<<"||"<<iter<<"||"<<residual_k/residual_pow<<endl;
+
     if((residual_k(0,0)/residual_pow(0,0))>(0.5/residual_ratio)\
         ||isnan(residual_k(0,0))){
             par[0].datafP.slice(kf).fill(0.0);
