@@ -496,7 +496,6 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
         }
         else{
             basey3d.set_size(nx,ny,npy+1);
-            //basex.zeros(nx,ny);
             basepy0.zeros(nx,ny);basepx0.zeros(nx,ny);
             basedpy.zeros(nx,ny);basedpx.zeros(nx,ny);
             basepx0.set_imag(w*par->coordx3d*(par->px_coord(0,0)));  
@@ -507,10 +506,10 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
             basepy0=exp(basepy0);basepx0=exp(basepx0);
             B.set_size(nx,ny);
             B=par->datafx.slice(kf); 
-            //basex=basepx0;
-            for(kpx=0;kpx<1;kpx++){
+
+            kpx=0;{
                 {basey3d.slice(0)=basepy0;}
-            for(kpy=0;kpy<1;kpy++){
+            kpy=0;{
                 cx_float fzero;
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
@@ -520,7 +519,7 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
                 }}
                 par->datafP(kpx,kpy,kf)=fzero;
                 }
-                for(kpy=1;kpy<npy;kpy++){
+                for(kpy=1;kpy<npy-1;kpy++){
                 cx_float fzero;
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
@@ -529,27 +528,30 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
                 }}
                 par->datafP(kpx,kpy,kf)=fzero;
                 }
-            }
-            for(kpx=1;kpx<npx;kpx++){
-                for(kpy=0;kpy<1;kpy++){
+                kpy=npy-1;
+                if(kpy>0){
                 cx_float fzero;
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    fzero+=B(kx,ky)*basey3d(kx,ky,kpy);
+                }}
+                par->datafP(kpx,kpy,kf)=fzero;
+                }
+            }
+
+            for(kpx=1;kpx<npx;kpx++){
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
                     B(kx,ky)*=basedpx(kx,ky);
-                    fzero+=B(kx,ky)*basey3d(kx,ky,kpy);
                 }}
-                par->datafP(kpx,kpy,kf)=fzero;
-                }
-                for(kpy=1;kpy<npy;kpy++){
+            for(kpy=0;kpy<npy;kpy++){
                 cx_float fzero;
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
                     fzero+=B(kx,ky)*basey3d(kx,ky,kpy);
-                    {basey3d(kx,ky,kpy+1)=basey3d(kx,ky,kpy)*basedpy(kx,ky);}
                 }}
                 par->datafP(kpx,kpy,kf)=fzero;
-                }
-            }
+            }}
         }
     }
     finish_thread[0]=true;
@@ -642,24 +644,30 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
             B.set_size(npx,npy);
             A.zeros(nx,ny);
             B=par->datafP.slice(kf);
-            for(kpx=0;kpx<1;kpx++){
-                for(kpy=0;kpy<1;kpy++){
-                    {basey3d.slice(0)=basepy0;}
+            kpx=0;{
+                kpy=0;{
+                basey3d.slice(0)=basepy0;
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
                     basey3d(kx,ky,kpy)*=basepx0(kx,ky);
                     A(kx,ky)+=(B(kpx,kpy)*basey3d(kx,ky,kpy));
                     {basey3d(kx,ky,kpy+1)=basey3d(kx,ky,kpy)*basedpy(kx,ky);}
                 }}}
-                for(kpy=1;kpy<npy;kpy++){
+                for(kpy=1;kpy<npy-1;kpy++){
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
                     A(kx,ky)+=(B(kpx,kpy)*basey3d(kx,ky,kpy));
                     {basey3d(kx,ky,kpy+1)=basey3d(kx,ky,kpy)*basedpy(kx,ky);}
                 }}}
+                kpy=npy-1;
+                if(kpy>0){
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    A(kx,ky)+=(B(kpx,kpy)*basey3d(kx,ky,kpy));
+                }}}
             }
             basex=basedpx;
-            for(kpx=1;kpx<npx;kpx++){
+            for(kpx=1;kpx<npx-1;kpx++){
                 for(kpy=0;kpy<npy;kpy++){
                 for(kx=0;kx<nx;kx++){
                 for(ky=0;ky<ny;ky++){
@@ -669,6 +677,13 @@ void rebuildsignal_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
                 for(ky=0;ky<ny;ky++){
                     basex(kx,ky)*=basedpx(kx,ky);
                 }}
+            }
+            kpx=npx-1;{
+                for(kpy=0;kpy<npy;kpy++){
+                for(kx=0;kx<nx;kx++){
+                for(ky=0;ky<ny;ky++){
+                    A(kx,ky)+=(B(kpx,kpy)*basex(kx,ky)*basey3d(kx,ky,kpy));
+                }}}
             }
             par->rebuildfx.slice(kf)=A;
         }
@@ -856,7 +871,82 @@ void beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
         }}
     }
 }
+void cxfmatget_Ap_small_fft(cx_fmat & Ap, cx_fmat & A,cx_fmat & p,int pncpu,\
+ struct linerradon3d * par)
+{
+    Ap.fill(0.0);
+    int kf,kpx,kpy,kpx2,kpy2,kx,ky,k;//cout<<"ok"<<endl;
+    float df(par[0].df),dpx(par[0].dpx),dpy(par[0].dpy),p0x(par[0].p0x);
+    int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
+        ny(par[0].ny),npy(par[0].npy);
 
+for(kpy=0;kpy<npy;kpy++){
+    float fpy2=(par[0].py_coord(kpy,0));
+    cx_fmat dfft(2*npx-1,1,fill::zeros),d(2*npx-1,1,fill::zeros);
+    for(kpx=0;kpx<npx;kpx++){
+        d(kpx,0)=p(kpx,kpy);
+    }
+    dfft.col(0)=fft(d.col(0));
+
+for(kpy2=0;kpy2<npy;kpy2++){
+    float fpy1=(par[0].py_coord(kpy2,0));
+    int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
+    cx_fmat a1(2*npx-1,1,fill::zeros),\
+    a1fft(2*npx-1,1,fill::zeros),a1ifft(2*npx-1,1,fill::zeros);
+    kpx=0;
+    float fpx1=(par[0].px_coord(kpx,0));
+    for(kpx2=0;kpx2<npx;kpx2++){
+        float fpx2=(par[0].px_coord(kpx2,0));
+        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
+        a1(kpx2,0)=A(nkpx,nkpy);
+    }
+    for(k=1;k<npx;k++){
+        a1(2*npx-1-k,0)=a1(k,0);
+    }
+
+    kpx2=0;
+    float fpx2=(par[0].px_coord(kpx2,0));
+    for(kpx=0;kpx<npx;kpx++){
+        float fpx1=(par[0].px_coord(kpx,0));
+        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
+        a1(kpx,0)=A(nkpx,nkpy);
+    }
+
+    a1fft.col(0)=fft(a1.col(0));
+    for(k=0;k<2*npx-1;k++){
+        a1fft(k,0)*=dfft(k,0);
+    }
+    a1ifft.col(0)=ifft(a1fft.col(0));
+    for(kpx=0;kpx<npx;kpx++){
+        Ap(kpx,kpy2)+=a1ifft(kpx,0);
+    }
+}}
+
+    for(kpx=0;kpx<npx;kpx++){
+    for(kpy=0;kpy<npy;kpy++){
+        Ap(kpx,kpy)+=par->p_power(kpx,kpy)*p(kpx,kpy);
+    }}
+/*
+    for(kpx=0;kpx<npx;kpx++){
+    for(kpy=0;kpy<npy;kpy++){
+        float fpx1=(par[0].px_coord(kpx,0));
+        float fpy1=(par[0].py_coord(kpy,0));
+        cx_float a;
+    for(kpx2=0;kpx2<npx;kpx2++){
+    for(kpy2=0;kpy2<npy;kpy2++){
+        float fpx2=(par[0].px_coord(kpx2,0));
+        float fpy2=(par[0].py_coord(kpy2,0));
+        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
+        int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
+        a+=A(nkpx,nkpy)*p(kpx2,kpy2);
+        if(kpx==kpx2 && kpy==kpy2){
+             a+=par->p_power(kpx,kpy)*p(kpx2,kpy2);
+        }
+    }}
+    Ap(kpx,kpy)=a;
+    }}
+*/
+}
 void cxfmatget_Ap_small(cx_fmat & Ap, cx_fmat & A,cx_fmat & p,int pncpu,\
  struct linerradon3d * par)
 {
@@ -930,15 +1020,13 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     residual_pow=sum_num(0,0);
     residual_pow*=residual_ratio;
 
-    //cxfmatget_Ap(A_datatp_k,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
-        datatp_k);
-    cxfmatget_Ap_small(A_datatp_k,hess_A,datatp_k,kcpu,par);
+    //cxfmatget_Ap_small(A_datatp_k,hess_A,datatp_k,kcpu,par);
+    cxfmatget_Ap_small_fft(A_datatp_k,hess_A,datatp_k,kcpu,par);
     gradient_rk=par[0].datafP.slice(kf)-A_datatp_k;
     gradient_cg_pk=gradient_rk;
 
-    //cxfmatget_Ap(A_gradient_cg_pk,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
-        gradient_cg_pk);
-    cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+//    cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+    cxfmatget_Ap_small_fft(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
         
     alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
     alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
@@ -959,9 +1047,9 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
 
     while(iter<iterations_num && residual_k(0,0)>residual_pow(0,0)){
         iter++;
-        //cxfmatget_Ap(A_gradient_cg_pk,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
-            gradient_cg_pk);
-        cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+
+//        cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+        cxfmatget_Ap_small_fft(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
         
         alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
         alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
@@ -1029,15 +1117,13 @@ void beamformingCG3d_redo_fthread(struct linerradon3d * par,\
     residual_pow*=residual_ratio;
     //datatp_k.fill(0.0);
 
-    //cxfmatget_Ap(A_datatp_k,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
-        datatp_k);
-    cxfmatget_Ap_small(A_datatp_k,hess_A,datatp_k,kcpu,par);
+//    cxfmatget_Ap_small(A_datatp_k,hess_A,datatp_k,kcpu,par);
+    cxfmatget_Ap_small_fft(A_datatp_k,hess_A,datatp_k,kcpu,par);
     gradient_rk=par[0].datafP.slice(kf)-A_datatp_k;
     gradient_cg_pk=gradient_rk;
 
-    //cxfmatget_Ap(A_gradient_cg_pk,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
-        gradient_cg_pk);
-    cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+//    cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+    cxfmatget_Ap_small_fft(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
         
     alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
     alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
@@ -1059,9 +1145,9 @@ void beamformingCG3d_redo_fthread(struct linerradon3d * par,\
     while(iter<iterations_num && residual_k(0,0)>residual_pow(0,0)){
         //cout<<iter<<"||"<<residual_k/residual_pow<<endl;
         iter++;
-        //cxfmatget_Ap(A_gradient_cg_pk,par2[0].hessianinv_cxfmat_p1ncpu_npxynpxy[kcpu],\
-            gradient_cg_pk);
-        cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+
+//        cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+        cxfmatget_Ap_small_fft(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
         
         alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
         alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
