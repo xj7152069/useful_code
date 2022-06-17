@@ -223,7 +223,7 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
             (maxpower-minpower);
         for(k=0;k<par.npy;k++){
             for(i=0;i<par.npx;i++){
-                par.p_power(i,k)=1.0/(1.0+exp(10*(0.5-par.p_power(i,k))));
+                par.p_power(i,k)=1.0/(1.0+exp(100*(0.5-par.p_power(i,k))));
             }
             //datawrite(par.p_power,par.npx,par.npy,"dig.bin");
         }
@@ -892,7 +892,7 @@ for(kpy2=0;kpy2<npy;kpy2++){
     float fpy1=(par[0].py_coord(kpy2,0));
     int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
     cx_fmat a1(2*npx-1,1,fill::zeros),\
-    a1fft(2*npx-1,1,fill::zeros),a1ifft(2*npx-1,1,fill::zeros);
+        a1fft(2*npx-1,1,fill::zeros),a1ifft(2*npx-1,1,fill::zeros);
     kpx=0;
     float fpx1=(par[0].px_coord(kpx,0));
     for(kpx2=0;kpx2<npx;kpx2++){
@@ -1242,7 +1242,7 @@ for(kk=0;kk<iterations_num;kk++){
     else{
         k1=k2;
     }
-    for(kf=par.nf1+1;kf<par.nf2-1;kf++){
+    for(kf=par.nf2-2;kf>=par.nf1+1;kf--){
         if(!convergence2[kf]&&convergence2[kf-1]&&convergence2[kf+1]){
             s1=par.datafP.slice(kf-1);
             s1+=par.datafP.slice(kf+1);
@@ -1250,8 +1250,8 @@ for(kk=0;kk<iterations_num;kk++){
             par.datafP.slice(kf).set_imag(imag(s1)/2.0);
             convergence2[kf]=true;
         }
-        else if(!convergence2[kf]&&convergence2[kf-1]){
-            par.datafP.slice(kf)=par.datafP.slice(kf-1);
+        else if(!convergence2[kf]&&convergence2[kf+1]){
+            par.datafP.slice(kf)=par.datafP.slice(kf+1);
             convergence2[kf]=true;
         }
     }
