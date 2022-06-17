@@ -871,18 +871,26 @@ void beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
         }}
     }
 }
+int getfftnum(int num){
+    int n(1);
+    while(n<num){
+        n*=2;
+    }
+    return n;
+}
 void cxfmatget_Ap_small_fft(cx_fmat & Ap, cx_fmat & A,cx_fmat & p,int pncpu,\
  struct linerradon3d * par)
 {
     Ap.fill(0.0);
-    int kf,kpx,kpy,kpx2,kpy2,kx,ky,k;//cout<<"ok"<<endl;
+    int kf,kpx,kpy,kpx2,kpy2,kx,ky,k,nfft;//cout<<"ok"<<endl;
     float df(par[0].df),dpx(par[0].dpx),dpy(par[0].dpy),p0x(par[0].p0x);
     int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
         ny(par[0].ny),npy(par[0].npy);
+    nfft=getfftnum(2*npx-1);
 
 for(kpy=0;kpy<npy;kpy++){
     float fpy2=(par[0].py_coord(kpy,0));
-    cx_fmat dfft(2*npx-1,1,fill::zeros),d(2*npx-1,1,fill::zeros);
+    cx_fmat dfft(nfft,1,fill::zeros),d(nfft,1,fill::zeros);
     for(kpx=0;kpx<npx;kpx++){
         d(kpx,0)=p(kpx,kpy);
     }
@@ -891,8 +899,8 @@ for(kpy=0;kpy<npy;kpy++){
 for(kpy2=0;kpy2<npy;kpy2++){
     float fpy1=(par[0].py_coord(kpy2,0));
     int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
-    cx_fmat a1(2*npx-1,1,fill::zeros),\
-        a1fft(2*npx-1,1,fill::zeros),a1ifft(2*npx-1,1,fill::zeros);
+    cx_fmat a1(nfft,1,fill::zeros),\
+        a1fft(nfft,1,fill::zeros),a1ifft(nfft,1,fill::zeros);
     kpx=0;
     float fpx1=(par[0].px_coord(kpx,0));
     for(kpx2=0;kpx2<npx;kpx2++){
@@ -901,7 +909,7 @@ for(kpy2=0;kpy2<npy;kpy2++){
         a1(kpx2,0)=A(nkpx,nkpy);
     }
     for(k=1;k<npx;k++){
-        a1(2*npx-1-k,0)=a1(k,0);
+        a1(nfft-k,0)=a1(k,0);
     }
 
     kpx2=0;
@@ -913,7 +921,7 @@ for(kpy2=0;kpy2<npy;kpy2++){
     }
 
     a1fft.col(0)=fft(a1.col(0));
-    for(k=0;k<2*npx-1;k++){
+    for(k=0;k<nfft;k++){
         a1fft(k,0)*=dfft(k,0);
     }
     a1ifft.col(0)=ifft(a1fft.col(0));
@@ -926,26 +934,6 @@ for(kpy2=0;kpy2<npy;kpy2++){
     for(kpy=0;kpy<npy;kpy++){
         Ap(kpx,kpy)+=par->p_power(kpx,kpy)*p(kpx,kpy);
     }}
-/*
-    for(kpx=0;kpx<npx;kpx++){
-    for(kpy=0;kpy<npy;kpy++){
-        float fpx1=(par[0].px_coord(kpx,0));
-        float fpy1=(par[0].py_coord(kpy,0));
-        cx_float a;
-    for(kpx2=0;kpx2<npx;kpx2++){
-    for(kpy2=0;kpy2<npy;kpy2++){
-        float fpx2=(par[0].px_coord(kpx2,0));
-        float fpy2=(par[0].py_coord(kpy2,0));
-        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
-        int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
-        a+=A(nkpx,nkpy)*p(kpx2,kpy2);
-        if(kpx==kpx2 && kpy==kpy2){
-             a+=par->p_power(kpx,kpy)*p(kpx2,kpy2);
-        }
-    }}
-    Ap(kpx,kpy)=a;
-    }}
-*/
 }
 void cxfmatget_Ap_small(cx_fmat & Ap, cx_fmat & A,cx_fmat & p,int pncpu,\
  struct linerradon3d * par)
