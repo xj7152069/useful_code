@@ -832,7 +832,6 @@ cx_fmat beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
     float df(par[0].df),dpx(par[0].dpx),dpy(par[0].dpy),p0x(par[0].p0x);
     int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
         ny(par[0].ny),npy(par[0].npy),nfft,k;
-    nfft=getfftnum(2*npx-1);
     cx_fmat a(1,1),A(nx,ny),B(nx,ny);
 
     kf=pnf;
@@ -878,32 +877,34 @@ cx_fmat beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
                 =a(0,0);
         }}
     }
+
+    nfft=getfftnum(2*npx-1);
     cx_fmat hessfft(nfft, 2*npy-1);
     for(kpy=0;kpy<npy;kpy++){
         float fpy2=(par[0].py_coord(kpy,0));
-    for(kpy2=0;kpy2<npy;kpy2++){
-    float fpy1=(par[0].py_coord(kpy2,0));
-    int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
-    cx_fmat a1(nfft,1,fill::zeros);
-    kpx=0;
-    float fpx1=(par[0].px_coord(kpx,0));
-    for(kpx2=0;kpx2<npx;kpx2++){
-        float fpx2=(par[0].px_coord(kpx2,0));
-        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
-        a1(kpx2,0)=hessiancg_cxfmat_p1ncpu_2npx2npy_small(nkpx,nkpy);
-    }
-    for(k=1;k<npx;k++){
-        a1(nfft-k,0)=a1(k,0);
-    }
-
-    kpx2=0;
-    float fpx2=(par[0].px_coord(kpx2,0));
-    for(kpx=0;kpx<npx;kpx++){
+        for(kpy2=0;kpy2<npy;kpy2++){
+        float fpy1=(par[0].py_coord(kpy2,0));
+        int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
+        cx_fmat a1(nfft,1,fill::zeros);
+        kpx=0;
         float fpx1=(par[0].px_coord(kpx,0));
-        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
-        a1(kpx,0)=hessiancg_cxfmat_p1ncpu_2npx2npy_small(nkpx,nkpy);
-    }
-    hessfft.col(nkpy)=fft(a1.col(0));
+        for(kpx2=0;kpx2<npx;kpx2++){
+            float fpx2=(par[0].px_coord(kpx2,0));
+            int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
+            a1(kpx2,0)=hessiancg_cxfmat_p1ncpu_2npx2npy_small(nkpx,nkpy);
+        }
+        for(k=1;k<npx;k++){
+            a1(nfft-k,0)=a1(k,0);
+        }
+
+        kpx2=0;
+        float fpx2=(par[0].px_coord(kpx2,0));
+        for(kpx=0;kpx<npx;kpx++){
+            float fpx1=(par[0].px_coord(kpx,0));
+            int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
+            a1(kpx,0)=hessiancg_cxfmat_p1ncpu_2npx2npy_small(nkpx,nkpy);
+        }
+        hessfft.col(nkpy)=fft(a1.col(0));
     }}
     return hessfft;
 }
