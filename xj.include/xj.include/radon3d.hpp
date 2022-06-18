@@ -817,14 +817,22 @@ void cal_p_power_3d(struct linerradon3d & par)
     }
 }
 /////////////beamformingCG3d: !/////////////
-void beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
+int getfftnum(int num){
+    int n(1);
+    while(n<num){
+        n*=2;
+    }
+    return n;
+}
+cx_fmat beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
  cx_fmat &hessiancg_cxfmat_p1ncpu_2npx2npy_small, int pncpu, int pnf)
 {
     int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
     float w,pi(3.1415926);
     float df(par[0].df),dpx(par[0].dpx),dpy(par[0].dpy),p0x(par[0].p0x);
     int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
-        ny(par[0].ny),npy(par[0].npy);
+        ny(par[0].ny),npy(par[0].npy),nfft,k;
+    nfft=getfftnum(2*npx-1);
     cx_fmat a(1,1),A(nx,ny),B(nx,ny);
 
     kf=pnf;
@@ -870,15 +878,37 @@ void beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
                 =a(0,0);
         }}
     }
-}
-int getfftnum(int num){
-    int n(1);
-    while(n<num){
-        n*=2;
+    cx_fmat hessfft(nfft, 2*npy-1);
+    for(kpy=0;kpy<npy;kpy++){
+        float fpy2=(par[0].py_coord(kpy,0));
+    for(kpy2=0;kpy2<npy;kpy2++){
+    float fpy1=(par[0].py_coord(kpy2,0));
+    int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
+    cx_fmat a1(nfft,1,fill::zeros);
+    kpx=0;
+    float fpx1=(par[0].px_coord(kpx,0));
+    for(kpx2=0;kpx2<npx;kpx2++){
+        float fpx2=(par[0].px_coord(kpx2,0));
+        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
+        a1(kpx2,0)=hessiancg_cxfmat_p1ncpu_2npx2npy_small(nkpx,nkpy);
     }
-    return n;
+    for(k=1;k<npx;k++){
+        a1(nfft-k,0)=a1(k,0);
+    }
+
+    kpx2=0;
+    float fpx2=(par[0].px_coord(kpx2,0));
+    for(kpx=0;kpx<npx;kpx++){
+        float fpx1=(par[0].px_coord(kpx,0));
+        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
+        a1(kpx,0)=hessiancg_cxfmat_p1ncpu_2npx2npy_small(nkpx,nkpy);
+    }
+    hessfft.col(nkpy)=fft(a1.col(0));
+    }}
+    return hessfft;
 }
-void cxfmatget_Ap_small_fft(cx_fmat & Ap, cx_fmat & A,cx_fmat & p,int pncpu,\
+
+void cxfmatget_Ap_small_fft(cx_fmat & Ap, cx_fmat & hessfft,cx_fmat & p,int pncpu,\
  struct linerradon3d * par)
 {
     Ap.fill(0.0);
@@ -886,7 +916,7 @@ void cxfmatget_Ap_small_fft(cx_fmat & Ap, cx_fmat & A,cx_fmat & p,int pncpu,\
     float df(par[0].df),dpx(par[0].dpx),dpy(par[0].dpy),p0x(par[0].p0x);
     int nx(par[0].nx),npx(par[0].npx),nf(par[0].nf),\
         ny(par[0].ny),npy(par[0].npy);
-    nfft=getfftnum(2*npx-1);
+    nfft=hessfft.n_rows;
 
 for(kpy=0;kpy<npy;kpy++){
     float fpy2=(par[0].py_coord(kpy,0));
@@ -899,28 +929,9 @@ for(kpy=0;kpy<npy;kpy++){
 for(kpy2=0;kpy2<npy;kpy2++){
     float fpy1=(par[0].py_coord(kpy2,0));
     int nkpy=round((fpy1-fpy2)/dpy)+npy-1;
-    cx_fmat a1(nfft,1,fill::zeros),\
-        a1fft(nfft,1,fill::zeros),a1ifft(nfft,1,fill::zeros);
-    kpx=0;
-    float fpx1=(par[0].px_coord(kpx,0));
-    for(kpx2=0;kpx2<npx;kpx2++){
-        float fpx2=(par[0].px_coord(kpx2,0));
-        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
-        a1(kpx2,0)=A(nkpx,nkpy);
-    }
-    for(k=1;k<npx;k++){
-        a1(nfft-k,0)=a1(k,0);
-    }
+    cx_fmat a1fft(nfft,1,fill::zeros),a1ifft(nfft,1,fill::zeros);
 
-    kpx2=0;
-    float fpx2=(par[0].px_coord(kpx2,0));
-    for(kpx=0;kpx<npx;kpx++){
-        float fpx1=(par[0].px_coord(kpx,0));
-        int nkpx=round((fpx1-fpx2)/dpx)+npx-1;
-        a1(kpx,0)=A(nkpx,nkpy);
-    }
-
-    a1fft.col(0)=fft(a1.col(0));
+    a1fft.col(0)=hessfft.col(nkpy);
     for(k=0;k<nfft;k++){
         a1fft(k,0)*=dfft(k,0);
     }
@@ -979,8 +990,8 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
  bool *convergence,int kcpu, int kf,bool regularization,\
  int iterations_num, float residual_ratio,bool *finish_thread)
 {
-    cx_fmat hess_A(par[0].npx*2-1,par[0].npy*2-1);
-    beamforminginv3d_CG_hessianget_thread(par,hess_A,kcpu,kf);
+    cx_fmat hess_A(par[0].npx*2-1,par[0].npy*2-1),hessfft;
+    hessfft=beamforminginv3d_CG_hessianget_thread(par,hess_A,kcpu,kf);
 
     int ip,jp,in,jn,k,iter(0);
     int np1(par->datafP.n_rows),np2(par->datafP.n_cols);
@@ -1009,12 +1020,12 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     residual_pow*=residual_ratio;
 
     //cxfmatget_Ap_small(A_datatp_k,hess_A,datatp_k,kcpu,par);
-    cxfmatget_Ap_small_fft(A_datatp_k,hess_A,datatp_k,kcpu,par);
+    cxfmatget_Ap_small_fft(A_datatp_k,hessfft,datatp_k,kcpu,par);
     gradient_rk=par[0].datafP.slice(kf)-A_datatp_k;
     gradient_cg_pk=gradient_rk;
 
 //    cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
-    cxfmatget_Ap_small_fft(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+    cxfmatget_Ap_small_fft(A_gradient_cg_pk,hessfft,gradient_cg_pk,kcpu,par);
         
     alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
     alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
@@ -1037,7 +1048,7 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
         iter++;
 
 //        cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
-        cxfmatget_Ap_small_fft(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+        cxfmatget_Ap_small_fft(A_gradient_cg_pk,hessfft,gradient_cg_pk,kcpu,par);
         
         alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
         alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
@@ -1078,8 +1089,8 @@ void beamformingCG3d_redo_fthread(struct linerradon3d * par,\
         finish_thread[0]=true;
     }
     else{
-    cx_fmat hess_A(par[0].npx*2-1,par[0].npy*2-1);
-    beamforminginv3d_CG_hessianget_thread(par,hess_A,kcpu,kf);
+    cx_fmat hess_A(par[0].npx*2-1,par[0].npy*2-1),hessfft;
+    hessfft=beamforminginv3d_CG_hessianget_thread(par,hess_A,kcpu,kf);
 
     int ip,jp,in,jn,k,iter(0);
     int np1(par->datafP.n_rows),np2(par->datafP.n_cols);
@@ -1106,12 +1117,12 @@ void beamformingCG3d_redo_fthread(struct linerradon3d * par,\
     //datatp_k.fill(0.0);
 
 //    cxfmatget_Ap_small(A_datatp_k,hess_A,datatp_k,kcpu,par);
-    cxfmatget_Ap_small_fft(A_datatp_k,hess_A,datatp_k,kcpu,par);
+    cxfmatget_Ap_small_fft(A_datatp_k,hessfft,datatp_k,kcpu,par);
     gradient_rk=par[0].datafP.slice(kf)-A_datatp_k;
     gradient_cg_pk=gradient_rk;
 
 //    cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
-    cxfmatget_Ap_small_fft(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+    cxfmatget_Ap_small_fft(A_gradient_cg_pk,hessfft,gradient_cg_pk,kcpu,par);
         
     alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
     alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
@@ -1135,7 +1146,7 @@ void beamformingCG3d_redo_fthread(struct linerradon3d * par,\
         iter++;
 
 //        cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
-        cxfmatget_Ap_small_fft(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+        cxfmatget_Ap_small_fft(A_gradient_cg_pk,hessfft,gradient_cg_pk,kcpu,par);
         
         alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
         alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
