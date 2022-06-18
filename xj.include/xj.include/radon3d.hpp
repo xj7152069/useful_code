@@ -1013,6 +1013,7 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
 
     iter=0;
     datatp_k=par[0].datafP.slice(kf);
+    //sum_num=sum(sum(sum(abs(datatp_k))));
     //datatp_k.fill(0.0);
     datatp_k.set_real(real(datatp_k)/par[0].nx/par[0].ny);
     datatp_k.set_imag(imag(datatp_k)/par[0].nx/par[0].ny);
@@ -1067,10 +1068,13 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
         //cal residual_pow
         sum_num=sum(sum(sum(abs(gradient_rk))));
         residual_k=sum_num;
-    }
-    //cout<<kf<<"||"<<iter<<"||"<<residual_k/residual_pow<<endl;
 
-    if((residual_k(0,0)/residual_pow(0,0))>(0.5/residual_ratio)\
+    }
+    //sum_num=sum(sum(sum(abs(datatp_k))));
+    //cout<<residual_pow(0,0)<<"||"<<kf<<"||"<<iter<<"||"\
+        <<residual_k(0,0)/residual_pow(0,0)<<"||"<<sum_num(0,0)<<endl;
+
+    if((residual_k(0,0)/residual_pow(0,0))>(10.0)\
         ||isnan(residual_k(0,0))){
             par[0].datafP.slice(kf).fill(0.0);
             convergence[0]=false;
