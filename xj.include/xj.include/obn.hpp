@@ -10,6 +10,8 @@
 #include <thread>
 #include <future>
 #include <time.h>
+#include <omp.h>
+
 #include "../xjc.h"
 using namespace std;
 using namespace arma;
@@ -17,18 +19,17 @@ using namespace arma;
 /////////////////////////////////////////////////////
 struct demultiple2d
 {
-    int nx,ny;
-    float dy,dx,dkx,dky;
-    int agcwx,agcwy;
-    fmat datap,datavz,datapagc,datavzagc;
-    fmat datap2,datavz2;
+    int nt,nx;
+    float dt,dx;
 
     fmat data2d, datadict, datah, datad, datahd;
-    fmat dataup,datadown;
+    fmat data_remove_wave,data_antiremove_wave;
     fmat datawinbeg,datawinend;
 
-    int&n1=nx;
-    int&n2=ny;
+    int&n1=nt;
+    int&n2=nx;
+    float&d1=dt;
+    float&d2=dx;
     int nwp,nwph,nwpd,nwphd;
     float lmd;
     int n1w,d1w;
@@ -39,26 +40,26 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh, int ncpu, bool multiple_win);
-void single_trace_dewave(struct demultiple2d & par, int ncpu=1, bool multiple_win=true)
+    int nwt,int dnwt,float zzh, int ncpu);
+void single_trace_dewave(struct demultiple2d & par, int ncpu=1)
 {
-    single_trace_dewave(par.dataup, par.datadown,\
+    single_trace_dewave(par.data_remove_wave, par.data_antiremove_wave,\
     par.data2d, par.datadict,\
     par.datah, par.datad, par.datahd,\
     par.n1,par.n2,par.nwp,par.nwph,par.nwpd,par.nwphd,\
-    par.n1w,par.d1w,par.lmd,ncpu,multiple_win);
+    par.n1w,par.d1w,par.lmd,ncpu);
 }
 
 void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     fmat* datavz, fmat* datap,\
     fmat*dataph, fmat* datapd, fmat*dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh,int nx1,int nx2, bool multiple_win);
+    int nwt,int dnwt,float zzh,int nx1,int nx2);
 void single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh, int ncpu, bool multiple_win=true)
+    int nwt,int dnwt,float zzh, int ncpu)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1,nx2,dnx;
     fmat datap(nt,nx),datavz(nt,nx);
@@ -84,12 +85,12 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
         nx2=nx1+dnx;
         pcal[k]=thread(single_trace_dewave_pthread,pdataup, pdatadown,\
             pdata, pdict,pdataph, pdatapd, pdataphd,\
-            nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx2,multiple_win);
+            nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx2);
         nx1=nx2;
     }
     pcal[ncpu-1]=thread(single_trace_dewave_pthread,pdataup, pdatadown,\
         pdata, pdict,pdataph, pdatapd, pdataphd,\
-        nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx,multiple_win);
+        nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx);
     for(k=0;k<ncpu;k++){
         if(pcal[k].joinable())
             pcal[k].join();
@@ -113,13 +114,14 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     fmat* datavz, fmat* datap,\
     fmat*dataph, fmat* datapd, fmat*dataphd,\
      int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh,int nx1,int nx2, bool multiple_win=true)
+    int nwt,int dnwt,float zzh,int nx1,int nx2)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd);
     fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
         matq(nw,1),mat2(nw,1),matd(nwt,1),matD(nw,nw),matq0(nw,1);
     fmat digmat(nw,nw,fill::zeros);
     digmat.diag()+=1;
+    dnwt=nwt-nw-5;
 
         for(k=nx1;k<nx2;k++){
         //cout<<"tracl = "<<k<<endl;
@@ -176,15 +178,16 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
             }
             matD=mat1.t()*mat1;
             
+            fmat dignum(1,1);
+            dignum=sum(abs(matd)/nwt,0);
             digmat.fill(0);
-            digmat.diag()+=(matD.max()*zzh+zzh);
-            if(kwt==0 || multiple_win){
+            digmat.diag()+=(dignum(0,0)*zzh+0.00001);
+            //multiple data_win for slip fliter
+            {
                 matq=inv(matD+digmat)*mat1.t()*matd;
                 matq0=matq;
             }
-            else{
-                matq=matq0;
-            }
+
             matd=mat1*matq;
             for(i=nw;i<nwt;i++){
                 dataup[0](i+kwt,k)=datavz[0](i+kwt,k)-matd(i,0);
@@ -408,7 +411,7 @@ void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
 }
 void single_trace_dewave_withdatawin(struct demultiple2d & par, int ncpu=1)
 {
-    single_trace_dewave_withdatawin(par.dataup, par.datadown,\
+    single_trace_dewave_withdatawin(par.data_remove_wave, par.data_antiremove_wave,\
     par.data2d, par.datadict,par.datah, par.datad, par.datahd,\
     par.datawinbeg, par.datawinend,\
     par.n1,par.n2,par.nwp,par.nwph,par.nwpd,par.nwphd,\
@@ -589,13 +592,14 @@ void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* gre
 void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
  fmat* seabase_depth,fmat *coordx_data,fmat *coordy_data, int isx, int jsy,\
  float source_x, float source_y, float df, int fn1, int fn2,float water_velocity,\
- int ncpu)
+ int ncpu, float wavelet_delay,bool *end_of_thread)
 {
     int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
     int i,j,k,i1,j1,i2,j2,sx,sy;
     float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
     float l_min(0.0001),l_sum(0.0),l_trace;
     fmat green(n1,n2);
+    float w,pi(3.1415926),t;
 
     sy=jsy;
     sx=isx;
@@ -630,50 +634,30 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
             depth=l11*d11+l21*d21+l12*d12+l22*d22;
             half_offset=sqrt((fi-source_x)*(fi-source_x)+(fj-source_y)*(fj-source_y));
             l_trace=2*sqrt(half_offset*half_offset+depth*depth);
-            green(i,j)=l_trace/water_velocity;
+            green(i,j)=l_trace/water_velocity+wavelet_delay;
         }
     }
 
-    fmat* pgreen;
-    pgreen=new fmat[ncpu];
-
-    thread *pcal;
-    pcal=new thread[ncpu];
-    bool *finish_work;
-    finish_work=new bool[ncpu];
-    for(k=0;k<ncpu;k++){
-        finish_work[k]=false;
-        pgreen[k]=green;
-        pcal[k]=thread(multiple_code3d_onepoint_onefrequence,
-            u2,u1,&(pgreen[k]),isx,jsy,(k+fn1),df,&(finish_work[k]));
-    }
-    i=ncpu+fn1;
-    while(i<fn2){
-        for(k=0;k<ncpu;k++){
-        if(pcal[k].joinable() && i<fn2 && finish_work[k]){
-            pcal[k].join();
-            finish_work[k]=false;
-            pcal[k]=thread(multiple_code3d_onepoint_onefrequence,
-                u2,u1,&(pgreen[k]),isx,jsy,(i),df,&(finish_work[k]));
-            i++;
-        }}
-    }
-    for(k=0;k<ncpu;k++){
-        if(pcal[k].joinable()){
-            pcal[k].join();
-    }}
-    delete [] pcal;
-    delete [] pgreen;
-    delete [] finish_work;
-
+    cx_float a;
+    for(k=fn1;k<fn2;k++){
+        w=-2.0*pi*df*k;
+    for(i=0;i<n1;i++){
+    for(j=0;j<n2;j++){
+            t=green(i,j);
+            a.real(0.0);
+            a.imag(w*t);
+            a=exp(a);
+            u2[0](isx,jsy,k)+=a*u1[0](i,j,k);
+    }}}
+    end_of_thread[0]=true;
 }
 
 void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
  fmat& coordx_data, fmat& coordy_data, float water_velocity,\
- float dx, float dy, float df, int fn1, int fn2, int ncpu)
+ float dx, float dy, float df, int fn1, int fn2, int ncpu, float wavelet_delay=0.0)
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
-    int i,j,k,i1,j1,i2,j2,ix,jy,js;
+    int i,j,k,i1,j1,i2,j2,ix,jy;
     float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
     float l_min(0.000000001),l_sum(0.0),l_trace,sx(0),sy(0);
     
@@ -682,86 +666,58 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
     fmat *pcoordx_data(&coordx_data);
     fmat *pcoordy_data(&coordy_data);
     fmat *pseabase(&seabase_depth);
+    thread *pcal;
+    int kcpu,js;
+    bool *end_of_thread;
+    end_of_thread=new bool[ncpu];
+    pcal=new thread[ncpu];
 
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        jy=0;ix=kcpu;
+        end_of_thread[kcpu]=false;
+        pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
+            pu2,pu1,pseabase,pcoordx_data,pcoordy_data,\
+            ix,jy,coordx_data(ix,jy), coordy_data(ix,jy),df,fn1,fn2,\
+            water_velocity,ncpu,wavelet_delay,&(end_of_thread[kcpu]));
+    }
+    js=ncpu;
+    while(js<n1*n2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+            if(pcal[kcpu].joinable()&&js<n1*n2&&end_of_thread[kcpu]){
+                pcal[kcpu].join();
+                end_of_thread[kcpu]=false;
+                jy=int(js/n1);ix=js-jy*n1;
+                pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
+                    pu2,pu1,pseabase,pcoordx_data,pcoordy_data,\
+                    ix,jy,coordx_data(ix,jy), coordy_data(ix,jy),df,fn1,fn2,\
+                    water_velocity,ncpu,wavelet_delay,&(end_of_thread[kcpu]));
+                js++;
+        }}
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
+    }
+    delete[] pcal;
+    delete[] end_of_thread;
+/*
     for(jy=0;jy<n2;jy++){
         cout<<"now is run line: "<<jy<<endl;
         for(ix=0;ix<n1;ix++){
             multiple_code3d_onepoint_allfrequence(\
                 pu2,pu1,pseabase,pcoordx_data,pcoordy_data,\
                 ix,jy,coordx_data(ix,jy), coordy_data(ix,jy),df,fn1,fn2,\
-                water_velocity,ncpu);
+                water_velocity,ncpu,wavelet_delay);
         }
     }
+    */
 }
 
 ///////////////////////////////////////////////////////////////////////
-void getagc_demultiple2d(struct demultiple2d & par, fmat & data,\
-     fmat & dataagc, float par1)
-{
-    int i,j,i1,j1;
-    float agcpow,maxpow(1.0/par1);
-    for(i=par.agcwx;i<par.nx-par.agcwx;i++)
-    {
-    for(j=par.agcwy;j<par.ny-par.agcwy;j++)
-    {
-        agcpow=0;
-        for(i1=-par.agcwx;i1<=par.agcwx;i1++)
-        {
-        for(j1=-par.agcwy;j1<=par.agcwy;j1++)
-        {
-            agcpow+=abs(data(i+i1,j+j1));
-        }}
-        dataagc(i,j)=agcpow;
-        agcpow=0;
-    }}
-    for(i=0;i<par.agcwx;i++)
-    {
-        dataagc.row(i)=dataagc.row(par.agcwx);
-        dataagc.row(par.nx-1-i)=dataagc.row(par.nx-1-par.agcwx);
-    }
-    for(i=0;i<par.agcwy;i++)
-    {
-        dataagc.col(i)=dataagc.col(par.agcwy);
-        dataagc.col(par.ny-1-i)=dataagc.col(par.ny-1-par.agcwy);
-    }
 
-    dataagc=dataagc/(dataagc.max()-dataagc.min());
-    cout<<dataagc.max()<<"|"<<dataagc.min()<<endl;
-    dataagc=dataagc+maxpow*(dataagc.max()-dataagc.min());
-    dataagc=1.0/dataagc;
-    for(i=0;i<par.nx;i++)
-    {
-    for(j=0;j<par.ny;j++)
-    {
-        data(i,j)=dataagc(i,j)*data(i,j);
-    }}
-}
-
-void deagc_demultiple2d(struct demultiple2d & par, fmat & data, fmat & dataagc)
-{
-    int i,j;
-    for(i=0;i<par.nx;i++)
-    {
-    for(j=0;j<par.ny;j++)
-    {
-        data(i,j)=data(i,j)/dataagc(i,j);
-    }}
-}
-
-void addagc_demultiple2d(struct demultiple2d & par, fmat & data, fmat & dataagc)
-{
-    int i,j;
-    for(i=0;i<par.nx;i++)
-    {
-    for(j=0;j<par.ny;j++)
-    {
-        data(i,j)=data(i,j)*dataagc(i,j);
-    }}
-}
-///////////////////////////////////////////////////////////////////////
 void get_taup2d_CCA(fmat &filterdata, fmat &datacov_out, fmat &data1, fmat &data2,\
-    float wx=20, float wy=20, float Butterworth_factor=1, float Butterworth_n=2,\
-    int Butterworth_smooth=99)
+ int ncpu, float wx=20, float wy=20,\
+ float Butterworth_factor=1, float Butterworth_n=2,int Butterworth_smooth=99)
 {
     int i,j,i1,j1,nx,ny,k1,k2;
     ny=data1.n_cols;
@@ -772,8 +728,10 @@ void get_taup2d_CCA(fmat &filterdata, fmat &datacov_out, fmat &data1, fmat &data
     fmat datacov1_unit(nx,ny,fill::zeros);
     fmat datacov2_unit(nx,ny,fill::zeros);
     fmat filter(nx,ny,fill::zeros);
-
-    for(i=wx;i<nx-wx;i++){
+    k1=(nx-wx);
+omp_set_num_threads(ncpu);
+#pragma omp parallel for
+    for(i=wx;i<k1;i++){
     for(j=wy;j<ny-wy;j++){
         agcpow1=0;
         agcpow2=0;
