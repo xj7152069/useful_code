@@ -113,6 +113,27 @@ fmat matdiv(fmat mat1, fmat mat2, int nz, int nx, float min)
 
     return a;
 }
+fmat fmatdiv(fmat mat1, fmat mat2)
+{
+    int nz,nx;
+    nz=mat1.n_rows;
+    nx=mat1.n_cols;
+    fmat a(nz,nx);
+    int i,j;
+
+    for(i=0;i<nz;i++)
+    {
+        for(j=0;j<nx;j++)
+            {
+            a(i,j)=mat1(i,j);
+            if(abs(mat2(i,j)>=0.000000001))
+                {a(i,j)=mat1(i,j)/mat2(i,j);}
+            
+            }
+    }
+    return a;
+}
+
 
 template <typename T1>
 fmat matmul(fmat mat1, T1 n, int nz, int nx)
@@ -239,6 +260,45 @@ void dataread(fmat & data_mat, int nz, int nx, ifstream &inf)
         }
     }
 }
+void dataread(fmat & data_mat,const char * filename)
+{
+   char str[99];
+   strcpy(str, filename);
+
+   int i,j;
+   int nz(data_mat.n_rows);
+   int nx(data_mat.n_cols); 
+   float read_data;
+   ifstream infile; 
+
+   infile.open(str,ios::binary);
+   if(!infile) cout<<"file open error: "<<str<<endl;
+      for(j=0;j<nx;j++)
+         {for(i=0;i<nz;i++)
+            {
+            infile.read((char *)&read_data, sizeof(read_data));  
+            data_mat(i,j)=read_data;
+            }
+         }
+    infile.close();
+}
+
+void dataread(fmat & data_mat, ifstream &inf)
+{
+    int nz(data_mat.n_rows);
+    int nx(data_mat.n_cols); 
+    int i,j;
+    float read_data;
+
+    for(j=0;j<nx;j++)
+    {
+        for(i=0;i<nz;i++)
+        {
+        inf.read((char *)&read_data, sizeof(read_data));  
+        data_mat(i,j)=read_data;
+        }
+    }
+}
 
 void dataread3d_bycol_transpose(fcube & data3d, const char * filename)
 {
@@ -345,22 +405,6 @@ fmat dataread(int nz, int nx, ifstream &inf)
     return data_mat;
 }
 
-void datawrite(fmat & data_mat, int nz, int nx, char const *filename)
-{
-    char str[99];
-    strcpy(str, filename);
-    int i,j;
-    ofstream outf;
-    outf.open(str);
-    for(j=0;j<nx;j++)
-      {for(i=0;i<nz;i++)
-         {
-         //outdata=float(data_mat(i,j));
-         outf.write((char*)&data_mat(i,j),sizeof(float));
-         }
-      }
-    outf.close(); 
-}
 void datawrite3d_bycol_transpose(fcube & data3d, int nz, int nx, char const *filename)
 {
     char str[99];
@@ -393,7 +437,52 @@ void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf)
          }
       }
 }
-
+void datawrite(fmat & data_mat, int nz, int nx, char const *filename)
+{
+    char str[99];
+    strcpy(str, filename);
+    int i,j;
+    ofstream outf;
+    outf.open(str);
+    for(j=0;j<nx;j++)
+      {for(i=0;i<nz;i++)
+         {
+         //outdata=float(data_mat(i,j));
+         outf.write((char*)&data_mat(i,j),sizeof(float));
+         }
+      }
+    outf.close(); 
+}
+void datawrite(fmat & data_mat,ofstream &outf)
+{
+    int nz(data_mat.n_rows);
+    int nx(data_mat.n_cols); 
+    int i,j;
+    for(j=0;j<nx;j++)
+      {for(i=0;i<nz;i++)
+         {
+         outf.write((char*)&data_mat(i,j),sizeof(float));
+         }
+      }
+}
+void datawrite(fmat & data_mat, char const *filename)
+{
+    int nz(data_mat.n_rows);
+    int nx(data_mat.n_cols); 
+    char str[99];
+    strcpy(str, filename);
+    int i,j;
+    ofstream outf;
+    outf.open(str);
+    for(j=0;j<nx;j++)
+      {for(i=0;i<nz;i++)
+         {
+         //outdata=float(data_mat(i,j));
+         outf.write((char*)&data_mat(i,j),sizeof(float));
+         }
+      }
+    outf.close(); 
+}
 fmat fmatsmooth(fmat mat2, int x1, int x2, int k)
 {
     int i,j,n;

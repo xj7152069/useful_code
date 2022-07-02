@@ -718,11 +718,11 @@ void medianfilter(fmat & mat, int n1, int n2, int w1=25, int w2=1, float lmd=5.0
         }
     }
 }
-fmat get_agc2d(fmat & data, int agcwx, int agcwy, float stablepar=0.001)
+fmat get_agcelem_2d(fmat & data, int agcwx, int agcwy, float stablepar=0.001)
 {
     int i,j,i1,j1;
     float agcpow,maxpow(stablepar);
-    int nx(data.n_rows),ny(data.n_cols);
+    int nx(data.n_rows),ny(data.n_cols),numwin((2*agcwx+1)*(2*agcwy+1));
     fmat agcelem(nx,ny);
     for(i=agcwx;i<nx-agcwx;i++)
     {
@@ -735,7 +735,7 @@ fmat get_agc2d(fmat & data, int agcwx, int agcwy, float stablepar=0.001)
         {
             agcpow+=(data(i+i1,j+j1)*data(i+i1,j+j1));
         }}
-        agcelem(i,j)=agcpow;
+        agcelem(i,j)=sqrt(agcpow/numwin);
         agcpow=0;
     }}
     for(i=0;i<agcwx;i++)
@@ -749,17 +749,11 @@ fmat get_agc2d(fmat & data, int agcwx, int agcwy, float stablepar=0.001)
         agcelem.col(ny-1-i)=agcelem.col(ny-1-agcwy);
     }
 
-    agcelem=agcelem/(agcelem.max()-agcelem.min());
+    agcelem=agcelem/(agcelem.max());
     cout<<agcelem.max()<<"|"<<agcelem.min()<<endl;
     agcelem=agcelem+maxpow;
     //agcelem=agcelem+maxpow*(agcelem.max());
     agcelem=1.0/agcelem;
-    for(i=0;i<nx;i++)
-    {
-    for(j=0;j<ny;j++)
-    {
-        data(i,j)=agcelem(i,j)*data(i,j);
-    }}
     return agcelem;
 }
 #endif
