@@ -36,33 +36,35 @@ struct demultiple2d
 };
 ////////////////////////////////////////////////////////////////
 bool*** newboolmat(int x1, int x2, int x3);
-void single_trace_dewave(fmat & dataup, fmat & datadown,\
+fmat single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
     int nwt,int dnwt,float zzh, int ncpu);
-void single_trace_dewave(struct demultiple2d & par, int ncpu=1)
+fmat single_trace_dewave(struct demultiple2d & par, int ncpu=1)
 {
-    single_trace_dewave(par.data_remove_wave, par.data_antiremove_wave,\
+    fmat dataw;
+    dataw=single_trace_dewave(par.data_remove_wave, par.data_antiremove_wave,\
     par.data2d, par.datadict,\
     par.datah, par.datad, par.datahd,\
     par.n1,par.n2,par.nwp,par.nwph,par.nwpd,par.nwphd,\
     par.n1w,par.d1w,par.lmd,ncpu);
+    return dataw;
 }
 
 void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     fmat* datavz, fmat* datap,\
     fmat*dataph, fmat* datapd, fmat*dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh,int nx1,int nx2);
-void single_trace_dewave(fmat & dataup, fmat & datadown,\
+    int nwt,int dnwt,float zzh,int nx1,int nx2, fmat *datacol);
+fmat single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
     int nwt,int dnwt,float zzh, int ncpu)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1,nx2,dnx;
-    fmat datap(nt,nx),datavz(nt,nx);
+    fmat datap(nt,nx),datavz(nt,nx),dataw(nw,nx);
 
 ////////////////////////////////////////////////////////////////////
     float xs;
@@ -76,21 +78,27 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat* pdataup=(&dataup); fmat* pdatadown=(&datadown);
     fmat* pdata=(&datavz); fmat* pdict=(&datap);
     fmat* pdataph=(&dataph); fmat* pdatapd=(&datapd);
-    fmat* pdataphd=(&dataphd);
+    fmat* pdataphd=(&dataphd); fmat* pdataw(&dataw);
     thread* pcal;
     pcal=new thread[ncpu];
     dnx=nx/ncpu;
     nx1=0;
-    for(k=0;k<ncpu-1;k++){
+    for(k=0;k<ncpu;k++){
         nx2=nx1+dnx;
         pcal[k]=thread(single_trace_dewave_pthread,pdataup, pdatadown,\
             pdata, pdict,pdataph, pdatapd, pdataphd,\
-            nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx2);
+            nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx2,pdataw);
         nx1=nx2;
     }
-    pcal[ncpu-1]=thread(single_trace_dewave_pthread,pdataup, pdatadown,\
+    for(k=0;k<ncpu;k++){
+        if(pcal[k].joinable())
+            pcal[k].join();
+    }
+    for(k=nx1;k<min(nx-1,ncpu);k++){
+    pcal[k-nx1]=thread(single_trace_dewave_pthread,pdataup, pdatadown,\
         pdata, pdict,pdataph, pdatapd, pdataphd,\
-        nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx);
+        nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,k,k+1,pdataw);
+    }
     for(k=0;k<ncpu;k++){
         if(pcal[k].joinable())
             pcal[k].join();
@@ -108,13 +116,14 @@ void single_trace_dewave(fmat & dataup, fmat & datadown,\
     }
     datadown*=xs;
     dataup*=xs;
+    return dataw;
 }
 
 void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     fmat* datavz, fmat* datap,\
     fmat*dataph, fmat* datapd, fmat*dataphd,\
      int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh,int nx1,int nx2)
+    int nwt,int dnwt,float zzh,int nx1,int nx2, fmat *datacol)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd);
     fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
@@ -124,7 +133,8 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     dnwt=nwt-nw-5;
 
         for(k=nx1;k<nx2;k++){
-        //cout<<"tracl = "<<k<<endl;
+            if(k%10==0)
+                cout<<"tracl = "<<k<<endl;
         for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
             mat1.fill(0.0);
 
@@ -185,7 +195,7 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
             //multiple data_win for slip fliter
             {
                 matq=inv(matD+digmat)*mat1.t()*matd;
-                matq0=matq;
+                datacol[0].col(k)=matq.col(0);
             }
 
             matd=mat1*matq;
