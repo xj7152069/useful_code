@@ -1,0 +1,27 @@
+/home/fb/data/LJ2017_cmp/data/raw_4D_OPWdata_allLines.dat
+/home/fb/data/LJ2017_cmp/velocity/intt3dVel_nline800_ncdp2000_ntau2500_tyx.dat
+/home/fb/data/LJ2017_cmp/stackedRawImage_ns2500_dt2ms_ncdp1300_nline470_freq_3hz_60hz_Iphr_1_81.dat
+/home/fb/data/LJ2017_cmp/cigs_PhaseShift/opwMig3D_PhaseShift_Iphr_
+LT	2901
+DT_ms	2.0
+Ncdp_first	2401
+Ncdp_final	3700
+Dmx_m	6.25
+Nline_first	1991
+Nline_final	2460
+Dmy_m	12.5
+Nphr	81
+Phrmin_vs_m	0.0
+Dphr_vs_m	10.0
+Nvtau 2500
+Dvtau_ms	2.0
+Nvcdp_first	2001
+Nvcdp_final	4000
+Dvx_m	6.25
+Nvline_first	1801
+Nvline_final	2600
+Dvy_m	12.5
+NtauExtraP 2500
+frequency_range 3.0 5.0 55.0 60.0
+Iphr1 1
+Iphr2 81

@@ -1,0 +1,83 @@
+void	replacePathSuffix(
+	char	*filename_in,
+	char	*Suffix_in,
+	char	*path_out,
+	char	*Suffix_out,
+	char	*filename_out,
+	int	verbose
+)
+{
+	
+	char	slash ='/';	// for Liunx system.
+	char	*basename = strrchr(filename_in, slash);
+	++ basename;
+	char	filename_temp[FILE_NAME_MAX_LENGTH]="";
+
+	if ( 1 == verbose)
+		printf("Base name of %s is %s\n", filename_in, basename);
+	sprintf(filename_temp, "%s/%s", path_out, basename);
+	if ( 1 == verbose)
+		printf("temp filename is %s\n", filename_temp);
+	suffix_replace(filename_temp, Suffix_in, Suffix_out);
+	if ( 1 == verbose)
+		printf("Index filename is %s\n", filename_temp);
+	strcpy(filename_out, filename_temp);
+}
+
+int readpar_index(
+        char    *parFile,
+        int *fileNumber,
+        char    **CMPFileNameList,
+        char    **CMPIndexNameList,
+        int verbose
+        )
+{
+    char    tmp[FILE_NAME_MAX_LENGTH]="";
+    char    Suffix_in[FILE_NAME_MAX_LENGTH]="";
+    char    Suffix_out[FILE_NAME_MAX_LENGTH]="";
+    char    path_out[FILE_NAME_MAX_LENGTH]="";	// path for output index files.
+
+    FILE    *fp;
+    if((fp=fopen(parFile,"r"))==NULL)
+    {
+        printf("Can not open the paramter file: %s to read!\n", parFile);
+        return 1;
+    }
+
+    fscanf(fp,"%s%s", tmp, Suffix_in);  // line 01.
+    fscanf(fp,"%s%s", tmp, Suffix_out); // line 02.
+    fscanf(fp,"%s%s", tmp, path_out); // line 03.
+    fscanf(fp,"%s%d", tmp, fileNumber); // line 04.
+    int nfile   = *fileNumber;
+    for (int i = 0 ; i < nfile; ++i)
+    {
+        fscanf(fp,"%s", CMPFileNameList[i]);
+
+        strcpy(CMPIndexNameList[i], CMPFileNameList[i]);
+
+        //suffix_replace(CMPIndexNameList[i], Suffix_in, Suffix_out);
+        replacePathSuffix(CMPIndexNameList[i], Suffix_in,
+		path_out, Suffix_out, CMPIndexNameList[i], 1);
+    }
+
+    if( verbose == 1 )
+    {
+        fprintf(stdout, "the input CMP-file suffix is: %s\n", Suffix_in);
+        fprintf(stdout, "the output Index-file suffix is: %s\n", Suffix_out);
+        fprintf(stdout, "number of CMP files is %d\n", nfile);
+
+        fprintf(stdout, "Input Filename list:\n");
+        for (int i = 0 ; i < nfile; ++i)
+            fprintf(stdout, "the input CMP filename is: %s\n", CMPFileNameList[i]);
+        fprintf(stdout, "\n");
+
+        fprintf(stdout, "\nOutput Filename list:\n");
+        for (int i = 0 ; i < nfile; ++i)
+            fprintf(stdout, "the output Index filename is: %s\n", CMPIndexNameList[i]);
+        fprintf(stdout, "\n");
+    }
+
+    fclose(fp);
+
+    return 0;
+}

@@ -1,0 +1,18 @@
+/mnt/data5/icdata/proj_whz/Imaging/taup3d_vband100_600_80line_c400_1000_ip121dp5_0805.cutslice
+/mnt/data5/icdata/proj_whz/Seismic/Slice/rmsTransINT_nt900befUpdt_nline80_ncdp601.tfd_lay_cuts
+/mnt/data5/icdata/proj_whz/Imaging/pwmig_Qcomp_201112.Pwt_img
+/mnt/data5/icdata/tmp1010/visco_pwmig3D_Iphr_
+ntau 1351
+iphr1 1
+iphr2 121
+frequency_range 2.0  5.0  60.0 65.0
+break_point_flag 0
+visco_acoustic_flag 1
+NtauExtraP 1300
+ITauBreak 0
+Ktaur 400
+Ktauw 600
+/mnt/data5/icdata/tmp1010/XYWslice_600_Iphr_
+/mnt/data5/icdata/tmp1010/XYWslice_400_Iphr_
+IphrR1 1
+IphrR2 121

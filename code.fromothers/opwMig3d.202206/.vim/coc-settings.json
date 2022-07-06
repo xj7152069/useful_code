@@ -1,0 +1,11 @@
+{
+    "clangd.fallbackFlags":[
+        "-Wunused-function",
+        "-std=c99",
+        "-fopenmp",
+        "-I/home/apps/mpich214intel2017/include",
+        "-I/home/apps/intel/compilers_and_libraries_2020.1.217/linux/compiler/include",
+        "-I/ssd/ssd_3.2T/fb/opwMig3d.202202/include",
+        "-I/ssd/ssd_3.2T/fb/opwMig3d.202202/main"
+    ]
+}

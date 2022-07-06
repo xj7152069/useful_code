@@ -1,0 +1,78 @@
+[fb@Lenovo_1 q1j]$ /ssd/ssd_3.2T/fb/opwMig3d.202202/bin/makeCMPgatherIndex_v2.e /ssd/ssd_3.2T/fb/opwMig3d.202202/par/q1j/makeCMPgatherIndex.Q1j3D.allfiles.par
+the input CMP-file suffix is: sgy
+the output Index-file suffix is: cmpIdx
+number of CMP files is 2
+Input Filename list:
+the input CMP filename is: /ssd/ssd_raid0/public_data/q1j/Q1J_CMP_1200_1400.sgy
+the input CMP filename is: /ssd/ssd_raid0/public_data/q1j/Q1J_CMP_1200_1400_part2.sgy
+
+
+Output Filename list:
+the output Index filename is: /ssd/ssd_3.2T/fb/testdata/q1j/Q1J_CMP_1200_1400.cmpIdx
+the output Index filename is: /ssd/ssd_3.2T/fb/testdata/q1j/Q1J_CMP_1200_1400_part2.cmpIdx
+
+fileszieMaxByte=2220097448472
+cmpfileOffsetBeg=3600
+conv=1
+endian0
+ns=3501
+dt_us=2000
+ maximum trace number is 155861948
+
+        (1/2) Scanning file: /ssd/ssd_raid0/public_data/q1j/Q1J_CMP_1200_1400.sgy
+conv=1 endian=0
+ns=3501 dtus=2000 kw181=4949006 kw185=0 kw189=753581 kw193=4949006 kw197=0 kw201=1
+ns=3501 dt=2000(us) line1=1191 cdp1=1085 MAX_INT=2147483647
+
+
+ntrmax=2493
+ Initialize file /ssd/ssd_raid0/public_data/q1j/Q1J_CMP_1200_1400.sgy done.
+ ------------------------------------
+ Current CMP File is /ssd/ssd_raid0/public_data/q1j/Q1J_CMP_1200_1400.sgy.
+ total trace number is 155861938
+ max trace number with CMP-gather is 2493
+ nline_first   = 1191
+ nline_final   = 1290
+ ncdp_first    = 1085
+ ncdp_final    = 1835
+ ------------------------------------
+Now, writing file: /ssd/ssd_3.2T/fb/testdata/q1j/Q1J_CMP_1200_1400.cmpIdx
+
+        (2/2) Scanning file: /ssd/ssd_raid0/public_data/q1j/Q1J_CMP_1200_1400_part2.sgy
+conv=1 endian=0
+ns=3501 dtus=2000 kw181=4949006 kw185=0 kw189=754831 kw193=4949006 kw197=0 kw201=1
+ns=3501 dt=2000(us) line1=1291 cdp1=1085 MAX_INT=2147483647
+ntrmax=2194
+ Initialize file /ssd/ssd_raid0/public_data/q1j/Q1J_CMP_1200_1400_part2.sgy done.
+ ------------------------------------
+ Current CMP File is /ssd/ssd_raid0/public_data/q1j/Q1J_CMP_1200_1400_part2.sgy.
+ total trace number is 154985368
+ max trace number with CMP-gather is 2194
+ nline_first   = 1291
+ nline_final   = 1400
+ ncdp_first    = 1085
+ ncdp_final    = 1835
+ ------------------------------------
+Now, writing file: /ssd/ssd_3.2T/fb/testdata/q1j/Q1J_CMP_1200_1400_part2.cmpIdx
+
+------------------------------------
+Now, reading file: /ssd/ssd_3.2T/fb/testdata/q1j/Q1J_CMP_1200_1400.cmpIdx
+ total trace number is 155861938
+Now, reading file: /ssd/ssd_3.2T/fb/testdata/q1j/Q1J_CMP_1200_1400_part2.cmpIdx
+ total trace number is 154985368
+ ------------------------------------
+ Cheers!
+ CMP files scanned 2
+ Statistical information:
+ lineMin = 1191
+ LineMax = 1400
+ cdpMin  = 1085
+ cdpMax  = 1835
+ nfoldMax= 2493
+ Offset_X_Max = 5854.000000(m)
+ Offset_Y_Max = 7500.000000(m)
+ Offset_Max = 7500.977539(m)
+ Offset_Min = 11.704700(m)
+ ------------------------------------
+mystat = 0
+

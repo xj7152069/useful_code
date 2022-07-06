@@ -1,0 +1,43 @@
+Suffix_in	sgy
+Suffix_out	cmpIdx
+cmpIndexfilePath	/ssd/ssd_raid5/fb/LJ2017_cmp/indexfile
+fileNumber	24
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line1981.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2001.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2021.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2041.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2061.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2081.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2101.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2121.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2141.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2161.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2181.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2201.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2221.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2241.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2261.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2281.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2301.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2321.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2341.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2361.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2381.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2401.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2421.sgy
+/ssd/ssd_raid5/fb/LJ2017_cmp/sgyfile/LJ2017_cmp_Line2441.sgy
+long_fileszieMaxByte	89859517320
+int_cmpfileOffsetBeg	3600
+int_conv	1
+int_endian	0
+int_ns	2901
+int_dt_us	2000
+opwdata_dir	/ssd/ssd_raid5/fb/LJ2017_cmp
+float_Coor_S_R_Scale	100.0
+int_ntrMin_PWD	21
+int_ntau	2901
+int_nphr	81
+float_phrmax_us_m	800.0
+int_nline_loc	10
+int_firstCMPLineNo_PWD	1981
+int_lastCMPLineNo_PWD	2460

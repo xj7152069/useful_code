@@ -1,0 +1,27 @@
+/ssd/ssd_4T/fb/q1j/opwdata/raw_4D_OPWdata_allLines.dat
+/ssd/ssd_4T/fb/q1j/velocity/inttVel_ncdp1201_nline391_ntau2001.txy.dat
+/ssd/ssd_4T/fb/q1j/stackedRawImage_ns2001_dt2ms_ncdp1201_nline319_freq_3hz_60hz_Iphr_1_101.dat
+/ssd/ssd_4T/fb/q1j/new_cigs_PhaseShift/
+LT	3001
+DT_ms	2.0
+Ncdp_first	1085
+Ncdp_final	1835
+Dmx_m	12.5
+Nline_first	1191
+Nline_final	1400
+Dmy_m	12.5
+Nphr	101
+Phrmin_vs_m	0.0
+Dphr_vs_m	10.0
+Nvtau 2001
+Dvtau_ms	2.0
+Nvcdp_first	800
+Nvcdp_final	2000
+Dvx_m	12.5
+Nvline_first	1101
+Nvline_final	1491
+Dvy_m	12.5
+NtauExtraP 2001
+frequency_range 3.0 5.0 55.0 60.0
+Iphr1 1
+Iphr2 101

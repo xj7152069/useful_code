@@ -1,0 +1,21 @@
+Suffix_in	sgy
+Suffix_out	cmpIdx
+cmpIndexfilePath	/data2_2/fb/q1j/cmpindex
+fileNumber	2
+/data2_2/fb/q1j/cmpfiles/Q1J_CMP_1200_1400.sgy
+/data2_2/fb/q1j/cmpfiles/Q1J_CMP_1200_1400_part2.sgy
+long_fileszieMaxByte	2220097448472
+int_cmpfileOffsetBeg	3600
+int_conv	1
+int_endian	0
+int_ns	3501
+int_dt_us	2000
+opwdata_dir	/data2_2/fb/q1j/planewavedata
+float_Coor_S_R_Scale	1.0
+int_ntrMin_PWD	21
+int_ntau	2001
+int_nphr	61
+float_phrmax_us_m	600.0
+int_nline_loc	2
+int_firstCMPLineNo_PWD	1191
+int_lastCMPLineNo_PWD	1400
