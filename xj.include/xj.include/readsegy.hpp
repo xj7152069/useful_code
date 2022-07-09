@@ -28,10 +28,11 @@ fmat segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
     int nz;
     head.infile.read((char *)(&head.head2), sizeof(head.head2));
     if(head.endian=='b')
-        nz=int(getendianchange(head.head1.hns));
+        nz=int(getendianchange(head.head2.ns));
     else
-        nz=int(head.head1.hns);
+        nz=int(head.head2.ns);
     trace.zeros(nz,1);
+    //cout<<nz<<endl;
     fmat rawtrace;
     rawtrace.copy_size(trace);
 
@@ -109,13 +110,16 @@ fmat segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
     return rawtrace;
 }
 
-void segyhead_open(segyhead & head)
+void segyhead_open(segyhead & head, bool sufile=false)
 {
     head.infile.open(head.filename,ios::binary);
     if(!head.infile) cout<<"file open error: "<<head.filename<<endl;
+    if(!sufile){
     head.infile.read((char *)(&head.head0), sizeof(head.head0));
     head.infile.read((char *)(&head.head1), sizeof(head.head1));
+    }
 }
+
 
 void segyhead_initialize(segyhead & head)
 {
