@@ -17,7 +17,7 @@ void segyhead_initialize(segyhead & head);
 template <typename T1> inline void endianchange(T1 & a);
 template <typename T1> inline float getendianchange(T1 a);
 inline float floatendianchange(float a);
-void segyhead_open(segyhead & head);
+void segyhead_open(segyhead & head, bool sufile);
 void fmatendianchange(fmat & data,int n1,int n2);
 fmat segyhead_readonetrace_tofmat(segyhead & head, fmat & trace);
 //void segyhead_readoneline_tofmat(segyhead & head, fmat & data);
