@@ -40,15 +40,15 @@ fmat single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh, int ncpu);
-fmat single_trace_dewave(struct demultiple2d & par, int ncpu=1)
+    int nwt,int dnwt,float zzh, int ncpu, fmat & dataw);
+fmat single_trace_dewave(struct demultiple2d & par, fmat dataw0, int ncpu=1)
 {
     fmat dataw;
     dataw=single_trace_dewave(par.data_remove_wave, par.data_antiremove_wave,\
     par.data2d, par.datadict,\
     par.datah, par.datad, par.datahd,\
     par.n1,par.n2,par.nwp,par.nwph,par.nwpd,par.nwphd,\
-    par.n1w,par.d1w,par.lmd,ncpu);
+    par.n1w,par.d1w,par.lmd,ncpu,dataw0);
     return dataw;
 }
 
@@ -61,16 +61,18 @@ fmat single_trace_dewave(fmat & dataup, fmat & datadown,\
     fmat & data, fmat & dict,\
     fmat &dataph, fmat &datapd, fmat &dataphd,\
     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh, int ncpu)
+    int nwt,int dnwt,float zzh, int ncpu, fmat & dataw)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1,nx2,dnx;
-    fmat datap(nt,nx),datavz(nt,nx),dataw(nw,nx);
+    fmat datap(nt,nx),datavz(nt,nx);
 
 ////////////////////////////////////////////////////////////////////
     float xs;
     xs=data.max()-data.min();
-    datavz=data/(xs);
-    datap=dict/(dict.max()-dict.min());
+    //datavz=data/(xs);
+    datavz=data;
+    //datap=dict/(dict.max()-dict.min());
+    datap=dict;
     dataph=dataph/(dataph.max()-dataph.min());
     datapd=datapd/(datapd.max()-datapd.min());
     dataphd=dataphd/(dataphd.max()-dataphd.min());
@@ -118,7 +120,8 @@ fmat single_trace_dewave(fmat & dataup, fmat & datadown,\
     dataup*=xs;
     return dataw;
 }
-
+fmat invcg(fmat x,fmat hess,fmat d,\
+    float residual_ratio,int iterations_num);
 void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     fmat* datavz, fmat* datap,\
     fmat*dataph, fmat* datapd, fmat*dataphd,\
@@ -126,29 +129,38 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
     int nwt,int dnwt,float zzh,int nx1,int nx2, fmat *datacol)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd);
-    fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
+    fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),datal,\
         matq(nw,1),mat2(nw,1),matd(nwt,1),matD(nw,nw),matq0(nw,1);
     fmat digmat(nw,nw,fill::zeros);
     digmat.diag()+=1;
     dnwt=nwt-nw-5;
 
         for(k=nx1;k<nx2;k++){
-            if(k%10==0)
+            //if(k%10==0)
                 cout<<"tracl = "<<k<<endl;
         for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
             mat1.fill(0.0);
-
+/*
+            datal.zeros(1,nwt+nwp-1);
+            for(i=0;i<nwt;i++){
+                datal(0,i)=datap[0](nwt+kwt-i-1,k);
+            }
+            for(i=kwt;i<kwt+nwt;i++){
+                mat0(span(i-kwt,i-kwt),span(0,nwp-1))\
+                    =datal(span(0,0),span(nwt-1-i-kwt,nwt+nwp-1-1-i-kwt));
+            }
+      */      
             mat0.fill(0.0);
             for(i=kwt;i<kwt+nwt;i++){
-                for(j=kwt;j<kwt+nwp;j++){
-                    if((i-j)>=0)
+                for(j=kwt;j<min(kwt+nwp,i+1);j++){
+                    //if((i-j)>=0)
                         mat0(i-kwt,j-kwt)=datap[0](i-j+kwt,k);
                 }
             }
             for(j=kwt;j<kwt+nwp;j++){
                 mat1.col(j-kwt)=mat0.col(j-kwt);
             }
-
+if(nwph>0){
             mat0.fill(0.0);
             for(i=kwt;i<kwt+nwt;i++){
                 for(j=kwt;j<kwt+nwph;j++){
@@ -159,7 +171,8 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
             for(j=kwt;j<kwt+nwph;j++){
                 mat1.col(j-kwt+nwp)=mat0.col(j-kwt);
             }
-
+}
+if(nwpd>0){
             mat0.fill(0.0);
             for(i=kwt;i<kwt+nwt;i++){
                 for(j=kwt;j<kwt+nwpd;j++){
@@ -170,7 +183,8 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
             for(j=kwt;j<kwt+nwpd;j++){
                 mat1.col(j-kwt+nwp+nwph)=mat0.col(j-kwt);
             }
-
+}
+if(nwphd>0){
             mat0.fill(0.0);
             for(i=kwt;i<kwt+nwt;i++){
                 for(j=kwt;j<kwt+nwphd;j++){
@@ -182,7 +196,7 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
                 mat1.col(j-kwt+nwp+nwph+nwpd)=mat0.col(j-kwt);
             }
             ///////////
-            
+}
             for(i=0;i<nwt;i++){
                 matd(i,0)=datavz[0](i+kwt,k);
             }
@@ -195,7 +209,9 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
             //multiple data_win for slip fliter
             {
                 matq=inv(matD+digmat)*mat1.t()*matd;
-                datacol[0].col(k)=matq.col(0);
+                //matq=invcg(datacol[0](span(0,nw-1),span(0,0)),(matD+digmat),mat1.t()*matd,0.1,nw);
+                //matq=invcg(mat1.t()*matd,(matD+digmat),mat1.t()*matd,0.001,nw);
+                datacol[0](span(0,nw-1),span(k,k))=matq.col(0);
             }
 
             matd=mat1*matq;
@@ -209,6 +225,101 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
 
 }
 //////////////////////////////////////////////////////////////////////
+fmat invcg(fmat x,fmat hess,fmat d,\
+    float residual_ratio=0.1,int iterations_num=45)
+{
+    int ip,jp,in,jn,k,iter(0);
+    int np1(x.n_rows),np2(x.n_cols);
+    cout<<np1<<"||"<<np2<<endl;
+    
+    fmat gradient_rk,gradient_rk_1,\
+        gradient_cg_pk,gradient_cg_pk_1,\
+        datatp_k,datatp_k_1,\
+        recoverdatatx_uk,A_gradient_cg_pk,A_datatp_k;
+    fmat sum_num(1,1),residual_pow(1,1),residual_k(1,1);
+    fmat beta_k(1,1),alpha_k(1,1);
+    datatp_k.copy_size(x);
+    datatp_k_1.copy_size(datatp_k);
+    gradient_rk.copy_size(datatp_k);
+    gradient_rk_1.copy_size(datatp_k);
+    gradient_cg_pk.copy_size(datatp_k);
+    gradient_cg_pk_1.copy_size(datatp_k); 
+    A_gradient_cg_pk.copy_size(datatp_k);
+    A_datatp_k.copy_size(datatp_k);
+
+    iter=0;
+    datatp_k=x;
+    sum_num=sum(abs(datatp_k));
+    //datatp_k.fill(0.0);
+    datatp_k=((datatp_k)/1.0);
+    //sum_num=sum(sum(sum(abs(datatp_k))));
+    residual_pow=sum_num(0,0);
+    residual_pow*=residual_ratio;
+
+    //cxfmatget_Ap_small(A_datatp_k,hess_A,datatp_k,kcpu,par);
+    A_datatp_k=hess*datatp_k;
+    gradient_rk=d-A_datatp_k;
+    gradient_cg_pk=gradient_rk;
+
+//cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+    A_gradient_cg_pk=hess*gradient_cg_pk;
+    alpha_k=(gradient_rk.t(),gradient_rk);
+    alpha_k=alpha_k/(gradient_cg_pk.t(),A_gradient_cg_pk);
+    //get new solution
+    datatp_k_1=datatp_k+alpha_k(0,0)*gradient_cg_pk;
+    gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
+
+    beta_k=(gradient_rk_1.t(),gradient_rk_1);
+    beta_k=beta_k/(gradient_rk.t(),gradient_rk);
+    gradient_cg_pk_1=gradient_rk_1+beta_k(0,0)*gradient_cg_pk;
+    //updata
+    datatp_k=datatp_k_1;
+    gradient_rk=gradient_rk_1;
+    gradient_cg_pk=gradient_cg_pk_1;
+    //cal residual_pow
+    sum_num=sum(abs(gradient_rk));
+    residual_k=sum_num;
+
+    while(iter<iterations_num && residual_k(0,0)>residual_pow(0,0)){
+        iter++;
+
+//cxfmatget_Ap_small(A_gradient_cg_pk,hess_A,gradient_cg_pk,kcpu,par);
+        A_gradient_cg_pk=hess*gradient_cg_pk;
+
+        alpha_k=(gradient_rk.t()*gradient_rk);
+        alpha_k=alpha_k/(gradient_cg_pk.t()*A_gradient_cg_pk);
+        //get new solution
+        datatp_k_1=datatp_k+alpha_k(0,0)*gradient_cg_pk;
+        gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
+
+        beta_k=(gradient_rk_1.t()*gradient_rk_1);
+        beta_k=beta_k/(gradient_rk.t()*gradient_rk);
+        gradient_cg_pk_1=gradient_rk_1+(beta_k(0,0))*gradient_cg_pk;
+        //updata
+        datatp_k=datatp_k_1;
+        gradient_rk=gradient_rk_1;
+        gradient_cg_pk=gradient_cg_pk_1;
+        //cal residual_pow
+        sum_num=sum(abs(gradient_rk));
+        residual_k=sum_num;
+    }
+    cout<<residual_pow(0,0)<<"||"<<iter<<"||"\
+        <<residual_k(0,0)/residual_pow(0,0)<<"||"<<sum_num(0,0)<<endl;
+    return datatp_k;
+    //sum_num=sum(sum(sum(abs(datatp_k))));
+    
+/*
+    if((residual_k(0,0)/residual_pow(0,0))>(10.0)\
+        ||isnan(residual_k(0,0))){
+            par[0].datafP.slice(kf).fill(0.0);
+            convergence[0]=false;
+        }
+        else{
+            par[0].datafP.slice(kf)=datatp_k;
+            convergence[0]=true;
+        }
+*/
+}
 //////////////////////////////////////////////////////////////////////
 void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
     fmat* datavz, fmat* datap,fmat*dataph, fmat* datapd, fmat*dataphd,\
@@ -227,6 +338,7 @@ void single_trace_dewave_withdatawin(fmat & dataup, fmat & datadown,\
 ////////////////////////////////////////////////////////////////////
     float xs;
     xs=data.max()-data.min();
+    cout<<xs<<endl;
     datavz=data/(xs);
     datap=dict/(dict.max()-dict.min());
     dataph=dataph/(dataph.max()-dataph.min());
@@ -506,11 +618,9 @@ fmat get_datawin_tp3d(int nt,int npx,int npy,float dt,\
     return datatime0;
 }
 //////////////////////////////////////////////////////////////////////
-void multiple_code2d(fmat& u2, fmat& u1, fmat& green,\
- float df, int fn1=0, int fn2=2048, int ncpu=1);
 void multiple_code2d_pthread(cx_fmat* u2cx, cx_fmat* u1cx, fmat* green,\
  float df, int fn1, int fn2);
-void multiple_code2d(fmat& u2, fmat& u1, fmat& green,\
+fmat multiple_code2d(fmat u1, fmat& green,\
  float df, int fn1, int fn2, int ncpu)
 {
     int n1(u1.n_rows),n2(u1.n_cols);
@@ -545,11 +655,14 @@ void multiple_code2d(fmat& u2, fmat& u1, fmat& green,\
     }
     delete [] pcal;
 
+    fmat u2;
+    u2.copy_size(u1);
     for(k=0;k<n2;k++){
         //u1cx.row(k)=fft(u1.col(k).t(),n1);
         onecol.col(0)=u2cx.row(k).st();
         u2.col(k)=real(ifft(onecol.col(0),n1));
     }
+    return u2;
 }
 void multiple_code2d_pthread(cx_fmat* u2cx, cx_fmat* u1cx, fmat* green,\
  float df, int fn1, int fn2)
