@@ -410,9 +410,9 @@ if(nwphd>0){
             matD=mat1.t()*mat1;
             
             fmat dignum(1,1);
-            dignum=sum(abs(matd)/nwt,0);
+            dignum=sum(abs(matd)/nwt/half_winx,0);
             digmat.fill(0);
-            digmat.diag()+=(dignum(0,0)*zzh+0.00001);
+            digmat.diag()+=(dignum(0,0)*zzh*nw+0.00001);
             //multiple data_win for slip fliter
             {
                 matq=inv(matD+digmat)*mat1.t()*matd;
@@ -922,30 +922,54 @@ void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* gre
 
 void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
  fmat* seabase_depth,fmat *coordx_data,fmat *coordy_data, int isx, int jsy,\
- float source_x, float source_y, float df, int fn1, int fn2,float water_velocity,\
- int ncpu, float wavelet_delay,bool *end_of_thread)
+ int system_source_ix, int system_source_jy, float df, int fn1, int fn2,\
+ int minspacewin,float water_velocity,float code_pattern,int ncpu,\
+ float wavelet_delay,bool *end_of_thread)
 {
     int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
-    int i,j,k,i1,j1,i2,j2,sx,sy;
+    int i,j,k,i1,j1,i2,j2,sx,sy,iloopbeg,iloopend,jloopbeg,jloopend;
     float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
     float l_min(0.0001),l_sum(0.0),l_trace;
     fmat green(n1,n2);
     float w,pi(3.1415926),t;
 
-    sy=jsy;
-    sx=isx;
-    for(i=0;i<n1;i++){      
+    if(isx>=system_source_ix){
+        iloopbeg=system_source_ix-minspacewin;
+        iloopend=isx+minspacewin;
+        iloopbeg=iloopbeg+floor(abs(isx-system_source_ix)*code_pattern);
+    }else{
+        iloopend=system_source_ix+minspacewin;
+        iloopbeg=isx-minspacewin;
+        iloopend=iloopend-floor(abs(isx-system_source_ix)*code_pattern);
+    }
+    if(jsy>=system_source_jy){
+        jloopbeg=system_source_jy-minspacewin;
+        jloopend=jsy+minspacewin;
+        jloopbeg=jloopbeg+floor(abs(jsy-system_source_jy)*code_pattern);
+    }else{
+        jloopend=system_source_jy+minspacewin;
+        jloopbeg=jsy-minspacewin;
+        jloopend=jloopend-floor(abs(jsy-system_source_jy)*code_pattern);
+    }
+    iloopbeg=max(iloopbeg,0);iloopend=min(iloopend,n1);
+    jloopbeg=max(jloopbeg,0);jloopend=min(jloopend,n2);
+    //iloopbeg=0;iloopend=n1;
+    //jloopbeg=0;jloopend=n2;
+    sy=jsy;sx=isx;
+    float source_x=coordx_data[0](isx,jsy);
+    float source_y=coordy_data[0](isx,jsy);
+    for(i=iloopbeg;i<iloopend;i++){      
         i1=floor((sx+i)/2);
         i2=1+i1;
-        i1=max(i1,0);
-        i2=min(i2,n1-1);
-        for(j=0;j<n2;j++){
+        i1=max(iloopbeg,0);
+        i2=min(i2,iloopend-1);
+        for(j=jloopbeg;j<jloopend;j++){
             fi=(float(source_x)+coordx_data[0](i,j))/2.0;
             fj=(float(source_y)+coordy_data[0](i,j))/2.0;
             j1=floor((sy+j)/2);
             j2=1+j1;
-            j1=max(j1,0);
-            j2=min(j2,n2-1);
+            j1=max(j1,jloopbeg);
+            j2=min(j2,jloopend-1);
             l11=(fi-coordx_data[0](i1,j1))*(fi-coordx_data[0](i1,j1))\
                 +(fj-coordy_data[0](i1,j1))*(fj-coordy_data[0](i1,j1))+l_min;
             l12=(fi-coordx_data[0](i1,j2))*(fi-coordx_data[0](i1,j2))\
@@ -970,22 +994,42 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
     }
 
     cx_float a;
+    float blackmanfilter_ibeg,blackmanfilter_iend;
+    float blackmanfilter_ibegwide(min(minspacewin,isx-iloopbeg)),\
+        blackmanfilter_iendwide(min(minspacewin,iloopend-isx));
+    float blackmanfilter_jbeg,blackmanfilter_jend;
+    float blackmanfilter_jbegwide(min(minspacewin,jsy-jloopbeg)),\
+        blackmanfilter_jendwide(min(minspacewin,jloopend-jsy));
+    ///cout<<iloopbeg<<"|"<<iloopend<<"|"<<jloopbeg<<"|"<<jloopend<<"|"<<endl;
     for(k=fn1;k<fn2;k++){
         w=-2.0*pi*df*k;
-    for(i=0;i<n1;i++){
-    for(j=0;j<n2;j++){
+        for(i=iloopbeg;i<iloopend;i++){
+            if(i-iloopbeg<blackmanfilter_ibegwide)
+                blackmanfilter_ibeg=Blackman(i-iloopbeg,blackmanfilter_ibegwide);
+            else
+                blackmanfilter_ibeg=1;
+            if(iloopend-i<blackmanfilter_iendwide)
+                blackmanfilter_iend=Blackman(iloopend-i,blackmanfilter_iendwide);
+            else
+                blackmanfilter_iend=1;
+            blackmanfilter_ibeg*=blackmanfilter_iend;
+            for(j=jloopbeg;j<jloopend;j++){
             t=green(i,j);
             a.real(0.0);
             a.imag(w*t);
             a=exp(a);
+            a.real(real(a)*blackmanfilter_ibeg);
+            a.imag(imag(a)*blackmanfilter_ibeg);
+
             u2[0](isx,jsy,k)+=a*u1[0](i,j,k);
-    }}}
+        }}}
     end_of_thread[0]=true;
 }
 
 void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
- fmat& coordx_data, fmat& coordy_data, float water_velocity,\
- float dx, float dy, float df, int fn1, int fn2, int ncpu, float wavelet_delay=0.0)
+ fmat& coordx_data, fmat& coordy_data, int system_source_ix, int system_source_jy,\
+ float water_velocity,float dx, float dy, float df, int fn1, int fn2,\
+ int minspacewin,float code_pattern, int ncpu, float wavelet_delay=0.0)
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
     int i,j,k,i1,j1,i2,j2,ix,jy;
@@ -1007,9 +1051,10 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
         jy=0;ix=kcpu;
         end_of_thread[kcpu]=false;
         pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
-            pu2,pu1,pseabase,pcoordx_data,pcoordy_data,\
-            ix,jy,coordx_data(ix,jy), coordy_data(ix,jy),df,fn1,fn2,\
-            water_velocity,ncpu,wavelet_delay,&(end_of_thread[kcpu]));
+            pu2,pu1,pseabase,pcoordx_data,pcoordy_data,ix,jy,\
+            system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
+            water_velocity, code_pattern,ncpu,wavelet_delay,\
+            &(end_of_thread[kcpu]));
     }
     js=ncpu;
     while(js<n1*n2){
@@ -1019,9 +1064,10 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
                 end_of_thread[kcpu]=false;
                 jy=int(js/n1);ix=js-jy*n1;
                 pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
-                    pu2,pu1,pseabase,pcoordx_data,pcoordy_data,\
-                    ix,jy,coordx_data(ix,jy), coordy_data(ix,jy),df,fn1,fn2,\
-                    water_velocity,ncpu,wavelet_delay,&(end_of_thread[kcpu]));
+                    pu2,pu1,pseabase,pcoordx_data,pcoordy_data,ix,jy,\
+                    system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
+                    water_velocity, code_pattern,ncpu,wavelet_delay,\
+                    &(end_of_thread[kcpu]));
                 js++;
         }}
     }
