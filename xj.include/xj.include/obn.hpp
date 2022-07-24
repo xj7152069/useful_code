@@ -69,13 +69,14 @@ fmat single_trace_dewave(fmat & dataup, fmat & datadown,\
 ////////////////////////////////////////////////////////////////////
     float xs;
     xs=data.max()-data.min();
-    //datavz=data/(xs);
-    datavz=data;
-    //datap=dict/(dict.max()-dict.min());
-    datap=dict;
+    datavz=data/(xs);
+    //datavz=data;
+    datap=dict/(dict.max()-dict.min());
+    //datap=dict;
     dataph=dataph/(dataph.max()-dataph.min());
     datapd=datapd/(datapd.max()-datapd.min());
     dataphd=dataphd/(dataphd.max()-dataphd.min());
+    dataup.fill(0);
 ////////////////////////////////////////////////////////////////////
     fmat* pdataup=(&dataup); fmat* pdatadown=(&datadown);
     fmat* pdata=(&datavz); fmat* pdict=(&datap);
@@ -133,12 +134,11 @@ void single_trace_dewave_pthread(fmat* dataup, fmat* datadown,\
         matq(nw,1),mat2(nw,1),matd(nwt,1),matD(nw,nw),matq0(nw,1);
     fmat digmat(nw,nw,fill::zeros);
     digmat.diag()+=1;
-    dnwt=nwt-nw-5;
 
         for(k=nx1;k<nx2;k++){
             //if(k%10==0)
                 cout<<"tracl = "<<k<<endl;
-        for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
+        for(kwt=0;kwt<(nt-nwt);kwt+=dnwt){
             mat1.fill(0.0);
 /*
             datal.zeros(1,nwt+nwp-1);
@@ -216,8 +216,216 @@ if(nwphd>0){
 
             matd=mat1*matq;
             for(i=nw;i<nwt;i++){
-                dataup[0](i+kwt,k)=datavz[0](i+kwt,k)-matd(i,0);
+                dataup[0](i+kwt,k)+=(datavz[0](i+kwt,k)-matd(i,0));
                 datadown[0](i+kwt,k)=datavz[0](i+kwt,k)+matd(i,0);
+                //datadown[0](i+kwt,k)=datavz[0](i+kwt,k)-dataup[0](i+kwt,k);
+            }
+        }
+    }
+
+}
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+void AdaptiveRemoveMultiple2d(fmat & dataup, fmat & datadown,\
+    fmat & data, fmat & dict,\
+    fmat &dataph, fmat &datapd, fmat &dataphd,\
+    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
+    int nwt,int dnwt,float zzh, int ncpu, int half_winx);
+void AdaptiveRemoveMultiple2d(struct demultiple2d & par, int half_winx, int ncpu=1)
+{
+    AdaptiveRemoveMultiple2d(par.data_remove_wave, par.data_antiremove_wave,\
+    par.data2d, par.datadict,\
+    par.datah, par.datad, par.datahd,\
+    par.n1,par.n2,par.nwp,par.nwph,par.nwpd,par.nwphd,\
+    par.n1w,par.d1w,par.lmd,ncpu,half_winx);
+}
+
+void AdaptiveRemoveMultiple2dPthread(fmat* dataup, fmat* datadown,\
+    fmat* datavz, fmat* datap,\
+    fmat*dataph, fmat* datapd, fmat*dataphd,\
+    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
+    int nwt,int dnwt,float zzh,int nx1,int nx2, int half_winx);
+void AdaptiveRemoveMultiple2d(fmat & dataup, fmat & datadown,\
+    fmat & data, fmat & dict,\
+    fmat &dataph, fmat &datapd, fmat &dataphd,\
+    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
+    int nwt,int dnwt,float zzh, int ncpu, int half_winx)
+{
+    int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1,nx2,dnx;
+    fmat datap(nt,nx),datavz(nt,nx);
+
+////////////////////////////////////////////////////////////////////
+    float xs;
+    xs=data.max()-data.min();
+    datavz=data/(xs);
+    //datavz=data;
+    datap=dict/(dict.max()-dict.min());
+    //datap=dict;
+    dataph=dataph/(dataph.max()-dataph.min());
+    datapd=datapd/(datapd.max()-datapd.min());
+    dataphd=dataphd/(dataphd.max()-dataphd.min());
+    dataup.fill(0.0);
+////////////////////////////////////////////////////////////////////
+    fmat* pdataup=(&dataup); fmat* pdatadown=(&datadown);
+    fmat* pdata=(&datavz); fmat* pdict=(&datap);
+    fmat* pdataph=(&dataph); fmat* pdatapd=(&datapd);
+    fmat* pdataphd=(&dataphd);
+    thread* pcal;
+    pcal=new thread[ncpu];
+    dnx=nx/ncpu;
+    nx1=0;
+    for(k=0;k<ncpu;k++){
+        nx2=nx1+dnx;
+        pcal[k]=thread(AdaptiveRemoveMultiple2dPthread,pdataup, pdatadown,\
+            pdata, pdict,pdataph, pdatapd, pdataphd,\
+            nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx2,half_winx);
+        nx1=nx2;
+    }
+    for(k=0;k<ncpu;k++){
+        if(pcal[k].joinable())
+            pcal[k].join();
+    }
+    for(k=nx1;k<min(nx-1,ncpu);k++){
+    pcal[k-nx1]=thread(AdaptiveRemoveMultiple2dPthread,pdataup, pdatadown,\
+        pdata, pdict,pdataph, pdatapd, pdataphd,\
+        nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,k,k+1,half_winx);
+    }
+    for(k=0;k<ncpu;k++){
+        if(pcal[k].joinable())
+            pcal[k].join();
+    }
+    delete [] pcal;
+
+////////////////////////////////////////////////////////////////////
+    for(i=0;i<nt;i++){
+        for(j=0;j<nx;j++){
+            if(isnan(abs(dataup(i,j))))
+                {dataup(i,j)=0;}
+            if(isnan(abs(datadown(i,j))))
+                {datadown(i,j)=0;}
+        }
+    }
+    datadown*=xs;
+    dataup*=xs;
+}
+
+void AdaptiveRemoveMultiple2dPthread(fmat* dataup, fmat* datadown,\
+    fmat* datavz, fmat* datap,\
+    fmat*dataph, fmat* datapd, fmat*dataphd,\
+     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
+    int nwt,int dnwt,float zzh,int nx1,int nx2, int half_winx)
+{
+    int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd);
+    fmat data2(nt,nx,fill::zeros),datal,\
+        matq(nw,1),mat2(nw,1),matD(nw,nw),matq0(nw,1);
+    fmat digmat(nw,nw,fill::zeros);
+    digmat.diag()+=1;
+    int winbeg,winend,winnum,datanum;
+    float *psubmat;
+
+        for(k=nx1;k<nx2;k++){
+            //if(k%10==0)
+                cout<<"tracl = "<<k<<endl;
+            winbeg=max(0,k-half_winx);
+            winend=min(int(datap[0].n_cols-1),k+half_winx);
+            winnum=winend-winbeg+1;
+            datanum=nwt*winnum;
+        for(kwt=0;kwt<(nt-nwt);kwt+=dnwt){
+            fmat submat(nwt,winnum);
+            fmat mat1(datanum,nw),mat0(datanum,nw);
+            mat1.fill(0.0);
+/*
+            datal.zeros(1,nwt+nwp-1);
+            for(i=0;i<nwt;i++){
+                datal(0,i)=datap[0](nwt+kwt-i-1,k);
+            }
+            for(i=kwt;i<kwt+nwt;i++){
+                mat0(span(i-kwt,i-kwt),span(0,nwp-1))\
+                    =datal(span(0,0),span(nwt-1-i-kwt,nwt+nwp-1-1-i-kwt));
+            }
+      */      
+            mat0.fill(0.0);
+            submat=datap[0](span(kwt,kwt+nwt-1),span(winbeg,winend));
+            psubmat=&(submat(0,0));
+            fvec pdatap(psubmat, datanum); 
+            for(i=0;i<datanum;i++){
+                for(j=0;j<min(nwp,i+1);j++){
+                    //if((i-j)>=0)
+                        mat0(i,j)=pdatap(i-j);
+                }
+            }
+            for(j=kwt;j<kwt+nwp;j++){
+                mat1.col(j-kwt)=mat0.col(j-kwt);
+            }
+if(nwph>0){
+            mat0.fill(0.0);
+            submat=dataph[0](span(kwt,kwt+nwt-1),span(winbeg,winend));
+            psubmat=&(submat(0,0));
+            fvec pdataph(psubmat, datanum); 
+            for(i=0;i<datanum;i++){
+                for(j=0;j<nwph;j++){
+                    if((i-j)>=0)
+                        mat0(i,j)=pdataph(i-j);
+                }
+            }
+            for(j=kwt;j<kwt+nwph;j++){
+                mat1.col(j-kwt+nwp)=mat0.col(j-kwt);
+            }
+}
+if(nwpd>0){
+            mat0.fill(0.0);
+            submat=datapd[0](span(kwt,kwt+nwt-1),span(winbeg,winend));
+            psubmat=&(submat(0,0));
+            fvec pdatapd(psubmat, datanum); 
+            for(i=0;i<datanum;i++){
+                for(j=0;j<nwpd;j++){
+                    if((i-j)>=0)
+                        mat0(i,j)=pdatapd(i-j);
+                }
+            }
+            for(j=kwt;j<kwt+nwpd;j++){
+                mat1.col(j-kwt+nwp+nwph)=mat0.col(j-kwt);
+            }
+}
+if(nwphd>0){
+            mat0.fill(0.0);
+            submat=dataphd[0](span(kwt,kwt+nwt-1),span(winbeg,winend));
+            psubmat=&(submat(0,0));
+            fvec pdataphd(psubmat, datanum); 
+            for(i=0;i<datanum;i++){
+                for(j=0;j<nwphd;j++){
+                    if((i-j)>=0)
+                        mat0(i,j)=pdataphd(i-j);
+                }
+            }
+            for(j=kwt;j<kwt+nwphd;j++){
+                mat1.col(j-kwt+nwp+nwph+nwpd)=mat0.col(j-kwt);
+            }
+            ///////////
+}
+
+            submat=datavz[0](span(kwt,kwt+nwt-1),span(winbeg,winend));
+            psubmat=&(submat(0,0));
+            fmat matd(psubmat, datanum,1); 
+            matD=mat1.t()*mat1;
+            
+            fmat dignum(1,1);
+            dignum=sum(abs(matd)/nwt,0);
+            digmat.fill(0);
+            digmat.diag()+=(dignum(0,0)*zzh+0.00001);
+            //multiple data_win for slip fliter
+            {
+                matq=inv(matD+digmat)*mat1.t()*matd;
+                //matq=invcg(datacol[0](span(0,nw-1),span(0,0)),(matD+digmat),mat1.t()*matd,0.1,nw);
+                //matq=invcg(mat1.t()*matd,(matD+digmat),mat1.t()*matd,0.001,nw);
+            }
+
+            matd=mat1*matq;
+            for(i=0;i<nwt;i++){
+                dataup[0](i+kwt,k)+=(datavz[0](i+kwt,k)\
+                    -matd(i+(k-winbeg)*nwt,0));
+                datadown[0](i+kwt,k)=datavz[0](i+kwt,k)\
+                    +matd(i+(k-winbeg)*nwt,0);
                 //datadown[0](i+kwt,k)=datavz[0](i+kwt,k)-dataup[0](i+kwt,k);
             }
         }
