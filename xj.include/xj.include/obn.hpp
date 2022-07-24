@@ -241,17 +241,15 @@ void AdaptiveRemoveMultiple2d(struct demultiple2d & par, int half_winx, int ncpu
 }
 
 void AdaptiveRemoveMultiple2dPthread(fmat* dataup, fmat* datadown,\
-    fmat* datavz, fmat* datap,\
-    fmat*dataph, fmat* datapd, fmat*dataphd,\
-    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh,int nx1,int nx2, int half_winx);
+ fmat* datavz, fmat* datap,fmat*dataph, fmat* datapd, fmat*dataphd,\
+ int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,int nwt,int dnwt,\
+ float zzh,int nx1,int nx2, int half_winx,bool *end_of_thread);
 void AdaptiveRemoveMultiple2d(fmat & dataup, fmat & datadown,\
-    fmat & data, fmat & dict,\
-    fmat &dataph, fmat &datapd, fmat &dataphd,\
-    int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh, int ncpu, int half_winx)
+ fmat & data, fmat & dict,fmat &dataph, fmat &datapd, fmat &dataphd,\
+ int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,int nwt,int dnwt,\
+ float zzh, int ncpu, int half_winx)
 {
-    int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1,nx2,dnx;
+    int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd),nx1;
     fmat datap(nt,nx),datavz(nt,nx);
 
 ////////////////////////////////////////////////////////////////////
@@ -270,31 +268,35 @@ void AdaptiveRemoveMultiple2d(fmat & dataup, fmat & datadown,\
     fmat* pdata=(&datavz); fmat* pdict=(&datap);
     fmat* pdataph=(&dataph); fmat* pdatapd=(&datapd);
     fmat* pdataphd=(&dataphd);
-    thread* pcal;
+    thread* pcal;bool* end_of_thread;
     pcal=new thread[ncpu];
-    dnx=nx/ncpu;
-    nx1=0;
+    end_of_thread=new bool[ncpu];
+
     for(k=0;k<ncpu;k++){
-        nx2=nx1+dnx;
-        pcal[k]=thread(AdaptiveRemoveMultiple2dPthread,pdataup, pdatadown,\
-            pdata, pdict,pdataph, pdatapd, pdataphd,\
-            nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,nx1,nx2,half_winx);
-        nx1=nx2;
+        end_of_thread[k]=false;
+        pcal[k]=thread(AdaptiveRemoveMultiple2dPthread,\
+            pdataup, pdatadown,pdata, pdict,pdataph, pdatapd,\
+            pdataphd,nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,\
+            zzh,k,k+1,half_winx,&(end_of_thread[k]));
     }
+    nx1=ncpu;
+    while(nx1<nx){
     for(k=0;k<ncpu;k++){
-        if(pcal[k].joinable())
-            pcal[k].join();
-    }
-    for(k=nx1;k<min(nx-1,ncpu);k++){
-    pcal[k-nx1]=thread(AdaptiveRemoveMultiple2dPthread,pdataup, pdatadown,\
-        pdata, pdict,pdataph, pdatapd, pdataphd,\
-        nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,zzh,k,k+1,half_winx);
-    }
+    if(pcal[k].joinable()&&nx1<nx&&end_of_thread[k]){
+        pcal[k].join();
+        end_of_thread[k]=false;
+        pcal[k]=thread(AdaptiveRemoveMultiple2dPthread,\
+            pdataup, pdatadown,pdata, pdict,pdataph, pdatapd,\
+            pdataphd,nt, nx,nwp, nwph, nwpd, nwphd,nwt, dnwt,\
+            zzh,nx1,nx1+1,half_winx,&(end_of_thread[k]));
+        nx1++;
+    }}}
     for(k=0;k<ncpu;k++){
         if(pcal[k].joinable())
             pcal[k].join();
     }
     delete [] pcal;
+    delete [] end_of_thread;
 
 ////////////////////////////////////////////////////////////////////
     for(i=0;i<nt;i++){
@@ -310,10 +312,9 @@ void AdaptiveRemoveMultiple2d(fmat & dataup, fmat & datadown,\
 }
 
 void AdaptiveRemoveMultiple2dPthread(fmat* dataup, fmat* datadown,\
-    fmat* datavz, fmat* datap,\
-    fmat*dataph, fmat* datapd, fmat*dataphd,\
-     int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,\
-    int nwt,int dnwt,float zzh,int nx1,int nx2, int half_winx)
+ fmat* datavz, fmat* datap,fmat*dataph, fmat* datapd, fmat*dataphd,\
+ int nt,int nx,int nwp,int nwph,int nwpd,int nwphd,int nwt,int dnwt,\
+ float zzh,int nx1,int nx2, int half_winx,bool *end_of_thread)
 {
     int i,j,k,wt1,kwt,nw(nwp+nwph+nwpd+nwphd);
     fmat data2(nt,nx,fill::zeros),datal,\
@@ -424,13 +425,13 @@ if(nwphd>0){
             for(i=0;i<nwt;i++){
                 dataup[0](i+kwt,k)+=(datavz[0](i+kwt,k)\
                     -matd(i+(k-winbeg)*nwt,0));
-                datadown[0](i+kwt,k)=datavz[0](i+kwt,k)\
+                //datadown[0](i+kwt,k)=datavz[0](i+kwt,k)\
                     +matd(i+(k-winbeg)*nwt,0);
                 //datadown[0](i+kwt,k)=datavz[0](i+kwt,k)-dataup[0](i+kwt,k);
             }
         }
     }
-
+    end_of_thread[0]=true;
 }
 //////////////////////////////////////////////////////////////////////
 fmat invcg(fmat x,fmat hess,fmat d,\
@@ -1014,14 +1015,25 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
                 blackmanfilter_iend=1;
             blackmanfilter_ibeg*=blackmanfilter_iend;
             for(j=jloopbeg;j<jloopend;j++){
-            t=green(i,j);
-            a.real(0.0);
-            a.imag(w*t);
-            a=exp(a);
-            a.real(real(a)*blackmanfilter_ibeg);
-            a.imag(imag(a)*blackmanfilter_ibeg);
-
-            u2[0](isx,jsy,k)+=a*u1[0](i,j,k);
+                if(j-jloopbeg<blackmanfilter_jbegwide)
+                    blackmanfilter_jbeg=Blackman(j-jloopbeg,blackmanfilter_jbegwide);
+                else
+                    blackmanfilter_jbeg=1;
+                if(jloopend-j<blackmanfilter_jendwide)
+                    blackmanfilter_jend=Blackman(jloopend-j,blackmanfilter_jendwide);
+                else
+                    blackmanfilter_jend=1;
+                blackmanfilter_jbeg*=blackmanfilter_jend;
+                if(i-iloopbeg<blackmanfilter_ibegwide||\
+                    iloopend-i<blackmanfilter_iendwide)
+                    blackmanfilter_jbeg*=blackmanfilter_ibeg;
+                t=green(i,j);
+                a.real(0.0);
+                a.imag(w*t);
+                a=exp(a);
+                a.real(real(a)*blackmanfilter_jbeg);
+                a.imag(imag(a)*blackmanfilter_jbeg);
+                u2[0](isx,jsy,k)+=a*u1[0](i,j,k);
         }}}
     end_of_thread[0]=true;
 }
