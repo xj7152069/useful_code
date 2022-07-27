@@ -10,6 +10,7 @@
 #include <thread>
 #include <future>
 #include <time.h>
+#include <algorithm>
 #include <omp.h>
 
 #include "../xjc.h"
@@ -205,7 +206,7 @@ if(nwphd>0){
             fmat dignum(1,1);
             dignum=sum(abs(matd)/nwt,0);
             digmat.fill(0);
-            digmat.diag()+=(dignum(0,0)*zzh+0.00001);
+            digmat.diag()+=(dignum(0,0)*zzh*nw+0.00001);
             //multiple data_win for slip fliter
             {
                 matq=inv(matD+digmat)*mat1.t()*matd;
@@ -282,7 +283,7 @@ void AdaptiveRemoveMultiple2d(fmat & dataup, fmat & datadown,\
     nx1=ncpu;
     while(nx1<nx){
     for(k=0;k<ncpu;k++){
-    if(pcal[k].joinable()&&nx1<nx&&end_of_thread[k]){
+    if(end_of_thread[k]&&pcal[k].joinable()&&nx1<nx){
         pcal[k].join();
         end_of_thread[k]=false;
         pcal[k]=thread(AdaptiveRemoveMultiple2dPthread,\
@@ -335,16 +336,7 @@ void AdaptiveRemoveMultiple2dPthread(fmat* dataup, fmat* datadown,\
             fmat submat(nwt,winnum);
             fmat mat1(datanum,nw),mat0(datanum,nw);
             mat1.fill(0.0);
-/*
-            datal.zeros(1,nwt+nwp-1);
-            for(i=0;i<nwt;i++){
-                datal(0,i)=datap[0](nwt+kwt-i-1,k);
-            }
-            for(i=kwt;i<kwt+nwt;i++){
-                mat0(span(i-kwt,i-kwt),span(0,nwp-1))\
-                    =datal(span(0,0),span(nwt-1-i-kwt,nwt+nwp-1-1-i-kwt));
-            }
-      */      
+
             mat0.fill(0.0);
             submat=datap[0](span(kwt,kwt+nwt-1),span(winbeg,winend));
             psubmat=&(submat(0,0));
@@ -417,7 +409,6 @@ if(nwphd>0){
             //multiple data_win for slip fliter
             {
                 matq=inv(matD+digmat)*mat1.t()*matd;
-                //matq=invcg(datacol[0](span(0,nw-1),span(0,0)),(matD+digmat),mat1.t()*matd,0.1,nw);
                 //matq=invcg(mat1.t()*matd,(matD+digmat),mat1.t()*matd,0.001,nw);
             }
 
@@ -933,6 +924,9 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
     float l_min(0.0001),l_sum(0.0),l_trace;
     fmat green(n1,n2);
     float w,pi(3.1415926),t;
+    code_pattern=1.0-code_pattern;
+    code_pattern=std::min(code_pattern,float(1.0));
+    code_pattern=std::max(code_pattern,float(0.0));
 
     if(isx>=system_source_ix){
         iloopbeg=system_source_ix-minspacewin;
@@ -996,37 +990,54 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
 
     cx_float a;
     float blackmanfilter_ibeg,blackmanfilter_iend;
-    float blackmanfilter_ibegwide(min(minspacewin,isx-iloopbeg)),\
-        blackmanfilter_iendwide(min(minspacewin,iloopend-isx));
+    float blackmanfilter_ibegwide(std::min(minspacewin,isx-iloopbeg)),\
+        blackmanfilter_iendwide(std::min(minspacewin,iloopend-isx));
     float blackmanfilter_jbeg,blackmanfilter_jend;
-    float blackmanfilter_jbegwide(min(minspacewin,jsy-jloopbeg)),\
-        blackmanfilter_jendwide(min(minspacewin,jloopend-jsy));
-    ///cout<<iloopbeg<<"|"<<iloopend<<"|"<<jloopbeg<<"|"<<jloopend<<"|"<<endl;
+    float blackmanfilter_jbegwide(std::min(minspacewin,jsy-jloopbeg)),\
+        blackmanfilter_jendwide(std::min(minspacewin,jloopend-jsy));
     for(k=fn1;k<fn2;k++){
         w=-2.0*pi*df*k;
+        float li(0.0),widei(0.0);
         for(i=iloopbeg;i<iloopend;i++){
-            if(i-iloopbeg<blackmanfilter_ibegwide)
+            if(i-iloopbeg<blackmanfilter_ibegwide){
                 blackmanfilter_ibeg=Blackman(i-iloopbeg,blackmanfilter_ibegwide);
-            else
+            }
+            else{
                 blackmanfilter_ibeg=1;
-            if(iloopend-i<blackmanfilter_iendwide)
+            }
+            if(iloopend-i<blackmanfilter_iendwide){
                 blackmanfilter_iend=Blackman(iloopend-i,blackmanfilter_iendwide);
-            else
+            }
+            else{
                 blackmanfilter_iend=1;
+            }
             blackmanfilter_ibeg*=blackmanfilter_iend;
             for(j=jloopbeg;j<jloopend;j++){
-                if(j-jloopbeg<blackmanfilter_jbegwide)
+                float lj(0.0),widej(0.0);
+                float l_blackman;
+                if(j-jloopbeg<blackmanfilter_jbegwide){
                     blackmanfilter_jbeg=Blackman(j-jloopbeg,blackmanfilter_jbegwide);
-                else
+                }
+                else{
                     blackmanfilter_jbeg=1;
-                if(jloopend-j<blackmanfilter_jendwide)
+                }
+                if(jloopend-j<blackmanfilter_jendwide){
                     blackmanfilter_jend=Blackman(jloopend-j,blackmanfilter_jendwide);
-                else
+                }
+                else{
                     blackmanfilter_jend=1;
+                }
                 blackmanfilter_jbeg*=blackmanfilter_jend;
-                if(i-iloopbeg<blackmanfilter_ibegwide||\
-                    iloopend-i<blackmanfilter_iendwide)
+
+                if((i-iloopbeg<blackmanfilter_ibegwide||\
+                    iloopend-i<blackmanfilter_iendwide)&&\
+                    (j-jloopbeg<blackmanfilter_jbegwide||\
+                    jloopend-j<blackmanfilter_jendwide)){
+                    blackmanfilter_jbeg=std::max\
+                        (blackmanfilter_jbeg,blackmanfilter_ibeg);
+                }else
                     blackmanfilter_jbeg*=blackmanfilter_ibeg;
+
                 t=green(i,j);
                 a.real(0.0);
                 a.imag(w*t);
@@ -1044,9 +1055,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
  int minspacewin,float code_pattern, int ncpu, float wavelet_delay=0.0)
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
-    int i,j,k,i1,j1,i2,j2,ix,jy;
-    float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
-    float l_min(0.000000001),l_sum(0.0),l_trace,sx(0),sy(0);
+    int ix,jy;
     
     cx_fcube *pu2(&u2);
     cx_fcube *pu1(&u1);
@@ -1071,7 +1080,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
     js=ncpu;
     while(js<n1*n2){
         for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(pcal[kcpu].joinable()&&js<n1*n2&&end_of_thread[kcpu]){
+            if(end_of_thread[kcpu]&&pcal[kcpu].joinable()&&js<n1*n2){
                 pcal[kcpu].join();
                 end_of_thread[kcpu]=false;
                 jy=int(js/n1);ix=js-jy*n1;
