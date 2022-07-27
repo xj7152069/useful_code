@@ -997,6 +997,7 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
         blackmanfilter_jendwide(std::min(minspacewin,jloopend-jsy));
     for(k=fn1;k<fn2;k++){
         w=-2.0*pi*df*k;
+        float li(0.0),widei(0.0);
         for(i=iloopbeg;i<iloopend;i++){
             if(i-iloopbeg<blackmanfilter_ibegwide){
                 blackmanfilter_ibeg=Blackman(i-iloopbeg,blackmanfilter_ibegwide);
@@ -1012,6 +1013,8 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
             }
             blackmanfilter_ibeg*=blackmanfilter_iend;
             for(j=jloopbeg;j<jloopend;j++){
+                float lj(0.0),widej(0.0);
+                float l_blackman;
                 if(j-jloopbeg<blackmanfilter_jbegwide){
                     blackmanfilter_jbeg=Blackman(j-jloopbeg,blackmanfilter_jbegwide);
                 }
