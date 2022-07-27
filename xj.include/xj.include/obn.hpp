@@ -997,7 +997,6 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
         blackmanfilter_jendwide(std::min(minspacewin,jloopend-jsy));
     for(k=fn1;k<fn2;k++){
         w=-2.0*pi*df*k;
-        float li(0.0),widei(0.0);
         for(i=iloopbeg;i<iloopend;i++){
             if(i-iloopbeg<blackmanfilter_ibegwide){
                 blackmanfilter_ibeg=Blackman(i-iloopbeg,blackmanfilter_ibegwide);
@@ -1013,8 +1012,6 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
             }
             blackmanfilter_ibeg*=blackmanfilter_iend;
             for(j=jloopbeg;j<jloopend;j++){
-                float lj(0.0),widej(0.0);
-                float l_blackman;
                 if(j-jloopbeg<blackmanfilter_jbegwide){
                     blackmanfilter_jbeg=Blackman(j-jloopbeg,blackmanfilter_jbegwide);
                 }
@@ -1028,15 +1025,7 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
                     blackmanfilter_jend=1;
                 }
                 blackmanfilter_jbeg*=blackmanfilter_jend;
-
-                if((i-iloopbeg<blackmanfilter_ibegwide||\
-                    iloopend-i<blackmanfilter_iendwide)&&\
-                    (j-jloopbeg<blackmanfilter_jbegwide||\
-                    jloopend-j<blackmanfilter_jendwide)){
-                    blackmanfilter_jbeg=std::max\
-                        (blackmanfilter_jbeg,blackmanfilter_ibeg);
-                }else
-                    blackmanfilter_jbeg*=blackmanfilter_ibeg;
+                blackmanfilter_jbeg*=blackmanfilter_ibeg;
 
                 t=green(i,j);
                 a.real(0.0);
@@ -1084,6 +1073,8 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
                 pcal[kcpu].join();
                 end_of_thread[kcpu]=false;
                 jy=int(js/n1);ix=js-jy*n1;
+                if(js%n1==0)
+                    cout<<jy<<endl;
                 pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
                     pu2,pu1,pseabase,pcoordx_data,pcoordy_data,ix,jy,\
                     system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
