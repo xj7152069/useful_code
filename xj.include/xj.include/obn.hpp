@@ -915,8 +915,8 @@ void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* gre
 void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
  fmat* seabase_depth,fmat *coordx_data,fmat *coordy_data, int isx, int jsy,\
  int system_source_ix, int system_source_jy, float df, int fn1, int fn2,\
- int minspacewin,float water_velocity,float code_pattern,int ncpu,\
- float wavelet_delay,bool *end_of_thread)
+ int minspacewin,int maxspacewin,float water_velocity,float code_pattern,\
+ int ncpu,float wavelet_delay,bool *end_of_thread)
 {
     int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
     int i,j,k,i1,j1,i2,j2,sx,sy,iloopbeg,iloopend,jloopbeg,jloopend;
@@ -931,20 +931,28 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
     if(isx>=system_source_ix){
         iloopbeg=system_source_ix-minspacewin;
         iloopend=isx+minspacewin;
-        iloopbeg=iloopbeg+floor(abs(isx-system_source_ix)*code_pattern);
+        int wideadd(floor(abs(isx-system_source_ix)*code_pattern));
+        wideadd=std::max(wideadd,int(isx-system_source_ix-maxspacewin));
+        iloopbeg=iloopbeg+wideadd;
     }else{
         iloopend=system_source_ix+minspacewin;
         iloopbeg=isx-minspacewin;
-        iloopend=iloopend-floor(abs(isx-system_source_ix)*code_pattern);
+        int wideadd(floor(abs(system_source_ix-isx)*code_pattern));
+        wideadd=std::max(wideadd,int(system_source_ix-isx-maxspacewin));
+        iloopend=iloopend-wideadd;
     }
     if(jsy>=system_source_jy){
         jloopbeg=system_source_jy-minspacewin;
         jloopend=jsy+minspacewin;
-        jloopbeg=jloopbeg+floor(abs(jsy-system_source_jy)*code_pattern);
+        int wideadd(floor(abs(jsy-system_source_jy)*code_pattern));
+        wideadd=std::max(wideadd,int(jsy-system_source_jy-maxspacewin));
+        jloopbeg=jloopbeg+wideadd;
     }else{
         jloopend=system_source_jy+minspacewin;
         jloopbeg=jsy-minspacewin;
-        jloopend=jloopend-floor(abs(jsy-system_source_jy)*code_pattern);
+        int wideadd(floor(abs(system_source_jy-jsy)*code_pattern));
+        wideadd=std::max(wideadd,int(system_source_jy-jsy-maxspacewin));
+        jloopend=jloopend-wideadd;
     }
     iloopbeg=max(iloopbeg,0);iloopend=min(iloopend,n1);
     jloopbeg=max(jloopbeg,0);jloopend=min(jloopend,n2);
@@ -1044,7 +1052,7 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
 void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
  fmat& coordx_data, fmat& coordy_data, int system_source_ix, int system_source_jy,\
  float water_velocity,float dx, float dy, float df, int fn1, int fn2,\
- int minspacewin,float code_pattern, int ncpu, float wavelet_delay=0.0)
+ int minspacewin,int maxspacewin,float code_pattern, int ncpu, float wavelet_delay=0.0)
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
     int ix,jy;
@@ -1066,7 +1074,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
         pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
             pu2,pu1,pseabase,pcoordx_data,pcoordy_data,ix,jy,\
             system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
-            water_velocity, code_pattern,ncpu,wavelet_delay,\
+            maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
             &(end_of_thread[kcpu]));
     }
     js=ncpu;
@@ -1081,7 +1089,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
                 pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
                     pu2,pu1,pseabase,pcoordx_data,pcoordy_data,ix,jy,\
                     system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
-                    water_velocity, code_pattern,ncpu,wavelet_delay,\
+                    maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
                     &(end_of_thread[kcpu]));
                 js++;
         }}
