@@ -351,66 +351,57 @@ void matprint(T1 ***mat1, int n1, int n2, int n3)
 //��Ϊ��������άָ��***p���ԣ�*p��**p���ǵ�ַ���顣
 float** newfmat(int x1, int x2)
 {
-    float **p,**p2;
+    float **p,*p2;
     int j;
-    p=new float*[x1];      
-    for(j=0;j<x1;j++)  
-        {  
-        p[j]=new float[x2];
-        }
-    p2=p;
-    p=NULL;
-    return p2;
+    p=new float*[x1];   
+    p2=new float[x1*x2];   
+    for(j=0;j<x1;j++){  
+        p[j]=&(p2[j*x2]);
+    }
+    return p;
 }
 
 float*** newfmat(int x1, int x2, int x3)
 {
-    float ***p,***p2;
+    float ***p,*p2;
     int i,j;
-    p=new float**[x1];      
-    for(j=0;j<x1;j++)  
-        {  
+    p=new float**[x1];   
+    p2=new float[x1*x2*x3];   
+    for(j=0;j<x1;j++){  
         p[j]=new float*[x2];
-        for(i=0;i<x2;i++)
-            {
-                p[j][i]=new float[x3];
-            }
+        for(i=0;i<x2;i++){
+            p[j][i]=&(p2[j*x2*x3+i*x3]);
         }
-    p2=p;
-    p=NULL;
-    return p2;
+    }
+    return p;
 }
 
 //�����ͷ��ڴ棬���޷���ԭ�����е�ָ����ã�
 template<typename T1>
 void matdelete(T1 **mat, int x1)
 {
-    int i;
-    for(i=0;i<x1;i++)
-    {
-        delete []mat[i];
-        mat[i]=NULL;
-    }
+    T1 *p;
+    p=(mat[0]);
+    delete []p;
     delete []mat;
     mat=NULL;
+    p=NULL;
 }
 
 template<typename T1>
 void matdelete(T1 ***mat, int x1, int x2)
 {
-    int i,j;
-    for(i=0;i<x1;i++)
-    {
-        for(j=0;j<x2;j++)
-        {
-            delete []mat[i][j];
-            mat[i][j]=NULL;
-        }
+    int i;
+    T1 *p;
+    p=(mat[0][0]);
+    delete []p;
+    for(i=0;i<x1;i++){
         delete []mat[i];
         mat[i]=NULL;
     }    
     delete []mat;
     mat=NULL;
+    p=NULL;
 }
 
 template <typename T1, typename T2>

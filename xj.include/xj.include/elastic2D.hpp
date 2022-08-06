@@ -21,17 +21,11 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////////////////////////
 float** newfmatcs(int x1, int x2, float f)
 {
-    float **p,**p2;
+    float **p;
     int j;
-    p=new float*[x1];      
-    for(j=0;j<x1;j++)  
-        {  
-        p[j]=new float[x2];
-        }
-    p2=p;
-    p=NULL;
-    matcopy(p2,f,x1,x2); 
-    return p2;
+    p=newfmat(x1,x2);
+    matcopy(p,f,x1,x2); 
+    return p;
 }
 
 struct elastic_wave_data
