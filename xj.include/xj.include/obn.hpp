@@ -1050,8 +1050,8 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
 
 void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
  fmat& coordx_data, fmat& coordy_data, int system_source_ix, int system_source_jy,\
- float water_velocity,float dx, float dy, float df, int fn1, int fn2,\
- int minspacewin,int maxspacewin,float code_pattern, int ncpu, float wavelet_delay=0.0)
+ float water_velocity, float df, int fn1, int fn2,int minspacewin,\
+ int maxspacewin,float code_pattern, int ncpu, float wavelet_delay=0.0)
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
     int ix,jy;
