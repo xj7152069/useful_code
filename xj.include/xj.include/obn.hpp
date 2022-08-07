@@ -416,8 +416,7 @@ if(nwphd>0){
             for(i=0;i<nwt;i++){
                 dataup[0](i+kwt,k)+=(datavz[0](i+kwt,k)\
                     -matd(i+(k-winbeg)*nwt,0));
-                //datadown[0](i+kwt,k)=datavz[0](i+kwt,k)\
-                    +matd(i+(k-winbeg)*nwt,0);
+                datadown[0](i+kwt,k)+=datavz[0](i+kwt,k);
                 //datadown[0](i+kwt,k)=datavz[0](i+kwt,k)-dataup[0](i+kwt,k);
             }
         }
