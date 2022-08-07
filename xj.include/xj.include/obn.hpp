@@ -1079,7 +1079,9 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
     js=ncpu;
     while(js<n1*n2){
         for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(end_of_thread[kcpu]&&pcal[kcpu].joinable()&&js<n1*n2){
+            if(!end_of_thread[kcpu])continue;
+            else if(end_of_thread[kcpu]){
+                if(pcal[kcpu].joinable()&&js<n1*n2){
                 pcal[kcpu].join();
                 end_of_thread[kcpu]=false;
                 jy=int(js/n1);ix=js-jy*n1;
@@ -1091,6 +1093,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
                     maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
                     &(end_of_thread[kcpu]));
                 js++;
+            }
         }}
     }
     for(kcpu=0;kcpu<ncpu;kcpu++){
