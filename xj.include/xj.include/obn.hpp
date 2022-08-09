@@ -413,7 +413,7 @@ if(nwphd>0){
             }
 
             matd=mat1*matq;
-            for(i=0;i<nwt;i++){
+            for(i=nw;i<nwt;i++){
                 dataup[0](i+kwt,k)+=(datavz[0](i+kwt,k)\
                     -matd(i+(k-winbeg)*nwt,0));
                 datadown[0](i+kwt,k)+=datavz[0](i+kwt,k);
