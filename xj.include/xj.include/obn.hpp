@@ -327,7 +327,7 @@ void AdaptiveRemoveMultiple2dPthread(fmat* dataup, fmat* datadown,\
 
         for(k=nx1;k<nx2;k++){
             //if(k%10==0)
-                cout<<"tracl = "<<k<<endl;
+                //cout<<"tracl = "<<k<<endl;
             winbeg=max(0,k-half_winx);
             winend=min(int(datap[0].n_cols-1),k+half_winx);
             winnum=winend-winbeg+1;
@@ -912,11 +912,14 @@ void multiple_code3d_onepoint_onefrequence(cx_fcube* u2, cx_fcube* u1, fmat* gre
 }
 
 void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
- fmat* seabase_depth,fmat *coordx_data,fmat *coordy_data, int isx, int jsy,\
- int system_source_ix, int system_source_jy, float df, int fn1, int fn2,\
- int minspacewin,int maxspacewin,float water_velocity,float code_pattern,\
- int ncpu,float wavelet_delay,bool *end_of_thread)
+ fmat* seabase_depth,fmat *coordx_data,fmat *coordy_data,float docode,\
+ int isx, int jsy, int system_source_ix, int system_source_jy, float df,\
+ int fn1, int fn2, int minspacewin,int maxspacewin,float water_velocity,\
+ float code_pattern, int ncpu,float wavelet_delay,bool *end_of_thread)
 {
+    if(docode<0.5){
+        end_of_thread[0]=true;
+    }else{
     int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
     int i,j,k,i1,j1,i2,j2,sx,sy,iloopbeg,iloopend,jloopbeg,jloopend;
     float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
@@ -1046,12 +1049,14 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
                 u2[0](isx,jsy,k)+=a*u1[0](i,j,k);
         }}}
     end_of_thread[0]=true;
+    }
 }
 
 void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
- fmat& coordx_data, fmat& coordy_data, int system_source_ix, int system_source_jy,\
- float water_velocity, float df, int fn1, int fn2,int minspacewin,\
- int maxspacewin,float code_pattern, int ncpu, float wavelet_delay=0.0)
+ fmat& coordx_data, fmat& coordy_data, fmat& docode,\
+ int system_source_ix, int system_source_jy,float water_velocity, \
+ float df, int fn1, int fn2,int minspacewin,int maxspacewin,\
+ float code_pattern, int ncpu, float wavelet_delay=0.0)
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
     int ix,jy;
@@ -1071,7 +1076,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
         jy=0;ix=kcpu;
         end_of_thread[kcpu]=false;
         pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
-            pu2,pu1,pseabase,pcoordx_data,pcoordy_data,ix,jy,\
+            pu2,pu1,pseabase,pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
             system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
             maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
             &(end_of_thread[kcpu]));
@@ -1079,16 +1084,16 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
     js=ncpu;
     while(js<n1*n2){
         for(kcpu=0;kcpu<ncpu;kcpu++){
-            if(!end_of_thread[kcpu])continue;
-            else if(end_of_thread[kcpu]){
-                if(pcal[kcpu].joinable()&&js<n1*n2){
+        if(!end_of_thread[kcpu])continue;
+        else if(end_of_thread[kcpu]){
+            if(pcal[kcpu].joinable()&&js<n1*n2){
                 pcal[kcpu].join();
                 end_of_thread[kcpu]=false;
                 jy=int(js/n1);ix=js-jy*n1;
                 if(js%n1==0)
                     cout<<jy<<endl;
                 pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
-                    pu2,pu1,pseabase,pcoordx_data,pcoordy_data,ix,jy,\
+                    pu2,pu1,pseabase,pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
                     system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
                     maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
                     &(end_of_thread[kcpu]));
@@ -1283,4 +1288,130 @@ bool*** newboolmat(int x1, int x2, int x3)
 }
 
 ///////////////////////////////////////////////////////////////////////
+void getSourceIndes(int& sxindex,int& syindex,\
+    fmat& coordx, fmat& coordy)
+{
+    int i,j;
+    float offset,d(1e30);
+    for(i=0;i<coordx.n_rows;i++){
+    for(j=0;j<coordx.n_cols;j++){
+        offset=coordx(i,j)*coordx(i,j)+coordy(i,j)*coordy(i,j);
+        if(offset<d){
+            d=offset;
+            sxindex=i;
+            syindex=j;
+    }}}
+}
+void fcubeLinearInterpolation3dByCol(fcube& data3d,fmat& coordFold)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
+    fmat coordFoldInter;
+    fcube data3dInter;
+    int nInter(n2*2-1);
+    data3dInter.zeros(n1,nInter,n3);
+    coordFoldInter.zeros(n1,nInter);
+
+    data3dInter.col(0)=data3d.col(0);
+    coordFoldInter.col(0)=coordFold.col(0);
+    for(i=1;i<n2;i++){
+        int kinter=2*i;
+        data3dInter.col(kinter)=data3d.col(i);
+        data3dInter.col(kinter-1)=(data3dInter.col(kinter)\
+            +data3dInter.col(kinter-2));
+        data3dInter.col(kinter-1)=data3dInter.col(kinter-1)/2.0;
+        coordFoldInter.col(kinter)=coordFold.col(i);
+    }
+    data3d=data3dInter;
+    coordFold=coordFoldInter;
+}
+void fcubeLinearInterpolation3dByRow(fcube& data3d, fmat& coordFold)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
+    fmat coordFoldInter;
+    fcube data3dInter;
+    int nInter(n1*2-1);
+    data3dInter.zeros(nInter,n2,n3);
+    coordFoldInter.zeros(nInter,n2);
+
+    data3dInter.row(0)=data3d.row(0);
+    coordFoldInter.row(0)=coordFold.row(0);
+    for(i=1;i<n1;i++){
+        int kinter=2*i;
+        data3dInter.row(kinter)=data3d.row(i);
+        data3dInter.row(kinter-1)=(data3dInter.row(kinter)\
+            +data3dInter.row(kinter-2));
+        data3dInter.row(kinter-1)=data3dInter.row(kinter-1)/2.0;
+        coordFoldInter.row(kinter)=coordFold.row(i);
+    }
+    data3d=data3dInter;
+    coordFold=coordFoldInter;
+}
+void fmatLinearInterpolation3dByCol(fmat& data2d)
+{
+    int n1(data2d.n_rows),n2(data2d.n_cols),i;
+    fmat data2dInter;
+    int nInter(n2*2-1);
+    data2dInter.zeros(n1,nInter);
+    data2dInter.col(0)=data2d.col(0);
+    for(i=1;i<n2;i++){
+        int kinter=2*i;
+        data2dInter.col(kinter)=data2d.col(i);
+        data2dInter.col(kinter-1)=(data2dInter.col(kinter)\
+            +data2dInter.col(kinter-2));
+        data2dInter.col(kinter-1)=data2dInter.col(kinter-1)/2.0;
+    }
+    data2d=data2dInter;
+}
+void fmatLinearInterpolation3dByRow(fmat& data2d)
+{
+    int n1(data2d.n_rows),n2(data2d.n_cols),i;
+    fmat data2dInter;
+    int nInter(n1*2-1);
+    data2dInter.zeros(nInter,n2);
+    data2dInter.row(0)=data2d.row(0);
+    for(i=1;i<n1;i++){
+        int kinter=2*i;
+        data2dInter.row(kinter)=data2d.row(i);
+        data2dInter.row(kinter-1)=(data2dInter.row(kinter)\
+            +data2dInter.row(kinter-2));
+        data2dInter.row(kinter-1)=data2dInter.row(kinter-1)/2.0;
+    }
+    data2d=data2dInter;
+}
+
+void fcubeAntiLinearInterpolation3dByRow(fcube& data3d, fmat& coordFold)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),kinter;
+    fmat coordFoldInter;
+    fcube data3dInter;
+    int nAntiInter((n1+1)/2);
+    data3dInter.zeros(nAntiInter,n2,n3);
+    coordFoldInter.zeros(nAntiInter,n2);
+
+    for(kinter=0;kinter<nAntiInter;kinter++){
+        int i=2*kinter;
+        data3dInter.row(kinter)=data3d.row(i);
+        coordFoldInter.row(kinter)=coordFold.row(i);
+    }
+    data3d=data3dInter;
+    coordFold=coordFoldInter;
+}
+void fcubeAntiLinearInterpolation3dByCol(fcube& data3d,fmat& coordFold)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),kinter;
+    fmat coordFoldInter;
+    fcube data3dInter;
+    int nAntiInter((n2+1)/2);
+    data3dInter.zeros(n1,nAntiInter,n3);
+    coordFoldInter.zeros(n1,nAntiInter);
+
+    for(kinter=0;kinter<nAntiInter;kinter++){
+        int i=2*kinter;
+        data3dInter.col(kinter)=data3d.col(i);
+        coordFoldInter.col(kinter)=coordFold.col(i);
+    }
+    data3d=data3dInter;
+    coordFold=coordFoldInter;
+}
+
 #endif
