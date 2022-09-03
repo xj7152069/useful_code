@@ -277,6 +277,61 @@ void get_agc2d_thread(agc2d & agc)
 }
 */
 ///////////////////////////////////////////////////////////////////
+
+fmat get_agc2d(fmat & data2, fmat & data, int agcwx=50, int agcwy=5)
+{
+    int i,j,i1,j1,nx(data.n_rows),ny(data.n_cols);
+    fmat agcelem;
+    agcelem.copy_size(data);
+    float agcpow,maxpow(0.001);
+    for(i=agcwx;i<nx-agcwx;i++)
+    {
+    for(j=agcwy;j<ny-agcwy;j++)
+    {
+        agcpow=0;
+        for(i1=-agcwx;i1<=agcwx;i1++)
+        {
+        for(j1=-agcwy;j1<=agcwy;j1++)
+        {
+            agcpow+=(data(i+i1,j+j1)*data(i+i1,j+j1));
+        }}
+        agcelem(i,j)=sqrt(agcpow);
+        agcpow=0;
+    }}
+    for(i=0;i<agcwx;i++)
+    {
+        agcelem.row(i)=agcelem.row(agcwx);
+        agcelem.row(nx-1-i)=agcelem.row(nx-1-agcwx);
+    }
+    for(i=0;i<agcwy;i++)
+    {
+        agcelem.col(i)=agcelem.col(agcwy);
+        agcelem.col(ny-1-i)=agcelem.col(ny-1-agcwy);
+    }
+
+    agcelem=agcelem/(agcelem.max()-agcelem.min());
+    agcelem=agcelem+maxpow;
+    //this->agcelem=this->agcelem+maxpow*(this->agcelem.max());
+    agcelem=1.0/agcelem;
+    for(i=0;i<nx;i++)
+    {
+    for(j=0;j<ny;j++)
+    {
+        data2(i,j)=agcelem(i,j)*data(i,j);
+    }}
+    return agcelem;
+}
+void de_agc2d(fmat & data, fmat & agcelem)
+{
+    int i,j;
+    int nx(data.n_rows),ny(data.n_cols);
+    for(i=0;i<nx;i++)
+    {
+    for(j=0;j<ny;j++)
+    {
+        data(i,j)=data(i,j)/agcelem(i,j);
+    }}
+}
 fmat diff1D(fmat s, int n, float dt)
 {
     fmat ss(n,1);
@@ -717,44 +772,6 @@ void medianfilter(fmat & mat, int n1, int n2, int w1=25, int w2=1, float lmd=5.0
             mat(i,j)=mat(i,j)*datapowfilter(i,j)/(datapow(i,j)+0.00001);
         }
     }
-}
-fmat get_agcelem_2d(fmat & data, int agcwx, int agcwy, float stablepar=0.001)
-{
-    int i,j,i1,j1;
-    float agcpow,maxpow(stablepar);
-    int nx(data.n_rows),ny(data.n_cols),numwin((2*agcwx+1)*(2*agcwy+1));
-    fmat agcelem(nx,ny);
-    for(i=agcwx;i<nx-agcwx;i++)
-    {
-    for(j=agcwy;j<ny-agcwy;j++)
-    {
-        agcpow=0;
-        for(i1=-agcwx;i1<=agcwx;i1++)
-        {
-        for(j1=-agcwy;j1<=agcwy;j1++)
-        {
-            agcpow+=(data(i+i1,j+j1)*data(i+i1,j+j1));
-        }}
-        agcelem(i,j)=sqrt(agcpow/numwin);
-        agcpow=0;
-    }}
-    for(i=0;i<agcwx;i++)
-    {
-        agcelem.row(i)=agcelem.row(agcwx);
-        agcelem.row(nx-1-i)=agcelem.row(nx-1-agcwx);
-    }
-    for(i=0;i<agcwy;i++)
-    {
-        agcelem.col(i)=agcelem.col(agcwy);
-        agcelem.col(ny-1-i)=agcelem.col(ny-1-agcwy);
-    }
-
-    agcelem=agcelem/(agcelem.max());
-    cout<<agcelem.max()<<"|"<<agcelem.min()<<endl;
-    agcelem=agcelem+maxpow;
-    //agcelem=agcelem+maxpow*(agcelem.max());
-    agcelem=1.0/agcelem;
-    return agcelem;
 }
 #endif
 
