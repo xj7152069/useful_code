@@ -32,6 +32,8 @@ fmat segyhead_readonetrace_tofmat(segyhead & head, fmat & trace)
     else
         nz=int(head.head2.ns);
     trace.zeros(nz,1);
+    head.nz=nz;
+
     //cout<<nz<<endl;
     fmat rawtrace;
     rawtrace.copy_size(trace);
