@@ -1361,10 +1361,10 @@ int Beamforming_LS_2D(float **trace, int ntrace, int ns, float dt,\
 //Parameters updated
     beamforming_parupdate(par);
 //Frequency calculation range (number)
-    par.nf2=int(fmax/par.df); 
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
     par.nf1=1; 
 //Low frequency constraint range (number)
-    par.rulef2=int(frule/par.df);
+    par.rulef2=min(int(frule/par.df),nz/2-1);
     par.rulef1=1;
 
 //////////////////////////////////////////////////////////////////
@@ -1378,7 +1378,7 @@ for(i=0;i<ntrace;i++){
     }
 }
 //////////////////////////////////////////////////
-    linerradon(par); 
+    linerradon(par,true); 
     //inv radon
     //beamforming_cleardata(par);
     //beamforminginv3d(par,0);
@@ -1440,15 +1440,15 @@ int Beamforming_CG_2D(fmat &tauppanel,fmat &recoverdata,fmat &recovererr,\
 //Parameters updated
     beamforming_parupdate(par);
 //Frequency calculation range (number)
-    par.nf2=int(fmax/par.df); 
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
     par.nf1=1; 
 //Low frequency constraint range (number)
-    par.rulef2=int(frule/par.df);
+    par.rulef2=min(int(frule/par.df),nz/2-1);
     par.rulef1=1;
 
     par.data.col(0)=trace;
 //////////////////////////////////////////////////
-    linerradon(par); 
+    linerradon(par,true); 
 
     beamformingCG3d(par,iterations_num,residual_ratio);
     //beamforminginv3d(par);
@@ -1498,10 +1498,10 @@ int Beamforming_recoverdata_2D(fmat &recoverdata,fmat &tauppanel,\
 //Parameters updated
     beamforming_parupdate(par);
 //Frequency calculation range (number)
-    par.nf2=int(fmax/par.df); 
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
     par.nf1=1; 
 //Low frequency constraint range (number)
-    par.rulef2=int(frule/par.df);
+    par.rulef2=min(int(frule/par.df),nz/2-1);
     par.rulef1=1;
 
 //////////////////////////////////////////////////
@@ -1552,17 +1552,17 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
 //Parameters updated
     beamforming_parupdate(par);
 //Frequency calculation range (number)
-    par.nf2=int(fmax/par.df); 
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
     par.nf1=1; 
 //Low frequency constraint range (number)
-    par.rulef2=int(frule/par.df);
+    par.rulef2=min(int(frule/par.df),nz/2-1);
     par.rulef1=1;
 
     par.data=trace;
     trace.set_size(1,1,1);
     tauppanel.set_size(1,1,1);
 //////////////////////////////////////////////////
-    linerradon(par); 
+    linerradon(par,true); 
 
     beamformingCG3d(par,iterations_num,residual_ratio);
     //beamforminginv3d(par);
@@ -1612,10 +1612,10 @@ int Beamforming_recoverdata_3D(fcube &recoverdata,fcube &tauppanel,\
 //Parameters updated
     beamforming_parupdate(par);
 //Frequency calculation range (number)
-    par.nf2=int(fmax/par.df); 
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
     par.nf1=1; 
 //Low frequency constraint range (number)
-    par.rulef2=int(frule/par.df);
+    par.rulef2=min(int(frule/par.df),nz/2-1);
     par.rulef1=1;
 
 //////////////////////////////////////////////////
@@ -1665,10 +1665,10 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
 //Parameters updated
     beamforming_parupdate(par);
 //Frequency calculation range (number)
-    par.nf2=int(fmax/par.df); 
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
     par.nf1=1; 
 //Low frequency constraint range (number)
-    par.rulef2=int(frule/par.df);
+    par.rulef2=min(int(frule/par.df),nz/2-1);
     par.rulef1=1;
 
     par.datafx=trace;
@@ -1685,7 +1685,7 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
         //recover data
         rebuildsignal(par);
         recoverdata=par.realrebuildtx;
-        recovererr=recoverdata-trace;
+        //recovererr=recoverdata-trace;
     }
     
     return 0;
@@ -1728,17 +1728,17 @@ int LinerRadon3d(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
 //Parameters updated
     beamforming_parupdate(par);
 //Frequency calculation range (number)
-    par.nf2=int(fmax/par.df); 
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
     par.nf1=1; 
 //Low frequency constraint range (number)
-    par.rulef2=int(frule/par.df);
+    par.rulef2=min(int(frule/par.df),nz/2-1);
     par.rulef1=1;
 
     par.data=trace;
     trace.set_size(1,1,1);
     tauppanel.set_size(1,1,1);
 //////////////////////////////////////////////////
-    linerradon(par); 
+    linerradon(par,true); 
 
     //beamformingCG3d(par,iterations_num,residual_ratio);
     //beamforminginv3d(par);

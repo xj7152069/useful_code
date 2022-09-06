@@ -889,5 +889,153 @@ float getSuHeadKey(segyhead2&hdr, const char *key)
     else{p=0;std::cout<<"Error: Not find su key number!!";}
     return p;
 }
+void* getPointSuHeadKey(segyhead2&hdr, const char *key, int& bitnum)
+{
+    void* p;
+    if(strcmp(key,"tracl"   )==0)       
+	{ p = &(hdr.tracl);bitnum=sizeof(hdr.tracl);}
+    else if (strcmp(key,"tracr"   )==0) 
+	{ p = &(hdr.tracr);bitnum=sizeof(hdr.tracr);}
+    else if (strcmp(key,"fldr"    )==0) 
+	{ p = &(hdr.fldr) ;bitnum=sizeof(hdr.fldr);}
+    else if (strcmp(key,"tracf"   )==0) 
+	{ p = &(hdr.tracf);bitnum=sizeof(hdr.tracf);}
+    else if (strcmp(key,"ep"      )==0) 
+	{ p = &(hdr.ep)  ;bitnum=sizeof(hdr.ep);}
+    else if (strcmp(key,"cdp"     )==0) 
+	{ p = &(hdr.cdp) ;bitnum=sizeof(hdr.cdp);}
+    else if (strcmp(key,"cdpt"    )==0) 
+	{ p = &(hdr.cdpt);bitnum=sizeof(hdr.cdpt);}
+    else if (strcmp(key,"trid"    )==0) 
+	{ p = &(hdr.trid);bitnum=sizeof(hdr.trid);}
+    else if (strcmp(key,"nvs"     )==0) 
+	{ p = &(hdr.nvs) ;bitnum=sizeof(hdr.nvs);}
+    else if (strcmp(key,"nhs"     )==0) 
+	{ p = &hdr.nhs   ;bitnum=sizeof(hdr.nhs);}
+    else if (strcmp(key,"duse"    )==0) 
+	{ p = &hdr.duse  ;bitnum=sizeof(hdr.duse);}
+    else if (strcmp(key,"offset"  )==0) 
+	{ p = &hdr.offset;bitnum=sizeof(hdr.offset);}
+    else if (strcmp(key,"gelev"   )==0) 
+	{ p = &hdr.gelev ;bitnum=sizeof(hdr.gelev);}
+    else if (strcmp(key,"selev"   )==0) 
+	{ p = &hdr.selev ;bitnum=sizeof(hdr.selev);}
+    else if (strcmp(key,"sdepth"  )==0) 
+	{ p = &hdr.sdepth;bitnum=sizeof(hdr.sdepth);}
+    else if (strcmp(key,"gdel"    )==0) 
+	{ p = &hdr.gdel  ;bitnum=sizeof(hdr.gdel);}
+    else if (strcmp(key,"sdel"    )==0) 
+	{ p = &hdr.sdel  ;bitnum=sizeof(hdr.sdel);}
+    else if (strcmp(key,"swdep"   )==0) 
+	{ p = &hdr.swdep ;bitnum=sizeof(hdr.swdep);}
+    else if (strcmp(key,"gwdep"   )==0) 
+	{ p = &hdr.gwdep ;bitnum=sizeof(hdr.gwdep);}
+    else if (strcmp(key,"scalel"  )==0) 
+	{ p = &hdr.scalel;bitnum=sizeof(hdr.scalel);}
+    else if (strcmp(key,"scalco"  )==0) 
+	{ p = &hdr.scalco;bitnum=sizeof(hdr.scalco);}
+    else if (strcmp(key,"sx"      )==0) 
+	{ p = &hdr.sx    ;bitnum=sizeof(hdr.sx);}
+    else if (strcmp(key,"sy"      )==0) 
+	{ p = &hdr.sy    ;bitnum=sizeof(hdr.sy);}
+    else if (strcmp(key,"gx"      )==0) 
+	{ p = &hdr.gx    ;bitnum=sizeof(hdr.gx);}
+    else if (strcmp(key,"gy"      )==0) 
+	{ p = &hdr.gy    ;bitnum=sizeof(hdr.gy);}
+    else if (strcmp(key,"counit"  )==0) 
+	{ p = &hdr.counit;bitnum=sizeof(hdr.counit);}
+    else if (strcmp(key,"wevel"   )==0) 
+	{ p = &hdr.wevel ;bitnum=sizeof(hdr.wevel);}
+    else if (strcmp(key,"swevel"  )==0) 
+	{ p = &hdr.swevel;bitnum=sizeof(hdr.swevel);}
+    else if (strcmp(key,"sut"     )==0) 
+	{ p = &hdr.sut   ;bitnum=sizeof(hdr.sut);}
+    else if (strcmp(key,"gut"     )==0) 
+	{ p = &hdr.gut   ;bitnum=sizeof(hdr.gut);}
+    else if (strcmp(key,"sstat"   )==0) 
+	{ p = &hdr.sstat ;bitnum=sizeof(hdr.sstat);}
+    else if (strcmp(key,"gstat"   )==0) 
+	{ p = &hdr.gstat ;bitnum=sizeof(hdr.gstat);}
+    else if (strcmp(key,"tstat"   )==0) 
+	{ p = &hdr.tstat ;bitnum=sizeof(hdr.tstat);}
+    else if (strcmp(key,"laga"    )==0) 
+	{ p = &hdr.laga  ;bitnum=sizeof(hdr.laga);}
+    else if (strcmp(key,"lagb"    )==0) 
+	{ p = &hdr.lagb  ;bitnum=sizeof(hdr.lagb);}
+    else if (strcmp(key,"delrt"   )==0) 
+	{ p = &hdr.delrt ;bitnum=sizeof(hdr.delrt);}
+    else if (strcmp(key,"muts"    )==0) 
+	{ p = &hdr.muts  ;bitnum=sizeof(hdr.muts);}
+    else if (strcmp(key,"mute"    )==0) 
+	{ p = &hdr.mute  ;bitnum=sizeof(hdr.mute);}
+    else if (strcmp(key,"ns"      )==0) 
+	{ p = &hdr.ns    ;bitnum=sizeof(hdr.ns);}
+    else if (strcmp(key,"dt"      )==0) 
+	{ p = &hdr.dt    ;bitnum=sizeof(hdr.dt);}
+    else if (strcmp(key,"gain"    )==0) 
+	{ p = &hdr.gain  ;bitnum=sizeof(hdr.gain);}
+    else if (strcmp(key,"igc"     )==0) 
+	{ p = &hdr.igc   ;bitnum=sizeof(hdr.igc);}
+    else if (strcmp(key,"igi"     )==0) 
+	{ p = &hdr.igi   ;bitnum=sizeof(hdr.igi);}
+    else if (strcmp(key,"corr"    )==0) 
+	{ p = &hdr.corr  ;bitnum=sizeof(hdr.corr);}
+    else if (strcmp(key,"sfs"     )==0) 
+	{ p = &hdr.sfs   ;bitnum=sizeof(hdr.sfs);}
+    else if (strcmp(key,"sfe"     )==0) 
+	{ p = &hdr.sfe   ;bitnum=sizeof(hdr.sfe);}
+    else if (strcmp(key,"slen"    )==0) 
+	{ p = &hdr.slen  ;bitnum=sizeof(hdr.slen);}
+    else if (strcmp(key,"styp"    )==0) 
+	{ p = &hdr.styp  ;bitnum=sizeof(hdr.styp);}
+    else if (strcmp(key,"stas"    )==0) 
+	{ p = &hdr.stas  ;bitnum=sizeof(hdr.stas);}
+    else if (strcmp(key,"stae"    )==0) 
+	{ p = &hdr.stae  ;bitnum=sizeof(hdr.stae);}
+    else if (strcmp(key,"tatyp"   )==0) 
+	{ p = &hdr.tatyp ;bitnum=sizeof(hdr.tatyp);}
+    else if (strcmp(key,"afilf"   )==0) 
+	{ p = &hdr.afilf ;bitnum=sizeof(hdr.afilf);}
+    else if (strcmp(key,"afils"   )==0) 
+	{ p = &hdr.afils ;bitnum=sizeof(hdr.afils);}
+    else if (strcmp(key,"nofilf"  )==0) 
+	{ p = &hdr.nofilf;bitnum=sizeof(hdr.nofilf);}
+    else if (strcmp(key,"nofils"  )==0) 
+	{ p = &hdr.nofils;bitnum=sizeof(hdr.nofils);}
+    else if (strcmp(key,"lcf"     )==0) 
+	{ p = &hdr.lcf   ;bitnum=sizeof(hdr.lcf);}
+    else if (strcmp(key,"hcf"     )==0) 
+	{ p = &hdr.hcf   ;bitnum=sizeof(hdr.hcf);}
+    else if (strcmp(key,"lcs"     )==0) 
+	{ p = &hdr.lcs   ;bitnum=sizeof(hdr.lcs);}
+    else if (strcmp(key,"hcs"     )==0) 
+	{ p = &hdr.hcs   ;bitnum=sizeof(hdr.hcs);}
+    else if (strcmp(key,"year"    )==0) 
+	{ p = &hdr.year  ;bitnum=sizeof(hdr.year);}
+    else if (strcmp(key,"day"     )==0) 
+	{ p = &hdr.day   ;bitnum=sizeof(hdr.day);}
+    else if (strcmp(key,"hour"    )==0) 
+	{ p = &hdr.hour  ;bitnum=sizeof(hdr.hour);}
+    else if (strcmp(key,"minute"  )==0) 
+	{ p = &hdr.minute;bitnum=sizeof(hdr.minute);}
+    else if (strcmp(key,"sec"     )==0) 
+	{ p = &hdr.sec   ;bitnum=sizeof(hdr.sec);}
+    else if (strcmp(key,"timbas"  )==0) 
+	{ p = &hdr.timbas;bitnum=sizeof(hdr.timbas);}
+    else if (strcmp(key,"trwf"    )==0) 
+	{ p = &hdr.trwf  ;bitnum=sizeof(hdr.trwf);}
+    else if (strcmp(key,"grnors"  )==0) 
+	{ p = &hdr.grnors;bitnum=sizeof(hdr.grnors);}
+    else if (strcmp(key,"grnofr"  )==0) 
+	{ p = &hdr.grnofr;bitnum=sizeof(hdr.grnofr);}
+    else if (strcmp(key,"grnlof"  )==0) 
+	{ p = &hdr.grnlof;bitnum=sizeof(hdr.grnlof);}
+    else if (strcmp(key,"gaps"    )==0) 
+	{ p = &hdr.gaps  ;bitnum=sizeof(hdr.gaps);}
+    else if (strcmp(key,"otrav"   )==0) 
+	{ p = &hdr.otrav ;bitnum=sizeof(hdr.otrav);}
+    else{p=0;std::cout<<"Error: Not find su key number!!";}
+    return p;
+}
 
 #endif 

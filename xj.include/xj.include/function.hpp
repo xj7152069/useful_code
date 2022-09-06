@@ -309,7 +309,7 @@ fmat get_agc2d(fmat & data2, fmat & data, int agcwx=50, int agcwy=5)
         agcelem.col(ny-1-i)=agcelem.col(ny-1-agcwy);
     }
 
-    agcelem=agcelem/(agcelem.max()-agcelem.min());
+    agcelem=agcelem/(agcelem.max());
     agcelem=agcelem+maxpow;
     //this->agcelem=this->agcelem+maxpow*(this->agcelem.max());
     agcelem=1.0/agcelem;
@@ -745,8 +745,8 @@ void medianfilter(fmat & mat, int n1, int n2, int w1=25, int w2=1, float lmd=5.0
 {
     fmat data(n1,n2),datapow(n1,n2),datapowfilter(n1,n2);
     int i,j,k1,k2,k3,num((1+2*w1)*(1+2*w2));
-    float *win,avera;
-    fmat datawin(num,1);
+    float *win;
+    fmat datawin(num,1),avera(1,1);
 
     for(i=0;i<n1;i++){
         for(j=0;j<n2;j++){
@@ -763,9 +763,9 @@ void medianfilter(fmat & mat, int n1, int n2, int w1=25, int w2=1, float lmd=5.0
         datawin(k3,0)=datapow(i+k1,j+k2);
         k3++;
     }}
-    avera=sum(sum(datawin))/num;
-    if(datapow(i,j)>=lmd*avera)
-        datapowfilter(i,j)=avera;
+    avera=sum(sum(datawin,1),0)/float(num);
+    if(datapow(i,j)>=lmd*avera(0,0))
+        datapowfilter(i,j)=avera(0,0);
     }}
     for(i=0;i<n1;i++){
         for(j=0;j<n2;j++){
