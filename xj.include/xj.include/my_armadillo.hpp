@@ -433,11 +433,11 @@ void datawrite3d_byrow_transpose(fcube & data3d, int nz, int ny, char const *fil
     strcpy(str, filename);
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices); 
-    fmat datarow_transpose(n2,n1);
-    fmat datarow(n1,n2);
+    fmat datarow_transpose(n3,n2);
+    fmat datarow(n2,n3);
     ofstream outf;
     outf.open(str);
-    for(k=0;k<n3;k++){
+    for(k=0;k<n1;k++){
         datarow=data3d.row(k);
         datarow_transpose=datarow.t();
     for(j=0;j<ny;j++)
