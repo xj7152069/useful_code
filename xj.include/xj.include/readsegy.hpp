@@ -117,8 +117,11 @@ void segyhead_open(segyhead & head, bool sufile=false)
     head.infile.open(head.filename,ios::binary);
     if(!head.infile) cout<<"file open error: "<<head.filename<<endl;
     if(!sufile){
-    head.infile.read((char *)(&head.head0), sizeof(head.head0));
-    head.infile.read((char *)(&head.head1), sizeof(head.head1));
+        head.infile.read((char *)(&head.head0), sizeof(head.head0));
+        head.infile.read((char *)(&head.head1), sizeof(head.head1));
+    }else{
+        head.endian='l';
+        head.isibm=false;
     }
 }
 
