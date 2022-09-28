@@ -427,6 +427,28 @@ void datawrite3d_bycol_transpose(fcube & data3d, int nz, int nx, char const *fil
     }
     outf.close(); 
 }
+void datawrite3d_byrow_transpose(fcube & data3d, int nz, int ny, char const *filename)
+{
+    char str[99];
+    strcpy(str, filename);
+    int i,j,k;
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices); 
+    fmat datarow_transpose(n2,n1);
+    fmat datarow(n1,n2);
+    ofstream outf;
+    outf.open(str);
+    for(k=0;k<n3;k++){
+        datarow=data3d.row(k);
+        datarow_transpose=datarow.t();
+    for(j=0;j<ny;j++)
+      {for(i=0;i<nz;i++)
+         {
+         outf.write((char*)&datarow_transpose(i,j),sizeof(float));
+         }
+      }
+    }
+    outf.close(); 
+}
 void datawrite(fmat & data_mat, int nz, int nx, ofstream &outf)
 {
     int i,j;
