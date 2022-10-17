@@ -538,7 +538,24 @@ fmat fmatsmooth(fmat mat2, int x1, int x2, int k)
     return mat1;
 }
 
-
+fmat Laplace(fmat mat0)
+    {
+        int i,j,n;
+        fmat mat2,mat1;
+        int x1(mat0.n_rows), x2(mat0.n_cols);
+        mat2=mat0;
+        mat1=mat0;
+        for(i=1;i<x1-1;i++)
+        {
+            for(j=1;j<x2-1;j++)
+            {
+                mat1(i,j)=mat2(i-1,j-1)*1.0/12+mat2(i-1,j)*1.0/6+mat2(i-1,j+1)*1.0/12\
+                    +mat2(i,j-1)*1.0/6+mat2(i,j+1)*1.0/6+mat2(i+1,j-1)*1.0/12\
+                    +mat2(i+1,j)*1.0/6+mat2(i+1,j+1)*1.0/12-mat2(i,j);
+            }
+        }
+        return mat1;
+    }
 
 
 #endif

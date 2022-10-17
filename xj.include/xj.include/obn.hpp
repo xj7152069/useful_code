@@ -409,7 +409,7 @@ void AdaptiveRemoveMultiple2dPthread(fmat* dataup, fmat* datadown,\
             //matq=invcg(mat1.t()*matd,(matD+digmat),mat1.t()*matd,0.001,nw);
         }
             matd=mat1*matq;
-            for(i=nw;i<nwt;i++){
+            for(i=nwp;i<nwt;i++){
                 datal(i+kwt,0)+=1;
                 dataup[0](i+kwt,k)+=(datavz[0](i+kwt,k)\
                     -matd(i+(k-winbeg)*nwt,0));
@@ -1305,6 +1305,40 @@ void getSourceIndes(int& sxindex,int& syindex,\
             syindex=j;
     }}}
 }
+void fcubeLinearInterpolation3dByCol(fcube& data3d)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
+    fcube data3dInter;
+    int nInter(n2*2-1);
+    data3dInter.zeros(n1,nInter,n3);
+
+    data3dInter.col(0)=data3d.col(0);
+    for(i=1;i<n2;i++){
+        int kinter=2*i;
+        data3dInter.col(kinter)=data3d.col(i);
+        data3dInter.col(kinter-1)=(data3dInter.col(kinter)\
+            +data3dInter.col(kinter-2));
+        data3dInter.col(kinter-1)=data3dInter.col(kinter-1)/2.0;
+    }
+    data3d=data3dInter;
+}
+void fcubeLinearInterpolation3dByRow(fcube& data3d)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
+    fcube data3dInter;
+    int nInter(n1*2-1);
+    data3dInter.zeros(nInter,n2,n3);
+
+    data3dInter.row(0)=data3d.row(0);
+    for(i=1;i<n1;i++){
+        int kinter=2*i;
+        data3dInter.row(kinter)=data3d.row(i);
+        data3dInter.row(kinter-1)=(data3dInter.row(kinter)\
+            +data3dInter.row(kinter-2));
+        data3dInter.row(kinter-1)=data3dInter.row(kinter-1)/2.0;
+    }
+    data3d=data3dInter;
+}
 void fcubeLinearInterpolation3dByCol(fcube& data3d,fmat& coordFold)
 {
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
@@ -1407,6 +1441,23 @@ void cxfcubeLinearInterpolation3dByCol(cx_fcube& data3d,fmat& coordFold)
     data3d=data3dInter;
     coordFold=coordFoldInter;
 }
+void cxfcubeLinearInterpolation3dByCol(cx_fcube& data3d)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
+    cx_fcube data3dInter;
+    int nInter(n2*2-1);
+    data3dInter.zeros(n1,nInter,n3);
+
+    data3dInter.col(0)=data3d.col(0);
+    for(i=1;i<n2;i++){
+        int kinter=2*i;
+        data3dInter.col(kinter)=data3d.col(i);
+        data3dInter.col(kinter-1)=(data3dInter.col(kinter)\
+            +data3dInter.col(kinter-2));
+        data3dInter.col(kinter-1)=data3dInter.col(kinter-1)/2.0;
+    }
+    data3d=data3dInter;
+}
 void cxfcubeLinearInterpolation3dByRow(cx_fcube& data3d, fmat& coordFold)
 {
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
@@ -1429,6 +1480,23 @@ void cxfcubeLinearInterpolation3dByRow(cx_fcube& data3d, fmat& coordFold)
     data3d=data3dInter;
     coordFold=coordFoldInter;
 }
+void cxfcubeLinearInterpolation3dByRow(cx_fcube& data3d)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
+    cx_fcube data3dInter;
+    int nInter(n1*2-1);
+    data3dInter.zeros(nInter,n2,n3);
+
+    data3dInter.row(0)=data3d.row(0);
+    for(i=1;i<n1;i++){
+        int kinter=2*i;
+        data3dInter.row(kinter)=data3d.row(i);
+        data3dInter.row(kinter-1)=(data3dInter.row(kinter)\
+            +data3dInter.row(kinter-2));
+        data3dInter.row(kinter-1)=data3dInter.row(kinter-1)/2.0;
+    }
+    data3d=data3dInter;
+}
 void fcubeAntiLinearInterpolation3dByRow(fcube& data3d, fmat& coordFold)
 {
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),kinter;
@@ -1437,7 +1505,6 @@ void fcubeAntiLinearInterpolation3dByRow(fcube& data3d, fmat& coordFold)
     int nAntiInter((n1+1)/2);
     data3dInter.zeros(nAntiInter,n2,n3);
     coordFoldInter.zeros(nAntiInter,n2);
-
     for(kinter=0;kinter<nAntiInter;kinter++){
         int i=2*kinter;
         data3dInter.row(kinter)=data3d.row(i);
@@ -1445,6 +1512,18 @@ void fcubeAntiLinearInterpolation3dByRow(fcube& data3d, fmat& coordFold)
     }
     data3d=data3dInter;
     coordFold=coordFoldInter;
+}
+void fcubeAntiLinearInterpolation3dByRow(fcube& data3d)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),kinter;
+    fcube data3dInter;
+    int nAntiInter((n1+1)/2);
+    data3dInter.zeros(nAntiInter,n2,n3);
+    for(kinter=0;kinter<nAntiInter;kinter++){
+        int i=2*kinter;
+        data3dInter.row(kinter)=data3d.row(i);
+    }
+    data3d=data3dInter;
 }
 void fcubeAntiLinearInterpolation3dByCol(fcube& data3d,fmat& coordFold)
 {
@@ -1462,6 +1541,19 @@ void fcubeAntiLinearInterpolation3dByCol(fcube& data3d,fmat& coordFold)
     }
     data3d=data3dInter;
     coordFold=coordFoldInter;
+}
+void fcubeAntiLinearInterpolation3dByCol(fcube& data3d)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),kinter;
+    fcube data3dInter;
+    int nAntiInter((n2+1)/2);
+    data3dInter.zeros(n1,nAntiInter,n3);
+
+    for(kinter=0;kinter<nAntiInter;kinter++){
+        int i=2*kinter;
+        data3dInter.col(kinter)=data3d.col(i);
+    }
+    data3d=data3dInter;
 }
 void cxfcubeAntiLinearInterpolation3dByRow(cx_fcube& data3d, fmat& coordFold)
 {
@@ -1496,5 +1588,31 @@ void cxfcubeAntiLinearInterpolation3dByCol(cx_fcube& data3d,fmat& coordFold)
     }
     data3d=data3dInter;
     coordFold=coordFoldInter;
+}
+void cxfcubeAntiLinearInterpolation3dByRow(cx_fcube& data3d)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),kinter;
+    cx_fcube data3dInter;
+    int nAntiInter((n1+1)/2);
+    data3dInter.zeros(nAntiInter,n2,n3);
+
+    for(kinter=0;kinter<nAntiInter;kinter++){
+        int i=2*kinter;
+        data3dInter.row(kinter)=data3d.row(i);
+    }
+    data3d=data3dInter;
+}
+void cxfcubeAntiLinearInterpolation3dByCol(cx_fcube& data3d)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),kinter;
+    cx_fcube data3dInter;
+    int nAntiInter((n2+1)/2);
+    data3dInter.zeros(n1,nAntiInter,n3);
+
+    for(kinter=0;kinter<nAntiInter;kinter++){
+        int i=2*kinter;
+        data3dInter.col(kinter)=data3d.col(i);
+    }
+    data3d=data3dInter;
 }
 #endif
