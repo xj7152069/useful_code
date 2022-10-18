@@ -436,15 +436,15 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     obj.data3d3.fill(0.0);obj.data3d4.fill(0.0);
     obj.data3d5.fill(0.0);obj.data3d6.fill(0.0);
     obj.vx_t2.fill(0.0),obj.vy_t2.fill(0.0),obj.vz_t2.fill(0.0);
-    pcal[0]=thread(calx_3d,&obj.vx_t2,&obj.vx_t1,&obj.txx_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[0]=thread(calx_3d,&obj.vx_t2,&obj.vx_t1,&obj.txx_t1,&obj.mpar_1_dec_ro,1,&obj);
     pcal[1]=thread(caly_3d,&obj.data3d1,&obj.vx_t1,&obj.txy_t1,&obj.mpar_1_dec_ro,0,&obj);
     pcal[2]=thread(calz_3d,&obj.data3d2,&obj.vx_t1,&obj.txz_t1,&obj.mpar_1_dec_ro,0,&obj);
     pcal[3]=thread(calx_3d,&obj.vy_t2,&obj.vy_t1,&obj.txy_t1,&obj.mpar_1_dec_ro,0,&obj);
-    pcal[4]=thread(caly_3d,&obj.data3d3,&obj.vy_t1,&obj.tyy_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[4]=thread(caly_3d,&obj.data3d3,&obj.vy_t1,&obj.tyy_t1,&obj.mpar_1_dec_ro,1,&obj);
     pcal[5]=thread(calz_3d,&obj.data3d4,&obj.vy_t1,&obj.tyz_t1,&obj.mpar_1_dec_ro,0,&obj);
     pcal[6]=thread(calx_3d,&obj.vz_t2,&obj.vz_t1,&obj.txz_t1,&obj.mpar_1_dec_ro,0,&obj);
     pcal[7]=thread(caly_3d,&obj.data3d5,&obj.vz_t1,&obj.tyz_t1,&obj.mpar_1_dec_ro,0,&obj);
-    pcal[8]=thread(calz_3d,&obj.data3d6,&obj.vz_t1,&obj.tzz_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[8]=thread(calz_3d,&obj.data3d6,&obj.vz_t1,&obj.tzz_t1,&obj.mpar_1_dec_ro,1,&obj);
     for(k=0;k<9;k++){
         pcal[k].join();
     }
@@ -474,18 +474,19 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
 
     obj.data3d1.fill(0.0);obj.data3d2.fill(0.0);obj.data3d3.fill(0.0);
     obj.txz_t2.fill(0.0),obj.txy_t2.fill(0.0),obj.tyz_t2.fill(0.0);
-    pcal[0]=thread(caly_3d,&obj.txy_t2,&obj.txy_t1,&obj.vx_t1,&obj.mpar_miu,0,&obj);
-    pcal[1]=thread(calx_3d,&obj.data3d1,&obj.txy_t1,&obj.vy_t1,&obj.mpar_miu,0,&obj);
-    pcal[2]=thread(calz_3d,&obj.txz_t2,&obj.txz_t1,&obj.vx_t1,&obj.mpar_miu,0,&obj);
-    pcal[3]=thread(calx_3d,&obj.data3d2,&obj.txz_t1,&obj.vz_t1,&obj.mpar_miu,0,&obj);
-    pcal[4]=thread(calz_3d,&obj.tyz_t2,&obj.tyz_t1,&obj.vy_t1,&obj.mpar_miu,0,&obj);
-    pcal[5]=thread(caly_3d,&obj.data3d3,&obj.tyz_t1,&obj.vz_t1,&obj.mpar_miu,0,&obj);
+    pcal[0]=thread(caly_3d,&obj.txy_t2,&obj.txy_t1,&obj.vx_t1,&obj.mpar_miu,1,&obj);
+    pcal[1]=thread(calx_3d,&obj.data3d1,&obj.txy_t1,&obj.vy_t1,&obj.mpar_miu,1,&obj);
+    pcal[2]=thread(calz_3d,&obj.txz_t2,&obj.txz_t1,&obj.vx_t1,&obj.mpar_miu,1,&obj);
+    pcal[3]=thread(calx_3d,&obj.data3d2,&obj.txz_t1,&obj.vz_t1,&obj.mpar_miu,1,&obj);
+    pcal[4]=thread(calz_3d,&obj.tyz_t2,&obj.tyz_t1,&obj.vy_t1,&obj.mpar_miu,1,&obj);
+    pcal[5]=thread(caly_3d,&obj.data3d3,&obj.tyz_t1,&obj.vz_t1,&obj.mpar_miu,1,&obj);
     for(k=0;k<6;k++){
         pcal[k].join();
     }
     obj.txy_t1=obj.txy_t2+obj.data3d1;
     obj.txz_t1=obj.txz_t2+obj.data3d2;
     obj.tyz_t1=obj.tyz_t2+obj.data3d3;
+    delete [] pcal; 
 }
 
 #endif
