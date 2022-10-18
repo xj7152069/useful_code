@@ -16,6 +16,7 @@ wave2D.h
 #include <thread>
 #include <future>
 #include "../xjc.h"
+#include <omp.h>
 
 using namespace std;
 using namespace arma;
@@ -35,10 +36,11 @@ public:
         txx_pdx,tyy_pdy,tzz_pdz;
     fcube txy_t1,txz_t1,tyz_t1,txy_t2,txz_t2,tyz_t2,\
         txy_pdx,txy_pdy,txz_pdx,txz_pdz,tyz_pdy,tyz_pdz;
+    fcube data3d1,data3d2,data3d3,data3d4,data3d5,data3d6;  
 
     float dx,dy,dz,dt,PML_wide,R,isFreeSurface;
     float C_X,C_Y,C_Z;
-    int nx,ny,nz,nzSampleOfFreeSurface;
+    int nx,ny,nz,nzSampleOfFreeSurface,ompThreadNum;
     
     elastic3D_ARMA();
     elastic3D_ARMA(const int x, const int y, const int z);
@@ -46,18 +48,27 @@ public:
 
     void cleardata();
     void updatepar();
+    void prepareForMultiThread();
     void calx_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
     void caly_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
     void calz_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
 };
 ///////////////////////////////////////////////////////////////////////////////////////////
-
+void elastic3D_ARMA::prepareForMultiThread(){
+    this->data3d1.set_size(nx,ny,nz);
+    this->data3d2.set_size(nx,ny,nz);
+    this->data3d3.set_size(nx,ny,nz);
+    this->data3d4.set_size(nx,ny,nz);
+    this->data3d5.set_size(nx,ny,nz);
+    this->data3d6.set_size(nx,ny,nz);
+}
 elastic3D_ARMA::elastic3D_ARMA()
 {
     nx=0;ny=0;nz=0;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
     PML_wide=40.0;isFreeSurface=1.0;R=25.0;
     nzSampleOfFreeSurface=50;
+    ompThreadNum=1;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
@@ -67,6 +78,7 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
     dx=5.0;dy=5.0;dz=5.0;dt=0.0005;
     PML_wide=40.0;isFreeSurface=1.0;R=25.0;
     nzSampleOfFreeSurface=50;
+    ompThreadNum=1;
     C_Y=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
     C_X=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dx/dx/dx;
     C_Z=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dz/dz/dz;
@@ -139,19 +151,6 @@ void calx_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
 void elastic3D_ARMA::calx_p(fcube &ut2 , const fcube &ut1, \
     const fcube &u, const fcube &m, const int pjc)
 {
-    float DX,DY,DZ,DT,xshd,suface_PML;
-    int X,Y,Z;
-    int i,j,k,jc(pjc);
-    float du1(0),du2(0),du(0);
-    
-    float C1      = 1.2340911;
-    float C2      = -1.0664985e-01;
-    float C3      = 2.3036367e-02;
-    float C4      = -5.3423856e-03;
-    float C5      = 1.0772712e-03;
-    float C6      = -1.6641888e-04;
-    float C7      = 1.7021711e-005;
-    float C8      = -8.5234642e-007;//差分系数
     /*
     float C1=1.21124268;
     float C2=-8.97216797E-02;
@@ -162,9 +161,25 @@ void elastic3D_ARMA::calx_p(fcube &ut2 , const fcube &ut1, \
     float C7      = 0;
     float C8      = 0;//差分系数
 */
-    DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
-    X=this->nx,Y=this->ny,Z=this->nz,suface_PML=this->isFreeSurface;
+    int Z,k;
+    Z=this->nz,
+omp_set_num_threads(this->ompThreadNum);
+#pragma omp parallel for
     for(k=8;k<Z-8;k++){
+        float C1      = 1.2340911;
+        float C2      = -1.0664985e-01;
+        float C3      = 2.3036367e-02;
+        float C4      = -5.3423856e-03;
+        float C5      = 1.0772712e-03;
+        float C6      = -1.6641888e-04;
+        float C7      = 1.7021711e-005;
+        float C8      = -8.5234642e-007;//差分系数
+        int i,j,jc(pjc);
+        float du1(0),du2(0),du(0);
+        float DX,DY,DZ,DT,xshd,suface_PML;
+        int X,Y;
+        DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
+        X=this->nx,Y=this->ny,suface_PML=this->isFreeSurface;
     for(j=8;j<Y-8;j++){
         for(i=8;i<xshd+8;i++){  
             du=(
@@ -216,7 +231,6 @@ void elastic3D_ARMA::calx_p(fcube &ut2 , const fcube &ut1, \
             ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
-    du1=0,du2=0,du=0;
 }
 
 void caly_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
@@ -227,19 +241,6 @@ void caly_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
 void elastic3D_ARMA::caly_p(fcube &ut2 , const fcube &ut1, \
     const fcube &u, const fcube &m, const int pjc)
 {
-    float DX,DY,DZ,DT,xshd,suface_PML;
-    int X,Y,Z;
-    int i,j,k,jc(pjc);
-    float du1(0),du2(0),du(0);
-    
-    float C1      = 1.2340911;
-    float C2      = -1.0664985e-01;
-    float C3      = 2.3036367e-02;
-    float C4      = -5.3423856e-03;
-    float C5      = 1.0772712e-03;
-    float C6      = -1.6641888e-04;
-    float C7      = 1.7021711e-005;
-    float C8      = -8.5234642e-007;//差分系数
     /*
     float C1=1.21124268;
     float C2=-8.97216797E-02;
@@ -250,9 +251,26 @@ void elastic3D_ARMA::caly_p(fcube &ut2 , const fcube &ut1, \
     float C7      = 0;
     float C8      = 0;//差分系数
 */
-    DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
-    X=this->nx,Y=this->ny,Z=this->nz,suface_PML=this->isFreeSurface;
+    int X,i;
+    X=this->nx;
+omp_set_num_threads(this->ompThreadNum);
+#pragma omp parallel for
     for(i=8;i<X-8;i++){
+        float DX,DY,DZ,DT,xshd,suface_PML;
+        int Y,Z;
+        int j,k,jc(pjc);
+        float du1(0),du2(0),du(0);
+        DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
+        Y=this->ny,Z=this->nz,suface_PML=this->isFreeSurface;
+        
+        float C1      = 1.2340911;
+        float C2      = -1.0664985e-01;
+        float C3      = 2.3036367e-02;
+        float C4      = -5.3423856e-03;
+        float C5      = 1.0772712e-03;
+        float C6      = -1.6641888e-04;
+        float C7      = 1.7021711e-005;
+        float C8      = -8.5234642e-007;//差分系数
     for(k=8;k<Z-8;k++){
         for(j=8;j<xshd+8;j++){
             du=(
@@ -304,7 +322,6 @@ void elastic3D_ARMA::caly_p(fcube &ut2 , const fcube &ut1, \
             ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
-    du1=0,du2=0,du=0;
 }
 
 void calz_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
@@ -315,19 +332,6 @@ void calz_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
 void elastic3D_ARMA::calz_p(fcube &ut2 , const fcube &ut1,\
     const fcube &u, const fcube &m, const int pjc)
 {
-    float DX,DY,DZ,DT,xshd,suface_PML;
-    int X,Y,Z,nSurface;
-    int i,j,k,jc(pjc);
-    float du1(0),du2(0),du(0);
-    
-    float C1      = 1.2340911;
-    float C2      = -1.0664985e-01;
-    float C3      = 2.3036367e-02;
-    float C4      = -5.3423856e-03;
-    float C5      = 1.0772712e-03;
-    float C6      = -1.6641888e-04;
-    float C7      = 1.7021711e-005;
-    float C8      = -8.5234642e-007;//差分系数
     /*
     float C1=1.21124268;
     float C2=-8.97216797E-02;
@@ -338,10 +342,26 @@ void elastic3D_ARMA::calz_p(fcube &ut2 , const fcube &ut1,\
     float C7      = 0;
     float C8      = 0;//差分系数
 */
-    DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
-    X=this->nx,Y=this->ny,Z=this->nz,suface_PML=this->isFreeSurface;
-    nSurface=this->nzSampleOfFreeSurface;
+    int X,i;
+    X=this->nx;
+omp_set_num_threads(this->ompThreadNum);
+#pragma omp parallel for
     for(i=8;i<X-8;i++){
+        float DX,DY,DZ,DT,xshd,suface_PML;
+        int Y,Z,nSurface;
+        int j,k,jc(pjc);
+        float du1(0),du2(0),du(0);
+        DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
+        Y=this->ny,Z=this->nz,suface_PML=this->isFreeSurface;
+        nSurface=this->nzSampleOfFreeSurface;
+        float C1      = 1.2340911;
+        float C2      = -1.0664985e-01;
+        float C3      = 2.3036367e-02;
+        float C4      = -5.3423856e-03;
+        float C5      = 1.0772712e-03;
+        float C6      = -1.6641888e-04;
+        float C7      = 1.7021711e-005;
+        float C8      = -8.5234642e-007;//差分系数
     for(j=8;j<Y-8;j++){
         for(k=8;k<xshd+8;k++){  
             du=(
@@ -403,7 +423,6 @@ void elastic3D_ARMA::calz_p(fcube &ut2 , const fcube &ut1,\
             ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
-    du1=0,du2=0,du=0;
 }
 
 void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
@@ -412,48 +431,61 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     float **swap=NULL;
     thread *pcal;
     pcal=new thread[9];
-    
+
+    obj.data3d1.fill(0.0);obj.data3d2.fill(0.0);
+    obj.data3d3.fill(0.0);obj.data3d4.fill(0.0);
+    obj.data3d5.fill(0.0);obj.data3d6.fill(0.0);
     obj.vx_t2.fill(0.0),obj.vy_t2.fill(0.0),obj.vz_t2.fill(0.0);
     pcal[0]=thread(calx_3d,&obj.vx_t2,&obj.vx_t1,&obj.txx_t1,&obj.mpar_1_dec_ro,0,&obj);
-    pcal[1]=thread(caly_3d,&obj.vx_t2,&obj.vx_t1,&obj.txy_t1,&obj.mpar_1_dec_ro,0,&obj);
-    pcal[2]=thread(calz_3d,&obj.vx_t2,&obj.vx_t1,&obj.txz_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[1]=thread(caly_3d,&obj.data3d1,&obj.vx_t1,&obj.txy_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[2]=thread(calz_3d,&obj.data3d2,&obj.vx_t1,&obj.txz_t1,&obj.mpar_1_dec_ro,0,&obj);
     pcal[3]=thread(calx_3d,&obj.vy_t2,&obj.vy_t1,&obj.txy_t1,&obj.mpar_1_dec_ro,0,&obj);
-    pcal[4]=thread(caly_3d,&obj.vy_t2,&obj.vy_t1,&obj.tyy_t1,&obj.mpar_1_dec_ro,0,&obj);
-    pcal[5]=thread(calz_3d,&obj.vy_t2,&obj.vy_t1,&obj.tyz_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[4]=thread(caly_3d,&obj.data3d3,&obj.vy_t1,&obj.tyy_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[5]=thread(calz_3d,&obj.data3d4,&obj.vy_t1,&obj.tyz_t1,&obj.mpar_1_dec_ro,0,&obj);
     pcal[6]=thread(calx_3d,&obj.vz_t2,&obj.vz_t1,&obj.txz_t1,&obj.mpar_1_dec_ro,0,&obj);
-    pcal[7]=thread(caly_3d,&obj.vz_t2,&obj.vz_t1,&obj.tyz_t1,&obj.mpar_1_dec_ro,0,&obj);
-    pcal[8]=thread(calz_3d,&obj.vz_t2,&obj.vz_t1,&obj.tzz_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[7]=thread(caly_3d,&obj.data3d5,&obj.vz_t1,&obj.tyz_t1,&obj.mpar_1_dec_ro,0,&obj);
+    pcal[8]=thread(calz_3d,&obj.data3d6,&obj.vz_t1,&obj.tzz_t1,&obj.mpar_1_dec_ro,0,&obj);
     for(k=0;k<9;k++){
         pcal[k].join();
     }
-    obj.vx_t1=obj.vx_t2;obj.vy_t1=obj.vy_t2;obj.vz_t1=obj.vz_t2;
+    obj.vx_t1=obj.vx_t2+obj.data3d1+obj.data3d2;
+    obj.vy_t1=obj.vy_t2+obj.data3d3+obj.data3d4;
+    obj.vz_t1=obj.vz_t2+obj.data3d5+obj.data3d6;
 
+    obj.data3d1.fill(0.0);obj.data3d2.fill(0.0);
+    obj.data3d3.fill(0.0);obj.data3d4.fill(0.0);
+    obj.data3d5.fill(0.0);obj.data3d6.fill(0.0);
     obj.txx_t2.fill(0.0),obj.tyy_t2.fill(0.0),obj.tzz_t2.fill(0.0);
     pcal[0]=thread(calx_3d,&obj.txx_t2,&obj.txx_t1,&obj.vx_t1,&obj.mpar_lmd_add_2miu,0,&obj);
-    pcal[1]=thread(caly_3d,&obj.txx_t2,&obj.txx_t1,&obj.vy_t1,&obj.mpar_lmd,0,&obj);
-    pcal[2]=thread(calz_3d,&obj.txx_t2,&obj.txx_t1,&obj.vz_t1,&obj.mpar_lmd,0,&obj);
+    pcal[1]=thread(caly_3d,&obj.data3d1,&obj.txx_t1,&obj.vy_t1,&obj.mpar_lmd,0,&obj);
+    pcal[2]=thread(calz_3d,&obj.data3d2,&obj.txx_t1,&obj.vz_t1,&obj.mpar_lmd,0,&obj);
     pcal[3]=thread(caly_3d,&obj.tyy_t2,&obj.tyy_t1,&obj.vy_t1,&obj.mpar_lmd_add_2miu,0,&obj);
-    pcal[4]=thread(calx_3d,&obj.tyy_t2,&obj.tyy_t1,&obj.vx_t1,&obj.mpar_lmd,0,&obj);
-    pcal[5]=thread(calz_3d,&obj.tyy_t2,&obj.tyy_t1,&obj.vz_t1,&obj.mpar_lmd,0,&obj);
+    pcal[4]=thread(calx_3d,&obj.data3d3,&obj.tyy_t1,&obj.vx_t1,&obj.mpar_lmd,0,&obj);
+    pcal[5]=thread(calz_3d,&obj.data3d4,&obj.tyy_t1,&obj.vz_t1,&obj.mpar_lmd,0,&obj);
     pcal[6]=thread(calz_3d,&obj.tzz_t2,&obj.tzz_t1,&obj.vz_t1,&obj.mpar_lmd_add_2miu,0,&obj);
-    pcal[7]=thread(calx_3d,&obj.tzz_t2,&obj.tzz_t1,&obj.vx_t1,&obj.mpar_lmd,0,&obj);
-    pcal[8]=thread(caly_3d,&obj.tzz_t2,&obj.tzz_t1,&obj.vy_t1,&obj.mpar_lmd,0,&obj);
+    pcal[7]=thread(calx_3d,&obj.data3d5,&obj.tzz_t1,&obj.vx_t1,&obj.mpar_lmd,0,&obj);
+    pcal[8]=thread(caly_3d,&obj.data3d6,&obj.tzz_t1,&obj.vy_t1,&obj.mpar_lmd,0,&obj);
     for(k=0;k<9;k++){
         pcal[k].join();
     }
-    obj.txx_t1=obj.txx_t2;obj.tyy_t1=obj.tyy_t2;obj.tzz_t1=obj.tzz_t2;
+    obj.txx_t1=obj.txx_t2+obj.data3d1+obj.data3d2;
+    obj.tyy_t1=obj.tyy_t2+obj.data3d3+obj.data3d4;
+    obj.tzz_t1=obj.tzz_t2+obj.data3d5+obj.data3d6;
 
+    obj.data3d1.fill(0.0);obj.data3d2.fill(0.0);obj.data3d3.fill(0.0);
     obj.txz_t2.fill(0.0),obj.txy_t2.fill(0.0),obj.tyz_t2.fill(0.0);
     pcal[0]=thread(caly_3d,&obj.txy_t2,&obj.txy_t1,&obj.vx_t1,&obj.mpar_miu,0,&obj);
-    pcal[1]=thread(calx_3d,&obj.txy_t2,&obj.txy_t1,&obj.vy_t1,&obj.mpar_miu,0,&obj);
+    pcal[1]=thread(calx_3d,&obj.data3d1,&obj.txy_t1,&obj.vy_t1,&obj.mpar_miu,0,&obj);
     pcal[2]=thread(calz_3d,&obj.txz_t2,&obj.txz_t1,&obj.vx_t1,&obj.mpar_miu,0,&obj);
-    pcal[3]=thread(calx_3d,&obj.txz_t2,&obj.txz_t1,&obj.vz_t1,&obj.mpar_miu,0,&obj);
+    pcal[3]=thread(calx_3d,&obj.data3d2,&obj.txz_t1,&obj.vz_t1,&obj.mpar_miu,0,&obj);
     pcal[4]=thread(calz_3d,&obj.tyz_t2,&obj.tyz_t1,&obj.vy_t1,&obj.mpar_miu,0,&obj);
-    pcal[5]=thread(caly_3d,&obj.tyz_t2,&obj.tyz_t1,&obj.vz_t1,&obj.mpar_miu,0,&obj);
+    pcal[5]=thread(caly_3d,&obj.data3d3,&obj.tyz_t1,&obj.vz_t1,&obj.mpar_miu,0,&obj);
     for(k=0;k<6;k++){
         pcal[k].join();
     }
-    obj.txz_t1=obj.txz_t2;obj.txy_t1=obj.txy_t2;obj.tyz_t1=obj.tyz_t2;
+    obj.txy_t1=obj.txy_t2+obj.data3d1;
+    obj.txz_t1=obj.txz_t2+obj.data3d2;
+    obj.tyz_t1=obj.tyz_t2+obj.data3d3;
 }
 
 #endif
