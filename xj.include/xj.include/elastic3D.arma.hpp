@@ -30,13 +30,24 @@ public:
 //mpar: model parameter
     fcube mpar_1_dec_ro,mpar_lmd_add_2miu,mpar_lmd,mpar_miu;
     fcube mpar_ro,mpar_vp,mpar_vs;
-    fcube vx_t1,vy_t1,vz_t1,vx_t2,vy_t2,vz_t2,\
-        vx_pdx,vx_pdy,vx_pdz,vy_pdx,vy_pdy,vy_pdz,vz_pdx,vz_pdy,vz_pdz;
-    fcube txx_t1,tyy_t1,tzz_t1,txx_t2,tyy_t2,tzz_t2,\
-        txx_pdx,tyy_pdy,tzz_pdz;
-    fcube txy_t1,txz_t1,tyz_t1,txy_t2,txz_t2,tyz_t2,\
-        txy_pdx,txy_pdy,txz_pdx,txz_pdz,tyz_pdy,tyz_pdz;
-    fcube data3d1,data3d2,data3d3,data3d4,data3d5,data3d6;  
+    fcube vx,vy,vz,vx_t2,vy_t2,vz_t2,\
+        vx_pdx_t1,vx_pdy_t1,vx_pdz_t1,\
+        vy_pdx_t1,vy_pdy_t1,vy_pdz_t1,\
+        vz_pdx_t1,vz_pdy_t1,vz_pdz_t1,\
+        vx_pdx_t2,vx_pdy_t2,vx_pdz_t2,\
+        vy_pdx_t2,vy_pdy_t2,vy_pdz_t2,\
+        vz_pdx_t2,vz_pdy_t2,vz_pdz_t2;
+    fcube txx,tyy,tzz,txx_t2,tyy_t2,tzz_t2,\
+        txx_pdx_t1,tyy_pdx_t1,tzz_pdx_t1,\
+        txx_pdy_t1,tyy_pdy_t1,tzz_pdy_t1,\
+        txx_pdz_t1,tyy_pdz_t1,tzz_pdz_t1,\
+        txx_pdx_t2,tyy_pdx_t2,tzz_pdx_t2,\
+        txx_pdy_t2,tyy_pdy_t2,tzz_pdy_t2,\
+        txx_pdz_t2,tyy_pdz_t2,tzz_pdz_t2;
+    fcube txy,txz,tyz,txy_t2,txz_t2,tyz_t2,\
+        txy_pdx_t1,txy_pdy_t1,txy_pdx_t2,txy_pdy_t2,\
+        txz_pdx_t1,txz_pdz_t1,txz_pdx_t2,txz_pdz_t2,\
+        tyz_pdy_t1,tyz_pdz_t1,tyz_pdy_t2,tyz_pdz_t2;
 
     float dx,dy,dz,dt,PML_wide,R,isPMLSurface;
     float C_X,C_Y,C_Z;
@@ -48,20 +59,11 @@ public:
 
     void cleardata();
     void updatepar();
-    void prepareForMultiThread();
     void calx_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
     void caly_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
     void calz_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
 };
 ///////////////////////////////////////////////////////////////////////////////////////////
-void elastic3D_ARMA::prepareForMultiThread(){
-    this->data3d1.set_size(nx,ny,nz);
-    this->data3d2.set_size(nx,ny,nz);
-    this->data3d3.set_size(nx,ny,nz);
-    this->data3d4.set_size(nx,ny,nz);
-    this->data3d5.set_size(nx,ny,nz);
-    this->data3d6.set_size(nx,ny,nz);
-}
 elastic3D_ARMA::elastic3D_ARMA()
 {
     nx=0;ny=0;nz=0;
@@ -86,18 +88,24 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
     mpar_1_dec_ro.zeros(nx,ny,nz),mpar_lmd_add_2miu.zeros(nx,ny,nz),\
     mpar_lmd.zeros(nx,ny,nz),mpar_miu.zeros(nx,ny,nz);
     mpar_ro.zeros(nx,ny,nz),mpar_vp.zeros(nx,ny,nz),mpar_vs.zeros(nx,ny,nz);
-    vx_t1.zeros(nx,ny,nz),vy_t1.zeros(nx,ny,nz),vz_t1.zeros(nx,ny,nz),\
-    vx_t2.zeros(nx,ny,nz),vy_t2.zeros(nx,ny,nz),vz_t2.zeros(nx,ny,nz),\
-    vx_pdx.zeros(nx,ny,nz),vx_pdy.zeros(nx,ny,nz),vx_pdz.zeros(nx,ny,nz),\
-    vy_pdx.zeros(nx,ny,nz),vy_pdy.zeros(nx,ny,nz),vy_pdz.zeros(nx,ny,nz),\
-    vz_pdx.zeros(nx,ny,nz),vz_pdy.zeros(nx,ny,nz),vz_pdz.zeros(nx,ny,nz);
-    txx_t1.zeros(nx,ny,nz),tyy_t1.zeros(nx,ny,nz),tzz_t1.zeros(nx,ny,nz),\
-    txx_t2.zeros(nx,ny,nz),tyy_t2.zeros(nx,ny,nz),tzz_t2.zeros(nx,ny,nz),\
-    txx_pdx.zeros(nx,ny,nz),tyy_pdy.zeros(nx,ny,nz),tzz_pdz.zeros(nx,ny,nz);
-    txy_t1.zeros(nx,ny,nz),txz_t1.zeros(nx,ny,nz),tyz_t1.zeros(nx,ny,nz),\
-    txy_t2.zeros(nx,ny,nz),txz_t2.zeros(nx,ny,nz),tyz_t2.zeros(nx,ny,nz),\
-    txy_pdx.zeros(nx,ny,nz),txy_pdy.zeros(nx,ny,nz),txz_pdx.zeros(nx,ny,nz),\
-    txz_pdz.zeros(nx,ny,nz),tyz_pdy.zeros(nx,ny,nz),tyz_pdz.zeros(nx,ny,nz);
+    vx.zeros(nx,ny,nz),vy.zeros(nx,ny,nz),vz.zeros(nx,ny,nz),\
+    vx_pdx_t1.zeros(nx,ny,nz),vx_pdy_t1.zeros(nx,ny,nz),vx_pdz_t1.zeros(nx,ny,nz),\
+    vy_pdx_t1.zeros(nx,ny,nz),vy_pdy_t1.zeros(nx,ny,nz),vy_pdz_t1.zeros(nx,ny,nz),\
+    vz_pdx_t1.zeros(nx,ny,nz),vz_pdy_t1.zeros(nx,ny,nz),vz_pdz_t1.zeros(nx,ny,nz),\
+    vx_pdx_t2.zeros(nx,ny,nz),vx_pdy_t2.zeros(nx,ny,nz),vx_pdz_t2.zeros(nx,ny,nz),\
+    vy_pdx_t2.zeros(nx,ny,nz),vy_pdy_t2.zeros(nx,ny,nz),vy_pdz_t2.zeros(nx,ny,nz),\
+    vz_pdx_t2.zeros(nx,ny,nz),vz_pdy_t2.zeros(nx,ny,nz),vz_pdz_t2.zeros(nx,ny,nz);
+    txx.zeros(nx,ny,nz),tyy.zeros(nx,ny,nz),tzz.zeros(nx,ny,nz),\
+    txx_pdx_t1.zeros(nx,ny,nz),tyy_pdx_t1.zeros(nx,ny,nz),tzz_pdx_t1.zeros(nx,ny,nz),\
+    txx_pdy_t1.zeros(nx,ny,nz),tyy_pdy_t1.zeros(nx,ny,nz),tzz_pdy_t1.zeros(nx,ny,nz),\
+    txx_pdz_t1.zeros(nx,ny,nz),tyy_pdz_t1.zeros(nx,ny,nz),tzz_pdz_t1.zeros(nx,ny,nz),\
+    txx_pdx_t2.zeros(nx,ny,nz),tyy_pdx_t2.zeros(nx,ny,nz),tzz_pdx_t2.zeros(nx,ny,nz),\
+    txx_pdy_t2.zeros(nx,ny,nz),tyy_pdy_t2.zeros(nx,ny,nz),tzz_pdy_t2.zeros(nx,ny,nz),\
+    txx_pdz_t2.zeros(nx,ny,nz),tyy_pdz_t2.zeros(nx,ny,nz),tzz_pdz_t2.zeros(nx,ny,nz);
+    txy.zeros(nx,ny,nz),txz.zeros(nx,ny,nz),tyz.zeros(nx,ny,nz),\
+    txy_pdx_t1.zeros(nx,ny,nz),txy_pdy_t1.zeros(nx,ny,nz),txy_pdx_t2.zeros(nx,ny,nz),txy_pdy_t2.zeros(nx,ny,nz),\
+    txz_pdx_t1.zeros(nx,ny,nz),txz_pdz_t1.zeros(nx,ny,nz),txz_pdx_t2.zeros(nx,ny,nz),txz_pdz_t2.zeros(nx,ny,nz),\
+    tyz_pdy_t1.zeros(nx,ny,nz),tyz_pdz_t1.zeros(nx,ny,nz),tyz_pdy_t2.zeros(nx,ny,nz),tyz_pdz_t2.zeros(nx,ny,nz);
 }
 
 elastic3D_ARMA::~elastic3D_ARMA()
@@ -107,18 +115,24 @@ elastic3D_ARMA::~elastic3D_ARMA()
 
 void elastic3D_ARMA::cleardata()
 {
-    vx_t1.zeros(nx,ny,nz),vy_t1.zeros(nx,ny,nz),vz_t1.zeros(nx,ny,nz),\
-    vx_t2.zeros(nx,ny,nz),vy_t2.zeros(nx,ny,nz),vz_t2.zeros(nx,ny,nz),\
-    vx_pdx.zeros(nx,ny,nz),vx_pdy.zeros(nx,ny,nz),vx_pdz.zeros(nx,ny,nz),\
-    vy_pdx.zeros(nx,ny,nz),vy_pdy.zeros(nx,ny,nz),vy_pdz.zeros(nx,ny,nz),\
-    vz_pdx.zeros(nx,ny,nz),vz_pdy.zeros(nx,ny,nz),vz_pdz.zeros(nx,ny,nz);
-    txx_t1.zeros(nx,ny,nz),tyy_t1.zeros(nx,ny,nz),tzz_t1.zeros(nx,ny,nz),\
-    txx_t2.zeros(nx,ny,nz),tyy_t2.zeros(nx,ny,nz),tzz_t2.zeros(nx,ny,nz),\
-    txx_pdx.zeros(nx,ny,nz),tyy_pdy.zeros(nx,ny,nz),tzz_pdz.zeros(nx,ny,nz);
-    txy_t1.zeros(nx,ny,nz),txz_t1.zeros(nx,ny,nz),tyz_t1.zeros(nx,ny,nz),\
-    txy_t2.zeros(nx,ny,nz),txz_t2.zeros(nx,ny,nz),tyz_t2.zeros(nx,ny,nz),\
-    txy_pdx.zeros(nx,ny,nz),txy_pdy.zeros(nx,ny,nz),txz_pdx.zeros(nx,ny,nz),\
-    txz_pdz.zeros(nx,ny,nz),tyz_pdy.zeros(nx,ny,nz),tyz_pdz.zeros(nx,ny,nz);
+    vx.zeros(nx,ny,nz),vy.zeros(nx,ny,nz),vz.zeros(nx,ny,nz),\
+    vx_pdx_t1.zeros(nx,ny,nz),vx_pdy_t1.zeros(nx,ny,nz),vx_pdz_t1.zeros(nx,ny,nz),\
+    vy_pdx_t1.zeros(nx,ny,nz),vy_pdy_t1.zeros(nx,ny,nz),vy_pdz_t1.zeros(nx,ny,nz),\
+    vz_pdx_t1.zeros(nx,ny,nz),vz_pdy_t1.zeros(nx,ny,nz),vz_pdz_t1.zeros(nx,ny,nz),\
+    vx_pdx_t2.zeros(nx,ny,nz),vx_pdy_t2.zeros(nx,ny,nz),vx_pdz_t2.zeros(nx,ny,nz),\
+    vy_pdx_t2.zeros(nx,ny,nz),vy_pdy_t2.zeros(nx,ny,nz),vy_pdz_t2.zeros(nx,ny,nz),\
+    vz_pdx_t2.zeros(nx,ny,nz),vz_pdy_t2.zeros(nx,ny,nz),vz_pdz_t2.zeros(nx,ny,nz);
+    txx.zeros(nx,ny,nz),tyy.zeros(nx,ny,nz),tzz.zeros(nx,ny,nz),\
+    txx_pdx_t1.zeros(nx,ny,nz),tyy_pdx_t1.zeros(nx,ny,nz),tzz_pdx_t1.zeros(nx,ny,nz),\
+    txx_pdy_t1.zeros(nx,ny,nz),tyy_pdy_t1.zeros(nx,ny,nz),tzz_pdy_t1.zeros(nx,ny,nz),\
+    txx_pdz_t1.zeros(nx,ny,nz),tyy_pdz_t1.zeros(nx,ny,nz),tzz_pdz_t1.zeros(nx,ny,nz),\
+    txx_pdx_t2.zeros(nx,ny,nz),tyy_pdx_t2.zeros(nx,ny,nz),tzz_pdx_t2.zeros(nx,ny,nz),\
+    txx_pdy_t2.zeros(nx,ny,nz),tyy_pdy_t2.zeros(nx,ny,nz),tzz_pdy_t2.zeros(nx,ny,nz),\
+    txx_pdz_t2.zeros(nx,ny,nz),tyy_pdz_t2.zeros(nx,ny,nz),tzz_pdz_t2.zeros(nx,ny,nz);
+    txy.zeros(nx,ny,nz),txz.zeros(nx,ny,nz),tyz.zeros(nx,ny,nz),\
+    txy_pdx_t1.zeros(nx,ny,nz),txy_pdy_t1.zeros(nx,ny,nz),txy_pdx_t2.zeros(nx,ny,nz),txy_pdy_t2.zeros(nx,ny,nz),\
+    txz_pdx_t1.zeros(nx,ny,nz),txz_pdz_t1.zeros(nx,ny,nz),txz_pdx_t2.zeros(nx,ny,nz),txz_pdz_t2.zeros(nx,ny,nz),\
+    tyz_pdy_t1.zeros(nx,ny,nz),tyz_pdz_t1.zeros(nx,ny,nz),tyz_pdy_t2.zeros(nx,ny,nz),tyz_pdz_t2.zeros(nx,ny,nz);
     cout<<"All data has cleaar!"<<endl;
 }
  
@@ -159,7 +173,7 @@ void elastic3D_ARMA::calx_p(fcube &ut2 , const fcube &ut1, \
     float C8      = 0;//差分系数
 */
     int Z,k;
-    Z=this->nz,
+    Z=this->nz;
 omp_set_num_threads(this->ompThreadNum);
 #pragma omp parallel for
     for(k=8;k<Z-8;k++){
@@ -192,7 +206,7 @@ omp_set_num_threads(this->ompThreadNum);
             du=0.5*(m(i+jc,j,k)+m(i,j,k))*du/DX;
             du1=C_X*3000.0*DX*(xshd+8-i)*DX*(xshd+8-i);
             //du1=C_X*this->vp(i,j,k)*DX*(xshd+8-i)*DX*(xshd+8-i);
-            ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
         for(i=xshd+8;i<X-xshd-8;i++)
         {  
@@ -208,7 +222,7 @@ omp_set_num_threads(this->ompThreadNum);
                 );
             du=0.5*(m(i+jc,j,k)+m(i,j,k))*du/DX;
             du1=0;
-            ut2(i,j,k)+=((du-du1)*DT+ut1(i,j,k));
+            ut2(i,j,k)=((du-du1)*DT+ut1(i,j,k));
         }
         for(i=X-xshd-8;i<X-8;i++)
         {  
@@ -225,7 +239,7 @@ omp_set_num_threads(this->ompThreadNum);
             du=0.5*(m(i+jc,j,k)+m(i,j,k))*du/DX;
             du1=C_X*3000.0*DX*(i-X+xshd+8)*DX*(i-X+xshd+8);
             //du1=C_X*this->vp(i,j,k)*DX*(i-X+xshd+8)*DX*(i-X+xshd+8);
-            ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
 }
@@ -283,7 +297,7 @@ omp_set_num_threads(this->ompThreadNum);
             du=0.5*(m(i,j+jc,k)+m(i,j,k))*du/DY;
             du1=C_Y*3000.0*DY*(xshd+8-j)*DY*(xshd+8-j);
             //du1=C_X*this->vp(i,j,k)*DX*(xshd+8-i)*DX*(xshd+8-i);
-            ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
         for(j=xshd+8;j<Y-xshd-8;j++)
         {
@@ -299,7 +313,7 @@ omp_set_num_threads(this->ompThreadNum);
                 );
             du=0.5*(m(i,j+jc,k)+m(i,j,k))*du/DY;
             du1=0;
-            ut2(i,j,k)+=((du-du1)*DT+ut1(i,j,k));
+            ut2(i,j,k)=((du-du1)*DT+ut1(i,j,k));
         }
         for(j=Y-xshd-8;j<Y-8;j++)
         {
@@ -316,7 +330,7 @@ omp_set_num_threads(this->ompThreadNum);
             du=0.5*(m(i,j+jc,k)+m(i,j,k))*du/DY;
             du1=C_Y*3000.0*DY*(j-Y+xshd+8)*DY*(j-Y+xshd+8);
             //du1=C_Y*this->vp(i,j,k)*DY*(j-Y+xshd+8)*DY*(j-Y+xshd+8);
-            ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
 }
@@ -380,7 +394,7 @@ omp_set_num_threads(this->ompThreadNum);
                 *suface_PML*(xshd+8-k);
             //du1=C_Y*this->vp[j][i]*DY*suface_PML*(xshd+8-j)*DY\
                 *suface_PML*(xshd+8-j);
-            ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
         for(k=xshd+8;k<Z-xshd-8;k++)
         {  
@@ -400,7 +414,7 @@ omp_set_num_threads(this->ompThreadNum);
             else
                 du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
             du1=0;
-            ut2(i,j,k)+=((du-du1)*DT+ut1(i,j,k));
+            ut2(i,j,k)=((du-du1)*DT+ut1(i,j,k));
         }
         for(k=Z-xshd-8;k<Z-8;k++)
         {  
@@ -417,73 +431,73 @@ omp_set_num_threads(this->ompThreadNum);
             du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
             du1=C_Z*3000.0*DZ*(k-Z+xshd+8)*DZ*(k-Z+xshd+8);
             //du1=C_Z*this->vp(i,j,k)*DZ*(k-Z+xshd+8)*DX*(k-Z+xshd+8);
-            ut2(i,j,k)+=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
 }
 
 void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
 {
-    int k;
+    int k,jc0(0),jc1(1);
     thread *useThread;
     useThread=new thread[24];
-    obj.data3d1.fill(0.0);obj.data3d2.fill(0.0);
-    obj.data3d3.fill(0.0);obj.data3d4.fill(0.0);
-    obj.data3d5.fill(0.0);obj.data3d6.fill(0.0);
-    obj.vx_t2.fill(0.0),obj.vy_t2.fill(0.0),obj.vz_t2.fill(0.0);
-    useThread[0]=thread(calx_3d,&obj.vx_t2,&obj.vx_t1,&obj.txx_t1,&obj.mpar_1_dec_ro,1,&obj);
-    useThread[1]=thread(caly_3d,&obj.data3d1,&obj.vx_t1,&obj.txy_t1,&obj.mpar_1_dec_ro,0,&obj);
-    useThread[2]=thread(calz_3d,&obj.data3d2,&obj.vx_t1,&obj.txz_t1,&obj.mpar_1_dec_ro,0,&obj);
-    useThread[3]=thread(calx_3d,&obj.vy_t2,&obj.vy_t1,&obj.txy_t1,&obj.mpar_1_dec_ro,0,&obj);
-    useThread[4]=thread(caly_3d,&obj.data3d3,&obj.vy_t1,&obj.tyy_t1,&obj.mpar_1_dec_ro,1,&obj);
-    useThread[5]=thread(calz_3d,&obj.data3d4,&obj.vy_t1,&obj.tyz_t1,&obj.mpar_1_dec_ro,0,&obj);
-    useThread[6]=thread(calx_3d,&obj.vz_t2,&obj.vz_t1,&obj.txz_t1,&obj.mpar_1_dec_ro,0,&obj);
-    useThread[7]=thread(caly_3d,&obj.data3d5,&obj.vz_t1,&obj.tyz_t1,&obj.mpar_1_dec_ro,0,&obj);
-    useThread[8]=thread(calz_3d,&obj.data3d6,&obj.vz_t1,&obj.tzz_t1,&obj.mpar_1_dec_ro,1,&obj);
+
+    useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,&obj.txx,&obj.mpar_1_dec_ro,jc1,&obj);
+    useThread[1]=thread(caly_3d,&obj.vx_pdy_t2,&obj.vx_pdy_t1,&obj.txy,&obj.mpar_1_dec_ro,jc0,&obj);
+    useThread[2]=thread(calz_3d,&obj.vx_pdz_t2,&obj.vx_pdz_t1,&obj.txz,&obj.mpar_1_dec_ro,jc0,&obj);
+    useThread[3]=thread(calx_3d,&obj.vy_pdx_t2,&obj.vy_pdx_t1,&obj.txy,&obj.mpar_1_dec_ro,jc0,&obj);
+    useThread[4]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,&obj.tyy,&obj.mpar_1_dec_ro,jc1,&obj);
+    useThread[5]=thread(calz_3d,&obj.vy_pdz_t2,&obj.vy_pdz_t1,&obj.tyz,&obj.mpar_1_dec_ro,jc0,&obj);
+    useThread[6]=thread(calx_3d,&obj.vz_pdx_t2,&obj.vz_pdx_t1,&obj.txz,&obj.mpar_1_dec_ro,jc0,&obj);
+    useThread[7]=thread(caly_3d,&obj.vz_pdy_t2,&obj.vz_pdy_t1,&obj.tyz,&obj.mpar_1_dec_ro,jc0,&obj);
+    useThread[8]=thread(calz_3d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,&obj.tzz,&obj.mpar_1_dec_ro,jc1,&obj);
     for(k=0;k<9;k++){
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.vx_t1=obj.vx_t2+obj.data3d1+obj.data3d2;
-    obj.vy_t1=obj.vy_t2+obj.data3d3+obj.data3d4;
-    obj.vz_t1=obj.vz_t2+obj.data3d5+obj.data3d6;
+    obj.vx_pdx_t1=obj.vx_pdx_t2,obj.vx_pdy_t1=obj.vx_pdy_t2,obj.vx_pdz_t1=obj.vx_pdz_t2;
+    obj.vy_pdx_t1=obj.vy_pdx_t2,obj.vy_pdy_t1=obj.vy_pdy_t2,obj.vy_pdz_t1=obj.vy_pdz_t2;
+    obj.vz_pdx_t1=obj.vz_pdx_t2,obj.vz_pdy_t1=obj.vz_pdy_t2,obj.vz_pdz_t1=obj.vz_pdz_t2;
+    obj.vx=obj.vx_pdx_t1+obj.vx_pdy_t1+obj.vx_pdz_t1;
+    obj.vy=obj.vy_pdx_t1+obj.vy_pdy_t1+obj.vy_pdz_t1;
+    obj.vz=obj.vz_pdx_t1+obj.vz_pdy_t1+obj.vz_pdz_t1;
 
-    obj.data3d1.fill(0.0);obj.data3d2.fill(0.0);
-    obj.data3d3.fill(0.0);obj.data3d4.fill(0.0);
-    obj.data3d5.fill(0.0);obj.data3d6.fill(0.0);
-    obj.txx_t2.fill(0.0),obj.tyy_t2.fill(0.0),obj.tzz_t2.fill(0.0);
-    useThread[9]=thread(calx_3d,&obj.txx_t2,&obj.txx_t1,&obj.vx_t1,&obj.mpar_lmd_add_2miu,0,&obj);
-    useThread[10]=thread(caly_3d,&obj.data3d1,&obj.txx_t1,&obj.vy_t1,&obj.mpar_lmd,0,&obj);
-    useThread[11]=thread(calz_3d,&obj.data3d2,&obj.txx_t1,&obj.vz_t1,&obj.mpar_lmd,0,&obj);
-    useThread[12]=thread(caly_3d,&obj.tyy_t2,&obj.tyy_t1,&obj.vy_t1,&obj.mpar_lmd_add_2miu,0,&obj);
-    useThread[13]=thread(calx_3d,&obj.data3d3,&obj.tyy_t1,&obj.vx_t1,&obj.mpar_lmd,0,&obj);
-    useThread[14]=thread(calz_3d,&obj.data3d4,&obj.tyy_t1,&obj.vz_t1,&obj.mpar_lmd,0,&obj);
-    useThread[15]=thread(calz_3d,&obj.tzz_t2,&obj.tzz_t1,&obj.vz_t1,&obj.mpar_lmd_add_2miu,0,&obj);
-    useThread[16]=thread(calx_3d,&obj.data3d5,&obj.tzz_t1,&obj.vx_t1,&obj.mpar_lmd,0,&obj);
-    useThread[17]=thread(caly_3d,&obj.data3d6,&obj.tzz_t1,&obj.vy_t1,&obj.mpar_lmd,0,&obj);
+    useThread[9]=thread(calx_3d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,&obj.vx,&obj.mpar_lmd_add_2miu,jc0,&obj);
+    useThread[10]=thread(caly_3d,&obj.txx_pdy_t2,&obj.txx_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
+    useThread[11]=thread(calz_3d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
+    useThread[12]=thread(caly_3d,&obj.tyy_pdy_t2,&obj.tyy_pdy_t1,&obj.vy,&obj.mpar_lmd_add_2miu,jc0,&obj);
+    useThread[13]=thread(calx_3d,&obj.tyy_pdx_t2,&obj.tyy_pdx_t1,&obj.vx,&obj.mpar_lmd,jc0,&obj);
+    useThread[14]=thread(calz_3d,&obj.tyy_pdz_t2,&obj.tyy_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
+    useThread[15]=thread(calz_3d,&obj.tzz_pdz_t2,&obj.tzz_pdz_t1,&obj.vz,&obj.mpar_lmd_add_2miu,jc0,&obj);
+    useThread[16]=thread(calx_3d,&obj.tzz_pdx_t2,&obj.tzz_pdx_t1,&obj.vx,&obj.mpar_lmd,jc0,&obj);
+    useThread[17]=thread(caly_3d,&obj.tzz_pdy_t2,&obj.tzz_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
     for(k=9;k<18;k++){
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.txx_t1=obj.txx_t2+obj.data3d1+obj.data3d2;
-    obj.tyy_t1=obj.tyy_t2+obj.data3d3+obj.data3d4;
-    obj.tzz_t1=obj.tzz_t2+obj.data3d5+obj.data3d6;
+    obj.txx_pdx_t1=obj.txx_pdx_t2,obj.txx_pdy_t1=obj.txx_pdy_t2,obj.txx_pdz_t1=obj.txx_pdz_t2;
+    obj.tyy_pdx_t1=obj.tyy_pdx_t2,obj.tyy_pdy_t1=obj.tyy_pdy_t2,obj.tyy_pdz_t1=obj.tyy_pdz_t2;
+    obj.tzz_pdx_t1=obj.tzz_pdx_t2,obj.tzz_pdy_t1=obj.tzz_pdy_t2,obj.tzz_pdz_t1=obj.tzz_pdz_t2;
+    obj.txx=obj.txx_pdx_t1+obj.txx_pdy_t1+obj.txx_pdz_t1;
+    obj.tyy=obj.tyy_pdx_t1+obj.tyy_pdy_t1+obj.tyy_pdz_t1;
+    obj.tzz=obj.tzz_pdx_t1+obj.tzz_pdy_t1+obj.tzz_pdz_t1;
 
-    obj.data3d1.fill(0.0);obj.data3d2.fill(0.0);obj.data3d3.fill(0.0);
-    obj.txz_t2.fill(0.0),obj.txy_t2.fill(0.0),obj.tyz_t2.fill(0.0);
-    useThread[18]=thread(caly_3d,&obj.txy_t2,&obj.txy_t1,&obj.vx_t1,&obj.mpar_miu,1,&obj);
-    useThread[19]=thread(calx_3d,&obj.data3d1,&obj.txy_t1,&obj.vy_t1,&obj.mpar_miu,1,&obj);
-    useThread[20]=thread(calz_3d,&obj.txz_t2,&obj.txz_t1,&obj.vx_t1,&obj.mpar_miu,1,&obj);
-    useThread[21]=thread(calx_3d,&obj.data3d2,&obj.txz_t1,&obj.vz_t1,&obj.mpar_miu,1,&obj);
-    useThread[22]=thread(calz_3d,&obj.tyz_t2,&obj.tyz_t1,&obj.vy_t1,&obj.mpar_miu,1,&obj);
-    useThread[23]=thread(caly_3d,&obj.data3d3,&obj.tyz_t1,&obj.vz_t1,&obj.mpar_miu,1,&obj);
+    useThread[18]=thread(caly_3d,&obj.txy_pdy_t2,&obj.txy_pdy_t1,&obj.vx,&obj.mpar_miu,jc1,&obj);
+    useThread[19]=thread(calx_3d,&obj.txy_pdx_t2,&obj.txy_pdx_t1,&obj.vy,&obj.mpar_miu,jc1,&obj);
+    useThread[20]=thread(calz_3d,&obj.txz_pdz_t2,&obj.txz_pdz_t1,&obj.vx,&obj.mpar_miu,jc1,&obj);
+    useThread[21]=thread(calx_3d,&obj.txz_pdx_t2,&obj.txz_pdx_t1,&obj.vz,&obj.mpar_miu,jc1,&obj);
+    useThread[22]=thread(calz_3d,&obj.tyz_pdz_t2,&obj.tyz_pdz_t1,&obj.vy,&obj.mpar_miu,jc1,&obj);
+    useThread[23]=thread(caly_3d,&obj.tyz_pdy_t2,&obj.tyz_pdy_t1,&obj.vz,&obj.mpar_miu,jc1,&obj);
     for(k=18;k<24;k++){
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.txy_t1=obj.txy_t2+obj.data3d1;
-    obj.txz_t1=obj.txz_t2+obj.data3d2;
-    obj.tyz_t1=obj.tyz_t2+obj.data3d3;
+    obj.txy_pdy_t1=obj.txy_pdy_t2,obj.txy_pdx_t1=obj.txy_pdx_t2;
+    obj.txz_pdz_t1=obj.txz_pdz_t2,obj.txz_pdx_t1=obj.txz_pdx_t2;
+    obj.tyz_pdz_t1=obj.tyz_pdz_t2,obj.tyz_pdy_t1=obj.tyz_pdy_t2;
+    obj.txy=obj.txy_pdy_t1+obj.txy_pdx_t1;
+    obj.txz=obj.txz_pdz_t1+obj.txz_pdx_t1;
+    obj.tyz=obj.tyz_pdz_t1+obj.tyz_pdy_t1;
     delete [] useThread;
 }
 
