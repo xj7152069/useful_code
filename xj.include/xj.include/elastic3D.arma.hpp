@@ -68,8 +68,8 @@ elastic3D_ARMA::elastic3D_ARMA()
 {
     nx=0;ny=0;nz=0;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=40.0;isPMLSurface=1.0;R=20.0;
-    nzSampleOfFreeSurface=50;
+    PML_wide=40.0;isPMLSurface=1.0;R=25.0;
+    nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
@@ -78,8 +78,8 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
 {
     nx=x;ny=y;nz=z;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=40.0;isPMLSurface=1.0;R=20.0;
-    nzSampleOfFreeSurface=50;
+    PML_wide=40.0;isPMLSurface=1.0;R=25.0;
+    nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     C_Y=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
     C_X=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dx/dx/dx;
@@ -387,7 +387,7 @@ omp_set_num_threads(this->ompThreadNum);
                 );
             //take care of the PML_boundary!!!
             if((suface_PML)<0.5 && k<nSurface)
-                du=0.5*(m(i,j,k)+m(i,j,k))*du/DZ;
+                du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
             else
                 du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
             du1=C_Z*3000.0*DZ*suface_PML*(xshd+8-k)*DZ\
@@ -410,7 +410,7 @@ omp_set_num_threads(this->ompThreadNum);
                 );
             //take care of the PML_boundary!!!
             if((suface_PML)<0.5  && k<nSurface)
-                du=0.5*(m(i,j,k)+m(i,j,k))*du/DZ;
+                du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
             else
                 du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
             du1=0;
