@@ -59,16 +59,16 @@ public:
 
     void cleardata();
     void updatepar();
-    void calx_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
-    void caly_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
-    void calz_p(fcube &ut2 , const fcube &ut1, const fcube &u, const fcube &m, const int pjc);
+    void calx_p(fcube &ut2 , fcube &ut1, const fcube &u, const fcube &m, const int pjc);
+    void caly_p(fcube &ut2 , fcube &ut1, const fcube &u, const fcube &m, const int pjc);
+    void calz_p(fcube &ut2 , fcube &ut1, const fcube &u, const fcube &m, const int pjc);
 };
 ///////////////////////////////////////////////////////////////////////////////////////////
 elastic3D_ARMA::elastic3D_ARMA()
 {
     nx=0;ny=0;nz=0;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=30.0;isPMLSurface=1.0;R=25.0;
+    PML_wide=30.0;isPMLSurface=1.0;R=30.0;
     nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
@@ -78,7 +78,7 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
 {
     nx=x;ny=y;nz=z;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=30.0;isPMLSurface=1.0;R=25.0;
+    PML_wide=30.0;isPMLSurface=1.0;R=30.0;
     nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     C_Y=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
@@ -159,7 +159,7 @@ void calx_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
 {
     obj->calx_p(ut2[0],ut1[0],u[0],m[0],pjc);
 }
-void elastic3D_ARMA::calx_p(fcube &ut2 , const fcube &ut1, \
+void elastic3D_ARMA::calx_p(fcube &ut2 , fcube &ut1, \
     const fcube &u, const fcube &m, const int pjc)
 {
     /*
@@ -242,6 +242,7 @@ omp_set_num_threads(this->ompThreadNum);
             ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
+    ut1.swap(ut2);
 }
 
 void caly_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
@@ -249,7 +250,7 @@ void caly_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
 {
     obj->caly_p(ut2[0],ut1[0],u[0],m[0],pjc);
 }
-void elastic3D_ARMA::caly_p(fcube &ut2 , const fcube &ut1, \
+void elastic3D_ARMA::caly_p(fcube &ut2 , fcube &ut1, \
     const fcube &u, const fcube &m, const int pjc)
 {
     /*
@@ -333,6 +334,7 @@ omp_set_num_threads(this->ompThreadNum);
             ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
+    ut1.swap(ut2);
 }
 
 void calz_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
@@ -340,7 +342,7 @@ void calz_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
 {
     obj->calz_p(ut2[0],ut1[0],u[0],m[0],pjc);
 }
-void elastic3D_ARMA::calz_p(fcube &ut2 , const fcube &ut1,\
+void elastic3D_ARMA::calz_p(fcube &ut2 , fcube &ut1,\
     const fcube &u, const fcube &m, const int pjc)
 {
     /*
@@ -430,6 +432,7 @@ omp_set_num_threads(this->ompThreadNum);
             ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
         }
     }}
+    ut1.swap(ut2);
 }
 
 void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
@@ -451,9 +454,6 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.vx_pdx_t1.swap(obj.vx_pdx_t2),obj.vx_pdy_t1.swap(obj.vx_pdy_t2),obj.vx_pdz_t1.swap(obj.vx_pdz_t2);
-    obj.vy_pdx_t1.swap(obj.vy_pdx_t2),obj.vy_pdy_t1.swap(obj.vy_pdy_t2),obj.vy_pdz_t1.swap(obj.vy_pdz_t2);
-    obj.vz_pdx_t1.swap(obj.vz_pdx_t2),obj.vz_pdy_t1.swap(obj.vz_pdy_t2),obj.vz_pdz_t1.swap(obj.vz_pdz_t2);
     obj.vx=obj.vx_pdx_t1+obj.vx_pdy_t1+obj.vx_pdz_t1;
     obj.vy=obj.vy_pdx_t1+obj.vy_pdy_t1+obj.vy_pdz_t1;
     obj.vz=obj.vz_pdx_t1+obj.vz_pdy_t1+obj.vz_pdz_t1;
@@ -471,9 +471,6 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.txx_pdx_t1.swap(obj.txx_pdx_t2),obj.txx_pdy_t1.swap(obj.txx_pdy_t2),obj.txx_pdz_t1.swap(obj.txx_pdz_t2);
-    obj.tyy_pdx_t1.swap(obj.tyy_pdx_t2),obj.tyy_pdy_t1.swap(obj.tyy_pdy_t2),obj.tyy_pdz_t1.swap(obj.tyy_pdz_t2);
-    obj.tzz_pdx_t1.swap(obj.tzz_pdx_t2),obj.tzz_pdy_t1.swap(obj.tzz_pdy_t2),obj.tzz_pdz_t1.swap(obj.tzz_pdz_t2);
     obj.txx=obj.txx_pdx_t1+obj.txx_pdy_t1+obj.txx_pdz_t1;
     obj.tyy=obj.tyy_pdx_t1+obj.tyy_pdy_t1+obj.tyy_pdz_t1;
     obj.tzz=obj.tzz_pdx_t1+obj.tzz_pdy_t1+obj.tzz_pdz_t1;
@@ -488,9 +485,6 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.txy_pdy_t1.swap(obj.txy_pdy_t2),obj.txy_pdx_t1.swap(obj.txy_pdx_t2);
-    obj.txz_pdz_t1.swap(obj.txz_pdz_t2),obj.txz_pdx_t1.swap(obj.txz_pdx_t2);
-    obj.tyz_pdz_t1.swap(obj.tyz_pdz_t2),obj.tyz_pdy_t1.swap(obj.tyz_pdy_t2);
     obj.txy=obj.txy_pdy_t1+obj.txy_pdx_t1;
     obj.txz=obj.txz_pdz_t1+obj.txz_pdx_t1;
     obj.tyz=obj.tyz_pdz_t1+obj.tyz_pdy_t1;
