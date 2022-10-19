@@ -68,7 +68,7 @@ elastic3D_ARMA::elastic3D_ARMA()
 {
     nx=0;ny=0;nz=0;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=30.0;isPMLSurface=1.0;R=30.0;
+    PML_wide=30.0;isPMLSurface=1.0;R=15.0;
     nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
@@ -78,7 +78,7 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
 {
     nx=x;ny=y;nz=z;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=30.0;isPMLSurface=1.0;R=30.0;
+    PML_wide=30.0;isPMLSurface=1.0;R=15.0;
     nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     C_Y=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
