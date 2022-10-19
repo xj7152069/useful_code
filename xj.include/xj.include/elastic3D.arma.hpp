@@ -29,6 +29,9 @@ public:
 //pd_: partial derivative to x/y/z
 //mpar: model parameter
     fcube mpar_1_dec_ro,mpar_lmd_add_2miu,mpar_lmd,mpar_miu;
+    fcube mpar_1_dec_ro_pdx_jc1,mpar_lmd_add_2miu_pdx_jc1,mpar_lmd_pdx_jc1,mpar_miu_pdx_jc1;
+    fcube mpar_1_dec_ro_pdy_jc1,mpar_lmd_add_2miu_pdy_jc1,mpar_lmd_pdy_jc1,mpar_miu_pdy_jc1;
+    fcube mpar_1_dec_ro_pdz_jc1,mpar_lmd_add_2miu_pdz_jc1,mpar_lmd_pdz_jc1,mpar_miu_pdz_jc1;
     fcube mpar_ro,mpar_vp,mpar_vs;
     fcube vx,vy,vz,vx_t2,vy_t2,vz_t2,\
         vx_pdx_t1,vx_pdy_t1,vx_pdz_t1,\
@@ -68,7 +71,7 @@ elastic3D_ARMA::elastic3D_ARMA()
 {
     nx=0;ny=0;nz=0;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=30.0;isPMLSurface=1.0;R=15.0;
+    PML_wide=30.0;isPMLSurface=1.0;R=12.0;
     nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
@@ -78,7 +81,7 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
 {
     nx=x;ny=y;nz=z;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=30.0;isPMLSurface=1.0;R=15.0;
+    PML_wide=30.0;isPMLSurface=1.0;R=12.0;
     nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     C_Y=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
@@ -88,6 +91,12 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
     mpar_1_dec_ro.zeros(nx,ny,nz),mpar_lmd_add_2miu.zeros(nx,ny,nz),\
     mpar_lmd.zeros(nx,ny,nz),mpar_miu.zeros(nx,ny,nz);
     mpar_ro.zeros(nx,ny,nz),mpar_vp.zeros(nx,ny,nz),mpar_vs.zeros(nx,ny,nz);
+    mpar_1_dec_ro_pdx_jc1.zeros(nx,ny,nz),mpar_lmd_add_2miu_pdx_jc1.zeros(nx,ny,nz),\
+    mpar_lmd_pdx_jc1.zeros(nx,ny,nz),mpar_miu_pdx_jc1.zeros(nx,ny,nz);
+    mpar_1_dec_ro_pdy_jc1.zeros(nx,ny,nz),mpar_lmd_add_2miu_pdy_jc1.zeros(nx,ny,nz),\
+    mpar_lmd_pdy_jc1.zeros(nx,ny,nz),mpar_miu_pdy_jc1.zeros(nx,ny,nz);
+    mpar_1_dec_ro_pdz_jc1.zeros(nx,ny,nz),mpar_lmd_add_2miu_pdz_jc1.zeros(nx,ny,nz),\
+    mpar_lmd_pdz_jc1.zeros(nx,ny,nz),mpar_miu_pdz_jc1.zeros(nx,ny,nz);
     vx.zeros(nx,ny,nz),vy.zeros(nx,ny,nz),vz.zeros(nx,ny,nz),\
     vx_pdx_t1.zeros(nx,ny,nz),vx_pdy_t1.zeros(nx,ny,nz),vx_pdz_t1.zeros(nx,ny,nz),\
     vy_pdx_t1.zeros(nx,ny,nz),vy_pdy_t1.zeros(nx,ny,nz),vy_pdz_t1.zeros(nx,ny,nz),\
@@ -152,6 +161,23 @@ void elastic3D_ARMA::updatepar()
         mpar_1_dec_ro(i,j,k)=1.0/mpar_ro(i,j,k);
         //mo1[i][j]=(lmd[i][j]+2*miu[i][j])/(2*lmd[i][j]+2*miu[i][j])/ro[i][j];
     }}}
+    for(i=0;i<nx-1;i++){ 
+    for(j=0;j<ny-1;j++){
+    for(k=0;k<nz-1;k++){
+        mpar_1_dec_ro_pdx_jc1(i,j,k)=(mpar_1_dec_ro(i+1,j,k)+mpar_1_dec_ro(i,j,k))*0.5;
+        mpar_1_dec_ro_pdy_jc1(i,j,k)=(mpar_1_dec_ro(i,j+1,k)+mpar_1_dec_ro(i,j,k))*0.5;
+        mpar_1_dec_ro_pdz_jc1(i,j,k)=(mpar_1_dec_ro(i,j,k+1)+mpar_1_dec_ro(i,j,k))*0.5;
+        mpar_lmd_add_2miu_pdx_jc1(i,j,k)=(mpar_lmd_add_2miu(i+1,j,k)+mpar_lmd_add_2miu(i,j,k))*0.5;
+        mpar_lmd_add_2miu_pdy_jc1(i,j,k)=(mpar_lmd_add_2miu(i,j+1,k)+mpar_lmd_add_2miu(i,j,k))*0.5;
+        mpar_lmd_add_2miu_pdz_jc1(i,j,k)=(mpar_lmd_add_2miu(i,j,k+1)+mpar_lmd_add_2miu(i,j,k))*0.5;
+        mpar_lmd_pdx_jc1(i,j,k)=(mpar_lmd(i+1,j,k)+mpar_lmd(i,j,k))*0.5;
+        mpar_lmd_pdy_jc1(i,j,k)=(mpar_lmd(i,j+1,k)+mpar_lmd(i,j,k))*0.5;
+        mpar_lmd_pdz_jc1(i,j,k)=(mpar_lmd(i,j,k+1)+mpar_lmd(i,j,k))*0.5;
+        mpar_miu_pdx_jc1(i,j,k)=(mpar_miu(i+1,j,k)+mpar_miu(i,j,k))*0.5;
+        mpar_miu_pdy_jc1(i,j,k)=(mpar_miu(i,j+1,k)+mpar_miu(i,j,k))*0.5;
+        mpar_miu_pdz_jc1(i,j,k)=(mpar_miu(i,j,k+1)+mpar_miu(i,j,k))*0.5;
+        //mo1[i][j]=(lmd[i][j]+2*miu[i][j])/(2*lmd[i][j]+2*miu[i][j])/ro[i][j];
+    }}}
 }
 
 void calx_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
@@ -187,10 +213,10 @@ omp_set_num_threads(this->ompThreadNum);
         float C8      = -8.5234642e-007;//差分系数
         int i,j,jc(pjc);
         float du1(0),du2(0),du(0);
-        float DX,DY,DZ,DT,xshd;
+        float DX,DT,xshd,DT1,DX1;
         int X,Y;
-        DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
-        X=this->nx,Y=this->ny;
+        DX=this->dx,DT=this->dt,xshd=this->PML_wide;
+        X=this->nx,Y=this->ny,DT1=1.0/DT,DX1=1.0/DX;
     for(j=8;j<Y-8;j++){
         for(i=8;i<xshd+8;i++){  
             du=(
@@ -203,10 +229,10 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i+6+jc,j,k)-u(i-7+jc,j,k))+\
                 C8*(u(i+7+jc,j,k)-u(i-8+jc,j,k))\
                 );
-            du=0.5*(m(i+jc,j,k)+m(i,j,k))*du/DX;
+            du=m(i,j,k)*du*DX1;
             du1=C_X*3000.0*DX*(xshd+8-i)*DX*(xshd+8-i);
             //du1=C_X*this->vp(i,j,k)*DX*(xshd+8-i)*DX*(xshd+8-i);
-            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
         }
         for(i=xshd+8;i<X-xshd-8;i++)
         {  
@@ -220,9 +246,8 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i+6+jc,j,k)-u(i-7+jc,j,k))+\
                 C8*(u(i+7+jc,j,k)-u(i-8+jc,j,k))\
                 );
-            du=0.5*(m(i+jc,j,k)+m(i,j,k))*du/DX;
-            du1=0;
-            ut2(i,j,k)=((du-du1)*DT+ut1(i,j,k));
+            du=m(i,j,k)*du*DX1;
+            ut2(i,j,k)=((du)*DT+ut1(i,j,k));
         }
         for(i=X-xshd-8;i<X-8;i++)
         {  
@@ -236,10 +261,10 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i+6+jc,j,k)-u(i-7+jc,j,k))+\
                 C8*(u(i+7+jc,j,k)-u(i-8+jc,j,k))\
                 );
-            du=0.5*(m(i+jc,j,k)+m(i,j,k))*du/DX;
+            du=0.5*(m(i+jc,j,k)+m(i,j,k))*du*DX1;
             du1=C_X*3000.0*DX*(i-X+xshd+8)*DX*(i-X+xshd+8);
             //du1=C_X*this->vp(i,j,k)*DX*(i-X+xshd+8)*DX*(i-X+xshd+8);
-            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
         }
     }}
     ut1.swap(ut2);
@@ -268,12 +293,12 @@ void elastic3D_ARMA::caly_p(fcube &ut2 , fcube &ut1, \
 omp_set_num_threads(this->ompThreadNum);
 #pragma omp parallel for
     for(i=8;i<X-8;i++){
-        float DX,DY,DZ,DT,xshd;
+        float DY,DT,xshd,DY1,DT1;
         int Y,Z;
         int j,k,jc(pjc);
         float du1(0),du2(0),du(0);
-        DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
-        Y=this->ny,Z=this->nz;
+        DY=this->dy,DT=this->dt,xshd=this->PML_wide;
+        Y=this->ny,Z=this->nz,DY1=1.0/DY,DT1=1.0/DT;
         
         float C1      = 1.2340911;
         float C2      = -1.0664985e-01;
@@ -295,10 +320,10 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i,j+6+jc,k)-u(i,j-7+jc,k))+\
                 C8*(u(i,j+7+jc,k)-u(i,j-8+jc,k))\
                 );
-            du=0.5*(m(i,j+jc,k)+m(i,j,k))*du/DY;
+            du=m(i,j,k)*du*DY1;
             du1=C_Y*3000.0*DY*(xshd+8-j)*DY*(xshd+8-j);
             //du1=C_X*this->vp(i,j,k)*DX*(xshd+8-i)*DX*(xshd+8-i);
-            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
         }
         for(j=xshd+8;j<Y-xshd-8;j++)
         {
@@ -312,9 +337,8 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i,j+6+jc,k)-u(i,j-7+jc,k))+\
                 C8*(u(i,j+7+jc,k)-u(i,j-8+jc,k))\
                 );
-            du=0.5*(m(i,j+jc,k)+m(i,j,k))*du/DY;
-            du1=0;
-            ut2(i,j,k)=((du-du1)*DT+ut1(i,j,k));
+            du=m(i,j,k)*du*DY1;
+            ut2(i,j,k)=(du*DT+ut1(i,j,k));
         }
         for(j=Y-xshd-8;j<Y-8;j++)
         {
@@ -328,10 +352,10 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i,j+6+jc,k)-u(i,j-7+jc,k))+\
                 C8*(u(i,j+7+jc,k)-u(i,j-8+jc,k))\
                 );
-            du=0.5*(m(i,j+jc,k)+m(i,j,k))*du/DY;
+            du=m(i,j,k)*du*DY1;
             du1=C_Y*3000.0*DY*(j-Y+xshd+8)*DY*(j-Y+xshd+8);
             //du1=C_Y*this->vp(i,j,k)*DY*(j-Y+xshd+8)*DY*(j-Y+xshd+8);
-            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
         }
     }}
     ut1.swap(ut2);
@@ -360,11 +384,12 @@ void elastic3D_ARMA::calz_p(fcube &ut2 , fcube &ut1,\
 omp_set_num_threads(this->ompThreadNum);
 #pragma omp parallel for
     for(i=8;i<X-8;i++){
-        float DX,DY,DZ,DT,xshd,suface_PML;
+        float DZ,DT,xshd,suface_PML,DZ1,DT1;
         int Y,Z,nSurface;
         int j,k,jc(pjc);
         float du1(0),du2(0),du(0);
-        DX=this->dx,DY=this->dy,DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
+        DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
+        DZ1=1.0/DZ,DT1=1.0/DT;
         Y=this->ny,Z=this->nz,suface_PML=this->isPMLSurface;
         nSurface=this->nzSampleOfFreeSurface;
         float C1      = 1.2340911;
@@ -389,12 +414,12 @@ omp_set_num_threads(this->ompThreadNum);
                 );
             //take care of the FreeSurface_PML_boundary!!!
             //the freesurface should be: ro=1000.0, vp=0.0
-            du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
+            du=m(i,j,k)*du*DZ1;
             du1=C_Z*3000.0*DZ*suface_PML*(xshd+8-k)*DZ\
                 *suface_PML*(xshd+8-k);
             //du1=C_Y*this->vp[j][i]*DY*suface_PML*(xshd+8-j)*DY\
                 *suface_PML*(xshd+8-j);
-            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
         }
         for(k=xshd+8;k<Z-xshd-8;k++)
         {  
@@ -410,9 +435,8 @@ omp_set_num_threads(this->ompThreadNum);
                 );
             //take care of the FreeSurface_PML_boundary!!!
             //the freesurface should be: ro=1000.0, vp=0.0
-            du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
-            du1=0;
-            ut2(i,j,k)=((du-du1)*DT+ut1(i,j,k));
+            du=m(i,j,k)*du*DZ1;
+            ut2(i,j,k)=((du)*DT+ut1(i,j,k));
         }
         for(k=Z-xshd-8;k<Z-8;k++)
         {  
@@ -426,10 +450,10 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i,j,k+6+jc)-u(i,j,k-7+jc))+\
                 C8*(u(i,j,k+7+jc)-u(i,j,k-8+jc))\
                 );
-            du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
+            du=m(i,j,k)*du*DZ1;
             du1=C_Z*3000.0*DZ*(k-Z+xshd+8)*DZ*(k-Z+xshd+8);
             //du1=C_Z*this->vp(i,j,k)*DZ*(k-Z+xshd+8)*DX*(k-Z+xshd+8);
-            ut2(i,j,k)=((du+ut1(i,j,k)*(1.0/DT-du1/2.0))/(1.0/DT+du1/2.0));
+            ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
         }
     }}
     ut1.swap(ut2);
@@ -441,15 +465,15 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     thread *useThread;
     useThread=new thread[24];
 
-    useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,&obj.txx,&obj.mpar_1_dec_ro,jc1,&obj);
+    useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,&obj.txx,&obj.mpar_1_dec_ro_pdx_jc1,jc1,&obj);
     useThread[1]=thread(caly_3d,&obj.vx_pdy_t2,&obj.vx_pdy_t1,&obj.txy,&obj.mpar_1_dec_ro,jc0,&obj);
     useThread[2]=thread(calz_3d,&obj.vx_pdz_t2,&obj.vx_pdz_t1,&obj.txz,&obj.mpar_1_dec_ro,jc0,&obj);
     useThread[3]=thread(calx_3d,&obj.vy_pdx_t2,&obj.vy_pdx_t1,&obj.txy,&obj.mpar_1_dec_ro,jc0,&obj);
-    useThread[4]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,&obj.tyy,&obj.mpar_1_dec_ro,jc1,&obj);
+    useThread[4]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,&obj.tyy,&obj.mpar_1_dec_ro_pdy_jc1,jc1,&obj);
     useThread[5]=thread(calz_3d,&obj.vy_pdz_t2,&obj.vy_pdz_t1,&obj.tyz,&obj.mpar_1_dec_ro,jc0,&obj);
     useThread[6]=thread(calx_3d,&obj.vz_pdx_t2,&obj.vz_pdx_t1,&obj.txz,&obj.mpar_1_dec_ro,jc0,&obj);
     useThread[7]=thread(caly_3d,&obj.vz_pdy_t2,&obj.vz_pdy_t1,&obj.tyz,&obj.mpar_1_dec_ro,jc0,&obj);
-    useThread[8]=thread(calz_3d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,&obj.tzz,&obj.mpar_1_dec_ro,jc1,&obj);
+    useThread[8]=thread(calz_3d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,&obj.tzz,&obj.mpar_1_dec_ro_pdz_jc1,jc1,&obj);
     for(k=0;k<9;k++){
         if(useThread[k].joinable())
             useThread[k].join();
@@ -475,12 +499,12 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     obj.tyy=obj.tyy_pdx_t1+obj.tyy_pdy_t1+obj.tyy_pdz_t1;
     obj.tzz=obj.tzz_pdx_t1+obj.tzz_pdy_t1+obj.tzz_pdz_t1;
 
-    useThread[18]=thread(caly_3d,&obj.txy_pdy_t2,&obj.txy_pdy_t1,&obj.vx,&obj.mpar_miu,jc1,&obj);
-    useThread[19]=thread(calx_3d,&obj.txy_pdx_t2,&obj.txy_pdx_t1,&obj.vy,&obj.mpar_miu,jc1,&obj);
-    useThread[20]=thread(calz_3d,&obj.txz_pdz_t2,&obj.txz_pdz_t1,&obj.vx,&obj.mpar_miu,jc1,&obj);
-    useThread[21]=thread(calx_3d,&obj.txz_pdx_t2,&obj.txz_pdx_t1,&obj.vz,&obj.mpar_miu,jc1,&obj);
-    useThread[22]=thread(calz_3d,&obj.tyz_pdz_t2,&obj.tyz_pdz_t1,&obj.vy,&obj.mpar_miu,jc1,&obj);
-    useThread[23]=thread(caly_3d,&obj.tyz_pdy_t2,&obj.tyz_pdy_t1,&obj.vz,&obj.mpar_miu,jc1,&obj);
+    useThread[18]=thread(caly_3d,&obj.txy_pdy_t2,&obj.txy_pdy_t1,&obj.vx,&obj.mpar_miu_pdy_jc1,jc1,&obj);
+    useThread[19]=thread(calx_3d,&obj.txy_pdx_t2,&obj.txy_pdx_t1,&obj.vy,&obj.mpar_miu_pdx_jc1,jc1,&obj);
+    useThread[20]=thread(calz_3d,&obj.txz_pdz_t2,&obj.txz_pdz_t1,&obj.vx,&obj.mpar_miu_pdz_jc1,jc1,&obj);
+    useThread[21]=thread(calx_3d,&obj.txz_pdx_t2,&obj.txz_pdx_t1,&obj.vz,&obj.mpar_miu_pdx_jc1,jc1,&obj);
+    useThread[22]=thread(calz_3d,&obj.tyz_pdz_t2,&obj.tyz_pdz_t1,&obj.vy,&obj.mpar_miu_pdz_jc1,jc1,&obj);
+    useThread[23]=thread(caly_3d,&obj.tyz_pdy_t2,&obj.tyz_pdy_t1,&obj.vz,&obj.mpar_miu_pdy_jc1,jc1,&obj);
     for(k=18;k<24;k++){
         if(useThread[k].joinable())
             useThread[k].join();
