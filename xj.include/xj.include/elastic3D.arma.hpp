@@ -54,7 +54,8 @@ public:
 
     float dx,dy,dz,dt,PML_wide,R,isPMLSurface;
     float C_X,C_Y,C_Z;
-    int nx,ny,nz,nzSampleOfFreeSurface,ompThreadNum;
+    int nx,ny,nz,nzSampleOfFreeSurface;
+    int ompThreadNum,maxThreadNum;
     
     elastic3D_ARMA();
     elastic3D_ARMA(const int x, const int y, const int z);
@@ -73,7 +74,7 @@ elastic3D_ARMA::elastic3D_ARMA()
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
     PML_wide=30.0;isPMLSurface=1.0;R=8.0;
     nzSampleOfFreeSurface=60;
-    ompThreadNum=1;
+    ompThreadNum=1,maxThreadNum=9;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
 }
 
@@ -83,7 +84,7 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
     PML_wide=30.0;isPMLSurface=1.0;R=8.0;
     nzSampleOfFreeSurface=60;
-    ompThreadNum=1;
+    ompThreadNum=1,maxThreadNum=9;
     C_Y=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
     C_X=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dx/dx/dx;
     C_Z=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dz/dz/dz;
@@ -465,6 +466,9 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     thread *useThread;
     useThread=new thread[24];
 
+    obj.ompThreadNum=int(obj.maxThreadNum/9);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,&obj.txx,&obj.mpar_1_dec_ro_pdx_jc1,jc1,&obj);
     useThread[1]=thread(caly_3d,&obj.vx_pdy_t2,&obj.vx_pdy_t1,&obj.txy,&obj.mpar_1_dec_ro,jc0,&obj);
     useThread[2]=thread(calz_3d,&obj.vx_pdz_t2,&obj.vx_pdz_t1,&obj.txz,&obj.mpar_1_dec_ro,jc0,&obj);
@@ -482,6 +486,9 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     obj.vy=obj.vy_pdx_t1+obj.vy_pdy_t1+obj.vy_pdz_t1;
     obj.vz=obj.vz_pdx_t1+obj.vz_pdy_t1+obj.vz_pdz_t1;
 
+    obj.ompThreadNum=int(obj.maxThreadNum/9);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     useThread[9]=thread(calx_3d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,&obj.vx,&obj.mpar_lmd_add_2miu,jc0,&obj);
     useThread[10]=thread(caly_3d,&obj.txx_pdy_t2,&obj.txx_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
     useThread[11]=thread(calz_3d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
@@ -499,6 +506,9 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     obj.tyy=obj.tyy_pdx_t1+obj.tyy_pdy_t1+obj.tyy_pdz_t1;
     obj.tzz=obj.tzz_pdx_t1+obj.tzz_pdy_t1+obj.tzz_pdz_t1;
 
+    obj.ompThreadNum=int(obj.maxThreadNum/6);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     useThread[18]=thread(caly_3d,&obj.txy_pdy_t2,&obj.txy_pdy_t1,&obj.vx,&obj.mpar_miu_pdy_jc1,jc1,&obj);
     useThread[19]=thread(calx_3d,&obj.txy_pdx_t2,&obj.txy_pdx_t1,&obj.vy,&obj.mpar_miu_pdx_jc1,jc1,&obj);
     useThread[20]=thread(calz_3d,&obj.txz_pdz_t2,&obj.txz_pdz_t1,&obj.vx,&obj.mpar_miu_pdz_jc1,jc1,&obj);
@@ -512,6 +522,49 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     obj.txy=obj.txy_pdy_t1+obj.txy_pdx_t1;
     obj.txz=obj.txz_pdz_t1+obj.txz_pdx_t1;
     obj.tyz=obj.tyz_pdz_t1+obj.tyz_pdy_t1;
+    delete [] useThread;
+}
+
+void TimeSliceCal_elastic3D_ARMA_PurePwave_MultiThread(class elastic3D_ARMA & obj)
+{
+    int k,jc0(0),jc1(1);
+    thread *useThread;
+    useThread=new thread[12];
+
+    obj.ompThreadNum=int(obj.maxThreadNum/3);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,&obj.txx,&obj.mpar_1_dec_ro_pdx_jc1,jc1,&obj);
+    useThread[1]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,&obj.tyy,&obj.mpar_1_dec_ro_pdy_jc1,jc1,&obj);
+    useThread[2]=thread(calz_3d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,&obj.tzz,&obj.mpar_1_dec_ro_pdz_jc1,jc1,&obj);
+    for(k=0;k<3;k++){
+        if(useThread[k].joinable())
+            useThread[k].join();
+    }
+    obj.vx=obj.vx_pdx_t1;
+    obj.vy=obj.vy_pdy_t1;
+    obj.vz=obj.vz_pdz_t1;
+
+    obj.ompThreadNum=int(obj.maxThreadNum/9);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    useThread[3]=thread(calx_3d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,&obj.vx,&obj.mpar_lmd_add_2miu,jc0,&obj);
+    useThread[4]=thread(caly_3d,&obj.txx_pdy_t2,&obj.txx_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
+    useThread[5]=thread(calz_3d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
+    useThread[6]=thread(caly_3d,&obj.tyy_pdy_t2,&obj.tyy_pdy_t1,&obj.vy,&obj.mpar_lmd_add_2miu,jc0,&obj);
+    useThread[7]=thread(calx_3d,&obj.tyy_pdx_t2,&obj.tyy_pdx_t1,&obj.vx,&obj.mpar_lmd,jc0,&obj);
+    useThread[8]=thread(calz_3d,&obj.tyy_pdz_t2,&obj.tyy_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
+    useThread[9]=thread(calz_3d,&obj.tzz_pdz_t2,&obj.tzz_pdz_t1,&obj.vz,&obj.mpar_lmd_add_2miu,jc0,&obj);
+    useThread[10]=thread(calx_3d,&obj.tzz_pdx_t2,&obj.tzz_pdx_t1,&obj.vx,&obj.mpar_lmd,jc0,&obj);
+    useThread[11]=thread(caly_3d,&obj.tzz_pdy_t2,&obj.tzz_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
+    for(k=3;k<12;k++){
+        if(useThread[k].joinable())
+            useThread[k].join();
+    }
+    obj.txx=obj.txx_pdx_t1+obj.txx_pdy_t1+obj.txx_pdz_t1;
+    obj.tyy=obj.tyy_pdx_t1+obj.tyy_pdy_t1+obj.tyy_pdz_t1;
+    obj.tzz=obj.tzz_pdx_t1+obj.tzz_pdy_t1+obj.tzz_pdz_t1;
+
     delete [] useThread;
 }
 
