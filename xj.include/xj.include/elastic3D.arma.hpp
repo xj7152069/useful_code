@@ -469,6 +469,7 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     obj.ompThreadNum=int(obj.maxThreadNum/9);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
     useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,&obj.txx,&obj.mpar_1_dec_ro_pdx_jc1,jc1,&obj);
     useThread[1]=thread(caly_3d,&obj.vx_pdy_t2,&obj.vx_pdy_t1,&obj.txy,&obj.mpar_1_dec_ro,jc0,&obj);
     useThread[2]=thread(calz_3d,&obj.vx_pdz_t2,&obj.vx_pdz_t1,&obj.txz,&obj.mpar_1_dec_ro,jc0,&obj);
@@ -489,6 +490,7 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     obj.ompThreadNum=int(obj.maxThreadNum/9);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
     useThread[9]=thread(calx_3d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,&obj.vx,&obj.mpar_lmd_add_2miu,jc0,&obj);
     useThread[10]=thread(caly_3d,&obj.txx_pdy_t2,&obj.txx_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
     useThread[11]=thread(calz_3d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
@@ -509,6 +511,7 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
     obj.ompThreadNum=int(obj.maxThreadNum/6);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
     useThread[18]=thread(caly_3d,&obj.txy_pdy_t2,&obj.txy_pdy_t1,&obj.vx,&obj.mpar_miu_pdy_jc1,jc1,&obj);
     useThread[19]=thread(calx_3d,&obj.txy_pdx_t2,&obj.txy_pdx_t1,&obj.vy,&obj.mpar_miu_pdx_jc1,jc1,&obj);
     useThread[20]=thread(calz_3d,&obj.txz_pdz_t2,&obj.txz_pdz_t1,&obj.vx,&obj.mpar_miu_pdz_jc1,jc1,&obj);
@@ -534,6 +537,7 @@ void TimeSliceCal_elastic3D_ARMA_PurePwave_MultiThread(class elastic3D_ARMA & ob
     obj.ompThreadNum=int(obj.maxThreadNum/3);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
     useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,&obj.txx,&obj.mpar_1_dec_ro_pdx_jc1,jc1,&obj);
     useThread[1]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,&obj.tyy,&obj.mpar_1_dec_ro_pdy_jc1,jc1,&obj);
     useThread[2]=thread(calz_3d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,&obj.tzz,&obj.mpar_1_dec_ro_pdz_jc1,jc1,&obj);
@@ -548,6 +552,7 @@ void TimeSliceCal_elastic3D_ARMA_PurePwave_MultiThread(class elastic3D_ARMA & ob
     obj.ompThreadNum=int(obj.maxThreadNum/9);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
     useThread[3]=thread(calx_3d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,&obj.vx,&obj.mpar_lmd_add_2miu,jc0,&obj);
     useThread[4]=thread(caly_3d,&obj.txx_pdy_t2,&obj.txx_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
     useThread[5]=thread(calz_3d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
