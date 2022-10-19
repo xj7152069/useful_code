@@ -68,7 +68,7 @@ elastic3D_ARMA::elastic3D_ARMA()
 {
     nx=0;ny=0;nz=0;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=40.0;isPMLSurface=1.0;R=25.0;
+    PML_wide=30.0;isPMLSurface=1.0;R=25.0;
     nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     cout<<"Warning: Creat an Empty object-wave_modeling_2D"<<endl;
@@ -78,7 +78,7 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
 {
     nx=x;ny=y;nz=z;
     dx=5.0;dy=5.0;dz=5.0;dt=0.0003;
-    PML_wide=40.0;isPMLSurface=1.0;R=25.0;
+    PML_wide=30.0;isPMLSurface=1.0;R=25.0;
     nzSampleOfFreeSurface=60;
     ompThreadNum=1;
     C_Y=(R)*3.0/2.0/(PML_wide)/(PML_wide)/(PML_wide)/dy/dy/dy;
@@ -385,11 +385,9 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i,j,k+6+jc)-u(i,j,k-7+jc))+\
                 C8*(u(i,j,k+7+jc)-u(i,j,k-8+jc))\
                 );
-            //take care of the PML_boundary!!!
-            if((suface_PML)<0.5 && k<nSurface)
-                du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
-            else
-                du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
+            //take care of the FreeSurface_PML_boundary!!!
+            //the freesurface should be: ro=1000.0, vp=0.0
+            du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
             du1=C_Z*3000.0*DZ*suface_PML*(xshd+8-k)*DZ\
                 *suface_PML*(xshd+8-k);
             //du1=C_Y*this->vp[j][i]*DY*suface_PML*(xshd+8-j)*DY\
@@ -408,11 +406,9 @@ omp_set_num_threads(this->ompThreadNum);
                 C7*(u(i,j,k+6+jc)-u(i,j,k-7+jc))+\
                 C8*(u(i,j,k+7+jc)-u(i,j,k-8+jc))\
                 );
-            //take care of the PML_boundary!!!
-            if((suface_PML)<0.5  && k<nSurface)
-                du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
-            else
-                du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
+            //take care of the FreeSurface_PML_boundary!!!
+            //the freesurface should be: ro=1000.0, vp=0.0
+            du=0.5*(m(i,j,k+jc)+m(i,j,k))*du/DZ;
             du1=0;
             ut2(i,j,k)=((du-du1)*DT+ut1(i,j,k));
         }
@@ -455,9 +451,9 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.vx_pdx_t1=obj.vx_pdx_t2,obj.vx_pdy_t1=obj.vx_pdy_t2,obj.vx_pdz_t1=obj.vx_pdz_t2;
-    obj.vy_pdx_t1=obj.vy_pdx_t2,obj.vy_pdy_t1=obj.vy_pdy_t2,obj.vy_pdz_t1=obj.vy_pdz_t2;
-    obj.vz_pdx_t1=obj.vz_pdx_t2,obj.vz_pdy_t1=obj.vz_pdy_t2,obj.vz_pdz_t1=obj.vz_pdz_t2;
+    obj.vx_pdx_t1.swap(obj.vx_pdx_t2),obj.vx_pdy_t1.swap(obj.vx_pdy_t2),obj.vx_pdz_t1.swap(obj.vx_pdz_t2);
+    obj.vy_pdx_t1.swap(obj.vy_pdx_t2),obj.vy_pdy_t1.swap(obj.vy_pdy_t2),obj.vy_pdz_t1.swap(obj.vy_pdz_t2);
+    obj.vz_pdx_t1.swap(obj.vz_pdx_t2),obj.vz_pdy_t1.swap(obj.vz_pdy_t2),obj.vz_pdz_t1.swap(obj.vz_pdz_t2);
     obj.vx=obj.vx_pdx_t1+obj.vx_pdy_t1+obj.vx_pdz_t1;
     obj.vy=obj.vy_pdx_t1+obj.vy_pdy_t1+obj.vy_pdz_t1;
     obj.vz=obj.vz_pdx_t1+obj.vz_pdy_t1+obj.vz_pdz_t1;
@@ -475,9 +471,9 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.txx_pdx_t1=obj.txx_pdx_t2,obj.txx_pdy_t1=obj.txx_pdy_t2,obj.txx_pdz_t1=obj.txx_pdz_t2;
-    obj.tyy_pdx_t1=obj.tyy_pdx_t2,obj.tyy_pdy_t1=obj.tyy_pdy_t2,obj.tyy_pdz_t1=obj.tyy_pdz_t2;
-    obj.tzz_pdx_t1=obj.tzz_pdx_t2,obj.tzz_pdy_t1=obj.tzz_pdy_t2,obj.tzz_pdz_t1=obj.tzz_pdz_t2;
+    obj.txx_pdx_t1.swap(obj.txx_pdx_t2),obj.txx_pdy_t1.swap(obj.txx_pdy_t2),obj.txx_pdz_t1.swap(obj.txx_pdz_t2);
+    obj.tyy_pdx_t1.swap(obj.tyy_pdx_t2),obj.tyy_pdy_t1.swap(obj.tyy_pdy_t2),obj.tyy_pdz_t1.swap(obj.tyy_pdz_t2);
+    obj.tzz_pdx_t1.swap(obj.tzz_pdx_t2),obj.tzz_pdy_t1.swap(obj.tzz_pdy_t2),obj.tzz_pdz_t1.swap(obj.tzz_pdz_t2);
     obj.txx=obj.txx_pdx_t1+obj.txx_pdy_t1+obj.txx_pdz_t1;
     obj.tyy=obj.tyy_pdx_t1+obj.tyy_pdy_t1+obj.tyy_pdz_t1;
     obj.tzz=obj.tzz_pdx_t1+obj.tzz_pdy_t1+obj.tzz_pdz_t1;
@@ -492,9 +488,9 @@ void TimeSliceCal_elastic3D_ARMA_MultiThread(class elastic3D_ARMA & obj)
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.txy_pdy_t1=obj.txy_pdy_t2,obj.txy_pdx_t1=obj.txy_pdx_t2;
-    obj.txz_pdz_t1=obj.txz_pdz_t2,obj.txz_pdx_t1=obj.txz_pdx_t2;
-    obj.tyz_pdz_t1=obj.tyz_pdz_t2,obj.tyz_pdy_t1=obj.tyz_pdy_t2;
+    obj.txy_pdy_t1.swap(obj.txy_pdy_t2),obj.txy_pdx_t1.swap(obj.txy_pdx_t2);
+    obj.txz_pdz_t1.swap(obj.txz_pdz_t2),obj.txz_pdx_t1.swap(obj.txz_pdx_t2);
+    obj.tyz_pdz_t1.swap(obj.tyz_pdz_t2),obj.tyz_pdy_t1.swap(obj.tyz_pdy_t2);
     obj.txy=obj.txy_pdy_t1+obj.txy_pdx_t1;
     obj.txz=obj.txz_pdz_t1+obj.txz_pdx_t1;
     obj.tyz=obj.tyz_pdz_t1+obj.tyz_pdy_t1;
