@@ -17,6 +17,20 @@
 #include "../xjc.h"
 using namespace std;
 using namespace arma;
+
+// 3-D LS-LRT in the frequence - space domain.
+int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
+ fcube& trace, fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
+ int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
+ float fmax,float frule,int ncpu, float factor_L2,float factor_L1,\
+ int iterations_num, float residual_ratio, bool dorecover,bool do_CG_Inversion);
+
+// 3-D Recover data in the frequence - space domain.
+int Beamforming_recoverdata_3D(fcube &recoverdata,fcube &tauppanel,\
+ fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
+ int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
+ float fmax,float frule,int ncpu);
+
 // 2-D Linear Radon Transform in the frequence - space domain.
 int Beamforming_LS_2D(float **trace, int ntrace, int ns, float dt,\
  float *coor, float x0, float **tauppanel, int npsr,float psrmin, float dpsr,\
@@ -567,6 +581,7 @@ void linerradon(struct linerradon3d & par, bool dotx2fxTransform=true)
     int ncpu(par.numthread),pnf1,pnf2,k,kcpu,kf;
     float dnf;
     bool* finish_thread;
+    ncpu=min(ncpu,par.nf2-par.nf1);
     finish_thread=new bool[ncpu];
     thread *pcal;
     pcal=new thread[ncpu];
@@ -699,6 +714,7 @@ void rebuildsignal(struct linerradon3d & par)
     tx2fx_3d_thread(par.datafP,par.realdataTP,par.numthread);
 
     int ncpu(par.numthread),pnf1,pnf2,k,kf,kcpu;
+    ncpu=min(ncpu,par.nf2-par.nf1);
     float dnf;
     bool* finish_thread;
     finish_thread=new bool[ncpu];
@@ -1019,7 +1035,7 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     //datatp_k.fill(0.0);
     datatp_k.set_real(real(datatp_k)/par[0].nx/par[0].ny);
     datatp_k.set_imag(imag(datatp_k)/par[0].nx/par[0].ny);
-    sum_num=sum(sum(sum(abs(datatp_k))));
+    sum_num=(sum(sum(abs(datatp_k)),1));
     residual_pow=sum_num(0,0);
     residual_pow*=residual_ratio;
 
@@ -1045,7 +1061,7 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
     gradient_rk=gradient_rk_1;
     gradient_cg_pk=gradient_cg_pk_1;
     //cal residual_pow
-    sum_num=sum(sum(sum(abs(gradient_rk))));
+    sum_num=(sum(sum(abs(gradient_rk),1)));
     residual_k=sum_num;
 
     while(iter<iterations_num && residual_k(0,0)>residual_pow(0,0)){
@@ -1191,7 +1207,8 @@ void beamformingCG3d(struct linerradon3d & par,\
 int iterations_num=45, float residual_ratio=0.1,\
 bool regularization=true)
 {
-    int ncpu(par.numthread),numf(par.nf2-par.nf1-ncpu);
+    int ncpu(par.numthread);
+    ncpu=min(ncpu,par.nf2-par.nf1);
     regularization=par.regularization;
     int kcpu,kf,k,i,j;//cout<<"ok"<<endl;
 
@@ -1518,8 +1535,9 @@ int Beamforming_recoverdata_2D(fmat &recoverdata,fmat &tauppanel,\
 int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
  fcube& trace, fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
  int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
- float fmax=150,float frule=50,int ncpu=1, float factor_L2=0.1,float factor_L1=1,\
- int iterations_num=45, float residual_ratio=0.1, bool dorecover=false)
+ float fmax=150,float frule=50,int ncpu=1, float factor_L2=0.1,float factor_L1=0.0,\
+ int iterations_num=45, float residual_ratio=0.1, bool dorecover=false,\
+ bool do_CG_Inversion=true)
 {
     struct linerradon3d par;
     int i,j,k;
@@ -1563,9 +1581,9 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
     tauppanel.set_size(1,1,1);
 //////////////////////////////////////////////////
     linerradon(par,true); 
-
-    beamformingCG3d(par,iterations_num,residual_ratio);
-    //beamforminginv3d(par);
+    if(do_CG_Inversion){
+        beamformingCG3d(par,iterations_num,residual_ratio);
+    }
     tauppanel=par.realdataTP;
     trace=par.data;
 
@@ -1625,7 +1643,6 @@ int Beamforming_recoverdata_3D(fcube &recoverdata,fcube &tauppanel,\
     rebuildsignal(par);
     recoverdata=par.realrebuildtx;
 
-    
     return 0;
 }
 int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\

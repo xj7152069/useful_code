@@ -459,6 +459,51 @@ cx_fmat get_blackman_rightwin2d(cx_fmat win, float w, float wf)
     }
     return win;
 }
+cx_fmat get_blackman_downwin2d(cx_fmat win, float w)
+{
+    int n1,n2;
+    n1=win.n_rows;
+    n2=win.n_cols;
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(i>=n1-w-1)
+            {
+                n=n1-1-i;
+                n=Blackman(n,w);
+                (win(i,j)).real(real(win(i,j))*n);
+                (win(i,j)).imag(imag(win(i,j))*n);
+            }
+        } 
+    }
+    return win;
+}
+
+cx_fmat get_blackman_upwin2d(cx_fmat win, float w)
+{
+    int n1,n2;
+    n1=win.n_rows;
+    n2=win.n_cols;
+    int i,j;
+    float n;
+    for(i=0;i<n1;i++)
+    {
+        for(j=0;j<n2;j++)
+        {
+            if(i<=w)
+            {
+                n=i;
+                n=Blackman(n,w);
+                (win(i,j)).real(real(win(i,j))*n);
+                (win(i,j)).imag(imag(win(i,j))*n);
+            }
+        } 
+    }
+    return win;
+}
 fmat get_blackman_leftwin2d(fmat win, float w)
 {
     int n1,n2;
@@ -643,6 +688,7 @@ void tx2fx_3d_thread(cx_fcube &data3d_out,fcube &data3d, int ncpu)
 {
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices);
+    ncpu=min(ncpu,n1);
     cx_fcube *pdata3d_out=&data3d_out;
     fcube *pdata3d=&data3d;
     thread *pcal;
@@ -684,6 +730,7 @@ void fx2tx_3d_thread(fcube &data3d_out,cx_fcube &data3d, int ncpu)
 {
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices);
+    ncpu=min(ncpu,n1);
     fcube *pdata3d_out=&data3d_out;
     cx_fcube *pdata3d=&data3d;
     thread *pcal;
