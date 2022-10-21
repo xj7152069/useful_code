@@ -595,7 +595,11 @@ void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
     
     for(k=nx1;k<nx2;k++){
         kwtbeg=datawinbeg[0](k,0);
+        kwtbeg=max(0,kwtbeg);
+        kwtbeg=min(nt-1,kwtbeg);
         kwtend=datawinend[0](k,0);
+        kwtend=max(0,kwtend);
+        kwtend=min(nt-1,kwtend);
         nwt=kwtend-kwtbeg;
         {
         fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
@@ -603,6 +607,7 @@ void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
         fmat digmat(nw,nw,fill::zeros);
         digmat.diag()+=1;
         kwt=kwtbeg;
+        //cout<<nwt<<","<<kwtbeg<<"tracl = "<<k<<endl;
             mat1.fill(0.0);
             mat0.fill(0.0);
             for(i=kwt;i<kwt+nwt;i++){
@@ -664,10 +669,10 @@ void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
         nwt=nt-5;
         dnwt=nwt-nw-5;
         kwt=0;
-        //cout<<nwt<<","<<dnwt<<"tracl = "<<k<<endl;
 
-        //for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt){
-        {fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
+        //for(kwt=0;kwt<=(nt-nwt);kwt+=dnwt)
+        {
+            fmat mat1(nwt,nw),mat0(nwt,nw),data2(nt,nx,fill::zeros),\
             matq(nw,1),mat2(nw,1),matd(nwt,1),matD(nw,nw);
             
             mat1.fill(0.0);
