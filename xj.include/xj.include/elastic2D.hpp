@@ -5,7 +5,7 @@ wave2D.h
 */
 /********************************/
 #ifndef ELASTIC2D_HPP
-#define ELASTIC_HPP
+#define ELASTIC2D_HPP
 
 #include <iostream>
 #include <stdio.h>
