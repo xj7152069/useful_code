@@ -72,12 +72,17 @@ public:
 
     void cleardata();
     void updatepar();
+    
     void initialize(const int x, const int y, const int z);
     void calx_p(fcube &ut2 , fcube &ut1, const fcube &u,\
+         const fcube &m, const int pjc);
+    void calx_p_pseudo2d(fcube &ut2 , fcube &ut1, const fcube &u,\
          const fcube &m, const int pjc);
     void caly_p(fcube &ut2 , fcube &ut1, const fcube &u,\
          const fcube &m, const int pjc);
     void calz_p(fcube &ut2 , fcube &ut1, const fcube &u,\
+         const fcube &m, const int pjc);
+    void calz_p_pseudo2d(fcube &ut2 , fcube &ut1, const fcube &u,\
          const fcube &m, const int pjc);
 };
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -273,16 +278,6 @@ void calx_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
 void elastic3D_ARMA::calx_p(fcube &ut2 , fcube &ut1, \
     const fcube &u, const fcube &m, const int pjc)
 {
-    /*
-    float C1=1.21124268;
-    float C2=-8.97216797E-02;
-    float C3=1.38427736E-02;
-    float C4=-1.76565989E-03;   
-    float C5=1.18679469E-04;
-    float C6      = 0;
-    float C7      = 0;
-    float C8      = 0;//差分系数
-*/
     int Z,k;
     Z=this->nz;
 omp_set_num_threads(this->ompThreadNum);
@@ -352,8 +347,37 @@ omp_set_num_threads(this->ompThreadNum);
             ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
         }
     }
-    if(Y<2){
-        j=0;
+    }
+    ut1.swap(ut2);
+}
+void calx_3d_pseudo2d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
+    class elastic3D_ARMA *obj)
+{
+    obj->calx_p_pseudo2d(ut2[0],ut1[0],u[0],m[0],pjc);
+}
+void elastic3D_ARMA::calx_p_pseudo2d(fcube &ut2 , fcube &ut1, \
+    const fcube &u, const fcube &m, const int pjc)
+{
+    int Z,k;
+    Z=this->nz;
+omp_set_num_threads(this->ompThreadNum);
+#pragma omp parallel for
+    for(k=8;k<Z-8;k++){
+        float C1      = 1.2340911;
+        float C2      = -1.0664985e-01;
+        float C3      = 2.3036367e-02;
+        float C4      = -5.3423856e-03;
+        float C5      = 1.0772712e-03;
+        float C6      = -1.6641888e-04;
+        float C7      = 1.7021711e-005;
+        float C8      = -8.5234642e-007;//差分系数
+        int i,j,jc(pjc);
+        float du1(0),du2(0),du(0);
+        float DX,DT,xshd,DT1,DX1;
+        int X,Y;
+        DX=this->dx,DT=this->dt,xshd=this->PML_wide;
+        X=this->nx,Y=this->ny,DT1=1.0/DT,DX1=1.0/DX;
+        j=floor(Y/2.0);
         for(i=8;i<xshd+8;i++){  
             du=(
                 C1*(u(i+0+jc,j,k)-u(i-1+jc,j,k))+\
@@ -401,7 +425,6 @@ omp_set_num_threads(this->ompThreadNum);
             du1=C_X*3000.0*DX*(i-X+xshd+8)*DX*(i-X+xshd+8);
             //du1=C_X*this->vp(i,j,k)*DX*(i-X+xshd+8)*DX*(i-X+xshd+8);
             ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
-        }
     }
     }
     ut1.swap(ut2);
@@ -506,16 +529,6 @@ void calz_3d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
 void elastic3D_ARMA::calz_p(fcube &ut2 , fcube &ut1,\
     const fcube &u, const fcube &m, const int pjc)
 {
-    /*
-    float C1=1.21124268;
-    float C2=-8.97216797E-02;
-    float C3=1.38427736E-02;
-    float C4=-1.76565989E-03;   
-    float C5=1.18679469E-04;
-    float C6      = 0;
-    float C7      = 0;
-    float C8      = 0;//差分系数
-*/
     int X,i;
     X=this->nx;
 omp_set_num_threads(this->ompThreadNum);
@@ -593,8 +606,39 @@ omp_set_num_threads(this->ompThreadNum);
             ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
         }
     }
-    if(Y<2){
-        j=0;
+    }
+    ut1.swap(ut2);
+}
+void calz_3d_pseudo2d(fcube *ut2 ,fcube *ut1,fcube *u, fcube *m,int pjc,\
+    class elastic3D_ARMA *obj)
+{
+    obj->calz_p_pseudo2d(ut2[0],ut1[0],u[0],m[0],pjc);
+}
+void elastic3D_ARMA::calz_p_pseudo2d(fcube &ut2 , fcube &ut1,\
+    const fcube &u, const fcube &m, const int pjc)
+{
+    int X,i;
+    X=this->nx;
+omp_set_num_threads(this->ompThreadNum);
+#pragma omp parallel for
+    for(i=8;i<X-8;i++){
+        float DZ,DT,xshd,suface_PML,DZ1,DT1;
+        int Y,Z,nSurface;
+        int j,k,jc(pjc);
+        float du1(0),du2(0),du(0);
+        DZ=this->dz,DT=this->dt,xshd=this->PML_wide;
+        DZ1=1.0/DZ,DT1=1.0/DT;
+        Y=this->ny,Z=this->nz,suface_PML=this->isPMLSurface;
+        nSurface=this->nzSampleOfFreeSurface;
+        float C1      = 1.2340911;
+        float C2      = -1.0664985e-01;
+        float C3      = 2.3036367e-02;
+        float C4      = -5.3423856e-03;
+        float C5      = 1.0772712e-03;
+        float C6      = -1.6641888e-04;
+        float C7      = 1.7021711e-005;
+        float C8      = -8.5234642e-007;//差分系数
+        j=floor(Y/2.0);
         for(k=8;k<xshd+8;k++){  
             du=(
                 C1*(u(i,j,k+0+jc)-u(i,j,k-1+jc))+\
@@ -648,12 +692,10 @@ omp_set_num_threads(this->ompThreadNum);
             du1=C_Z*3000.0*DZ*(k-Z+xshd+8)*DZ*(k-Z+xshd+8);
             //du1=C_Z*this->vp(i,j,k)*DZ*(k-Z+xshd+8)*DX*(k-Z+xshd+8);
             ut2(i,j,k)=((du+ut1(i,j,k)*(DT1-du1*0.5))/(DT1+du1*0.5));
-        }
     }
     }
     ut1.swap(ut2);
 }
-
 void TimeSliceCal_elastic3D_MultiThread(class elastic3D_ARMA & obj)
 {
     int k,jc0(0),jc1(1);
@@ -814,18 +856,18 @@ void TimeSliceCal_elastic_pseudo2D_MultiThread(class elastic3D_ARMA & obj)
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     obj.ompThreadNum=max(obj.ompThreadNum,1);
-    useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,\
+    useThread[0]=thread(calx_3d_pseudo2d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,\
         &obj.txx,&obj.mpar_1_dec_ro_pdx_jc1,jc1,&obj);
     //useThread[1]=thread(caly_3d,&obj.vx_pdy_t2,&obj.vx_pdy_t1,&obj.txy,&obj.mpar_1_dec_ro,jc0,&obj);
-    useThread[2]=thread(calz_3d,&obj.vx_pdz_t2,&obj.vx_pdz_t1,\
+    useThread[2]=thread(calz_3d_pseudo2d,&obj.vx_pdz_t2,&obj.vx_pdz_t1,\
         &obj.txz,&obj.mpar_1_dec_ro,jc0,&obj);
     //useThread[3]=thread(calx_3d,&obj.vy_pdx_t2,&obj.vy_pdx_t1,&obj.txy,&obj.mpar_1_dec_ro,jc0,&obj);
     //useThread[4]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,&obj.tyy,&obj.mpar_1_dec_ro_pdy_jc1,jc1,&obj);
     //useThread[5]=thread(calz_3d,&obj.vy_pdz_t2,&obj.vy_pdz_t1,&obj.tyz,&obj.mpar_1_dec_ro,jc0,&obj);
-    useThread[6]=thread(calx_3d,&obj.vz_pdx_t2,&obj.vz_pdx_t1,\
+    useThread[6]=thread(calx_3d_pseudo2d,&obj.vz_pdx_t2,&obj.vz_pdx_t1,\
         &obj.txz,&obj.mpar_1_dec_ro,jc0,&obj);
     //useThread[7]=thread(caly_3d,&obj.vz_pdy_t2,&obj.vz_pdy_t1,&obj.tyz,&obj.mpar_1_dec_ro,jc0,&obj);
-    useThread[8]=thread(calz_3d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,\
+    useThread[8]=thread(calz_3d_pseudo2d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,\
         &obj.tzz,&obj.mpar_1_dec_ro_pdz_jc1,jc1,&obj);
     for(k=0;k<9;k++){
         if(useThread[k].joinable())
@@ -840,17 +882,17 @@ void TimeSliceCal_elastic_pseudo2D_MultiThread(class elastic3D_ARMA & obj)
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     obj.ompThreadNum=max(obj.ompThreadNum,1);
-    useThread[9]=thread(calx_3d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,\
+    useThread[9]=thread(calx_3d_pseudo2d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,\
         &obj.vx,&obj.mpar_lmd_add_2miu,jc0,&obj);
     //[10]=thread(caly_3d,&obj.txx_pdy_t2,&obj.txx_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
-    useThread[11]=thread(calz_3d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,\
+    useThread[11]=thread(calz_3d_pseudo2d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,\
         &obj.vz,&obj.mpar_lmd,jc0,&obj);
     //useThread[12]=thread(caly_3d,&obj.tyy_pdy_t2,&obj.tyy_pdy_t1,&obj.vy,&obj.mpar_lmd_add_2miu,jc0,&obj);
     //useThread[13]=thread(calx_3d,&obj.tyy_pdx_t2,&obj.tyy_pdx_t1,&obj.vx,&obj.mpar_lmd,jc0,&obj);
     //useThread[14]=thread(calz_3d,&obj.tyy_pdz_t2,&obj.tyy_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
-    useThread[15]=thread(calz_3d,&obj.tzz_pdz_t2,&obj.tzz_pdz_t1,\
+    useThread[15]=thread(calz_3d_pseudo2d,&obj.tzz_pdz_t2,&obj.tzz_pdz_t1,\
         &obj.vz,&obj.mpar_lmd_add_2miu,jc0,&obj);
-    useThread[16]=thread(calx_3d,&obj.tzz_pdx_t2,&obj.tzz_pdx_t1,\
+    useThread[16]=thread(calx_3d_pseudo2d,&obj.tzz_pdx_t2,&obj.tzz_pdx_t1,\
         &obj.vx,&obj.mpar_lmd,jc0,&obj);
     //useThread[17]=thread(caly_3d,&obj.tzz_pdy_t2,&obj.tzz_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
     for(k=9;k<18;k++){
@@ -868,9 +910,9 @@ void TimeSliceCal_elastic_pseudo2D_MultiThread(class elastic3D_ARMA & obj)
     obj.ompThreadNum=max(obj.ompThreadNum,1);
     //useThread[18]=thread(caly_3d,&obj.txy_pdy_t2,&obj.txy_pdy_t1,&obj.vx,&obj.mpar_miu_pdy_jc1,jc1,&obj);
     //useThread[19]=thread(calx_3d,&obj.txy_pdx_t2,&obj.txy_pdx_t1,&obj.vy,&obj.mpar_miu_pdx_jc1,jc1,&obj);
-    useThread[20]=thread(calz_3d,&obj.txz_pdz_t2,&obj.txz_pdz_t1,\
+    useThread[20]=thread(calz_3d_pseudo2d,&obj.txz_pdz_t2,&obj.txz_pdz_t1,\
         &obj.vx,&obj.mpar_miu_pdz_jc1,jc1,&obj);
-    useThread[21]=thread(calx_3d,&obj.txz_pdx_t2,&obj.txz_pdx_t1,\
+    useThread[21]=thread(calx_3d_pseudo2d,&obj.txz_pdx_t2,&obj.txz_pdx_t1,\
         &obj.vz,&obj.mpar_miu_pdx_jc1,jc1,&obj);
     //useThread[22]=thread(calz_3d,&obj.tyz_pdz_t2,&obj.tyz_pdz_t1,&obj.vy,&obj.mpar_miu_pdz_jc1,jc1,&obj);
     //useThread[23]=thread(caly_3d,&obj.tyz_pdy_t2,&obj.tyz_pdy_t1,&obj.vz,&obj.mpar_miu_pdy_jc1,jc1,&obj);
@@ -895,10 +937,10 @@ void TimeSliceCal_elastic_pseudo2D_PurePwave_MultiThread(class elastic3D_ARMA & 
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     obj.ompThreadNum=max(obj.ompThreadNum,1);
-    useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,\
+    useThread[0]=thread(calx_3d_pseudo2d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,\
         &obj.txx,&obj.mpar_1_dec_ro_pdx_jc1,jc1,&obj);
     //useThread[1]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,&obj.tyy,&obj.mpar_1_dec_ro_pdy_jc1,jc1,&obj);
-    useThread[2]=thread(calz_3d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,\
+    useThread[2]=thread(calz_3d_pseudo2d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,\
         &obj.tzz,&obj.mpar_1_dec_ro_pdz_jc1,jc1,&obj);
     for(k=0;k<3;k++){
         if(useThread[k].joinable())
@@ -913,17 +955,17 @@ void TimeSliceCal_elastic_pseudo2D_PurePwave_MultiThread(class elastic3D_ARMA & 
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     obj.ompThreadNum=max(obj.ompThreadNum,1);
-    useThread[3]=thread(calx_3d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,\
+    useThread[3]=thread(calx_3d_pseudo2d,&obj.txx_pdx_t2,&obj.txx_pdx_t1,\
         &obj.vx,&obj.mpar_lmd_add_2miu,jc0,&obj);
     //useThread[4]=thread(caly_3d,&obj.txx_pdy_t2,&obj.txx_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
-    useThread[5]=thread(calz_3d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,\
+    useThread[5]=thread(calz_3d_pseudo2d,&obj.txx_pdz_t2,&obj.txx_pdz_t1,\
         &obj.vz,&obj.mpar_lmd,jc0,&obj);
     //useThread[6]=thread(caly_3d,&obj.tyy_pdy_t2,&obj.tyy_pdy_t1,&obj.vy,&obj.mpar_lmd_add_2miu,jc0,&obj);
     //useThread[7]=thread(calx_3d,&obj.tyy_pdx_t2,&obj.tyy_pdx_t1,&obj.vx,&obj.mpar_lmd,jc0,&obj);
     //useThread[8]=thread(calz_3d,&obj.tyy_pdz_t2,&obj.tyy_pdz_t1,&obj.vz,&obj.mpar_lmd,jc0,&obj);
-    useThread[9]=thread(calz_3d,&obj.tzz_pdz_t2,&obj.tzz_pdz_t1,\
+    useThread[9]=thread(calz_3d_pseudo2d,&obj.tzz_pdz_t2,&obj.tzz_pdz_t1,\
         &obj.vz,&obj.mpar_lmd_add_2miu,jc0,&obj);
-    useThread[10]=thread(calx_3d,&obj.tzz_pdx_t2,&obj.tzz_pdx_t1,\
+    useThread[10]=thread(calx_3d_pseudo2d,&obj.tzz_pdx_t2,&obj.tzz_pdx_t1,\
         &obj.vx,&obj.mpar_lmd,jc0,&obj);
     //useThread[11]=thread(caly_3d,&obj.tzz_pdy_t2,&obj.tzz_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
     for(k=3;k<12;k++){
