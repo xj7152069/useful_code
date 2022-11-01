@@ -1010,9 +1010,9 @@ void TimeSliceCal_acoustic2D_MultiThread(class elastic3D_ARMA & obj)
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.vx=obj.vx_pdx_t1;
+    //obj.vx=obj.vx_pdx_t1;
     //obj.vy=obj.vy_pdy_t1;
-    obj.vz=obj.vz_pdz_t1;
+    //obj.vz=obj.vz_pdz_t1;
 
     //obj.ompThreadNum=int(obj.maxThreadNum/9);
     obj.ompThreadNum=int(obj.maxThreadNum/2);
@@ -1020,9 +1020,9 @@ void TimeSliceCal_acoustic2D_MultiThread(class elastic3D_ARMA & obj)
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     obj.ompThreadNum=max(obj.ompThreadNum,1);
     useThread[3]=thread(calz_3d_pseudo2d,&obj.acoustic_p_pdz_t2,\
-        &obj.acoustic_p_pdz_t1,&obj.vz,&obj.mpar_vp2_square,jc0,&obj);
+        &obj.acoustic_p_pdz_t1,&obj.vz_pdz_t1,&obj.mpar_vp2_square,jc0,&obj);
     useThread[4]=thread(calx_3d_pseudo2d,&obj.acoustic_p_pdx_t2,\
-        &obj.acoustic_p_pdx_t1,&obj.vx,&obj.mpar_vp2_square,jc0,&obj);
+        &obj.acoustic_p_pdx_t1,&obj.vx_pdx_t1,&obj.mpar_vp2_square,jc0,&obj);
     //useThread[11]=thread(caly_3d,&obj.tzz_pdy_t2,&obj.tzz_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
     for(k=3;k<6;k++){
         if(useThread[k].joinable())
@@ -1053,9 +1053,9 @@ void TimeSliceCal_acoustic3D_MultiThread(class elastic3D_ARMA & obj)
         if(useThread[k].joinable())
             useThread[k].join();
     }
-    obj.vx=obj.vx_pdx_t1;
-    obj.vy=obj.vy_pdy_t1;
-    obj.vz=obj.vz_pdz_t1;
+    //obj.vx=obj.vx_pdx_t1;
+    //obj.vy=obj.vy_pdy_t1;
+    //obj.vz=obj.vz_pdz_t1;
 
     //obj.ompThreadNum=int(obj.maxThreadNum/9);
     obj.ompThreadNum=int(obj.maxThreadNum/3);
@@ -1063,11 +1063,11 @@ void TimeSliceCal_acoustic3D_MultiThread(class elastic3D_ARMA & obj)
     obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
     obj.ompThreadNum=max(obj.ompThreadNum,1);
     useThread[3]=thread(calz_3d,&obj.acoustic_p_pdz_t2,\
-        &obj.acoustic_p_pdz_t1,&obj.vz,&obj.mpar_vp2_square,jc0,&obj);
+        &obj.acoustic_p_pdz_t1,&obj.vz_pdz_t1,&obj.mpar_vp2_square,jc0,&obj);
     useThread[4]=thread(calx_3d,&obj.acoustic_p_pdx_t2,\
-        &obj.acoustic_p_pdx_t1,&obj.vx,&obj.mpar_vp2_square,jc0,&obj);
+        &obj.acoustic_p_pdx_t1,&obj.vx_pdx_t1,&obj.mpar_vp2_square,jc0,&obj);
     useThread[5]=thread(caly_3d,&obj.acoustic_p_pdy_t2,\
-        &obj.acoustic_p_pdy_t1,&obj.vy,&obj.mpar_vp2_square,jc0,&obj);
+        &obj.acoustic_p_pdy_t1,&obj.vy_pdy_t1,&obj.mpar_vp2_square,jc0,&obj);
     for(k=3;k<6;k++){
         if(useThread[k].joinable())
             useThread[k].join();
