@@ -33,15 +33,15 @@ public:
         mpar_lmd_pdy_jc1,mpar_miu_pdy_jc1;
     fcube mpar_1_dec_ro_pdz_jc1,mpar_lmd_add_2miu_pdz_jc1,\
         mpar_lmd_pdz_jc1,mpar_miu_pdz_jc1;
-    fcube mpar_ro,mpar_vp,mpar_vs;
-    fcube vx,vy,vz,vx_t2,vy_t2,vz_t2,\
+    fcube mpar_ro,mpar_vp,mpar_vs,mpar_vp2_square,mpar_1;
+    fcube vx,vy,vz,\
         vx_pdx_t1,vx_pdy_t1,vx_pdz_t1,\
         vy_pdx_t1,vy_pdy_t1,vy_pdz_t1,\
         vz_pdx_t1,vz_pdy_t1,vz_pdz_t1,\
         vx_pdx_t2,vx_pdy_t2,vx_pdz_t2,\
         vy_pdx_t2,vy_pdy_t2,vy_pdz_t2,\
         vz_pdx_t2,vz_pdy_t2,vz_pdz_t2;
-    fcube txx,tyy,tzz,txx_t2,tyy_t2,tzz_t2,\
+    fcube txx,tyy,tzz,\
         txx_pdx_t1,tyy_pdx_t1,tzz_pdx_t1,\
         txx_pdy_t1,tyy_pdy_t1,tzz_pdy_t1,\
         txx_pdz_t1,tyy_pdz_t1,tzz_pdz_t1,\
@@ -52,6 +52,14 @@ public:
         txy_pdx_t1,txy_pdy_t1,txy_pdx_t2,txy_pdy_t2,\
         txz_pdx_t1,txz_pdz_t1,txz_pdx_t2,txz_pdz_t2,\
         tyz_pdy_t1,tyz_pdz_t1,tyz_pdy_t2,tyz_pdz_t2;
+
+    fcube &acoustic_p=tzz,\
+        &acoustic_p_pdx_t1=tzz_pdx_t1,\
+        &acoustic_p_pdy_t1=tzz_pdy_t1,\
+        &acoustic_p_pdz_t1=tzz_pdz_t1,\
+        &acoustic_p_pdx_t2=tzz_pdx_t2,\
+        &acoustic_p_pdy_t2=tzz_pdy_t2,\
+        &acoustic_p_pdz_t2=tzz_pdz_t2;
 
     float dx,dy,dz,dt,PML_wide,isPMLSurface;
     float TheoreticalReflectionCoefficient,\
@@ -100,6 +108,7 @@ void elastic3D_ARMA::initialize(const int x, const int y, const int z)
     mpar_1_dec_ro.zeros(nx,ny,nz),mpar_lmd_add_2miu.zeros(nx,ny,nz),\
     mpar_lmd.zeros(nx,ny,nz),mpar_miu.zeros(nx,ny,nz);
     mpar_ro.zeros(nx,ny,nz),mpar_vp.zeros(nx,ny,nz),mpar_vs.zeros(nx,ny,nz);
+    mpar_vp2_square.zeros(nx,ny,nz),mpar_1.set_size(nx,ny,nz),mpar_1.fill(1.0);
     mpar_1_dec_ro_pdx_jc1.zeros(nx,ny,nz),mpar_lmd_add_2miu_pdx_jc1.zeros(nx,ny,nz),\
     mpar_lmd_pdx_jc1.zeros(nx,ny,nz),mpar_miu_pdx_jc1.zeros(nx,ny,nz);
     mpar_1_dec_ro_pdy_jc1.zeros(nx,ny,nz),mpar_lmd_add_2miu_pdy_jc1.zeros(nx,ny,nz),\
@@ -149,6 +158,7 @@ elastic3D_ARMA::elastic3D_ARMA(const int x, const int y, const int z)
     mpar_1_dec_ro.zeros(nx,ny,nz),mpar_lmd_add_2miu.zeros(nx,ny,nz),\
     mpar_lmd.zeros(nx,ny,nz),mpar_miu.zeros(nx,ny,nz);
     mpar_ro.zeros(nx,ny,nz),mpar_vp.zeros(nx,ny,nz),mpar_vs.zeros(nx,ny,nz);
+    mpar_vp2_square.zeros(nx,ny,nz),mpar_1.set_size(nx,ny,nz),mpar_1.fill(1.0);
     mpar_1_dec_ro_pdx_jc1.zeros(nx,ny,nz),mpar_lmd_add_2miu_pdx_jc1.zeros(nx,ny,nz),\
     mpar_lmd_pdx_jc1.zeros(nx,ny,nz),mpar_miu_pdx_jc1.zeros(nx,ny,nz);
     mpar_1_dec_ro_pdy_jc1.zeros(nx,ny,nz),mpar_lmd_add_2miu_pdy_jc1.zeros(nx,ny,nz),\
@@ -215,6 +225,7 @@ void elastic3D_ARMA::updatepar()
     for(i=0;i<nx;i++){ 
     for(j=0;j<ny;j++){
     for(k=0;k<nz;k++){
+        mpar_vp2_square(i,j,k)=mpar_vp(i,j,k)*mpar_vp(i,j,k);
         mpar_miu(i,j,k)=mpar_vs(i,j,k)*mpar_vs(i,j,k)*mpar_ro(i,j,k);
         mpar_lmd(i,j,k)=mpar_ro(i,j,k)*(mpar_vp(i,j,k)*mpar_vp(i,j,k)\
             -2.0*mpar_vs(i,j,k)*mpar_vs(i,j,k));
@@ -975,6 +986,94 @@ void TimeSliceCal_elastic_pseudo2D_PurePwave_MultiThread(class elastic3D_ARMA & 
     obj.txx=obj.txx_pdx_t1+obj.txx_pdz_t1;
     //obj.tyy=obj.tyy_pdx_t1+obj.tyy_pdy_t1+obj.tyy_pdz_t1;
     obj.tzz=obj.tzz_pdx_t1+obj.tzz_pdz_t1;
+
+    delete [] useThread;
+}
+
+void TimeSliceCal_acoustic2D_MultiThread(class elastic3D_ARMA & obj)
+{
+    int k,jc0(0),jc1(1);
+    thread *useThread;
+    useThread=new thread[6];
+
+    obj.ompThreadNum=int(obj.maxThreadNum/2);
+    //obj.ompThreadNum=int(obj.maxThreadNum/3);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
+    useThread[0]=thread(calx_3d_pseudo2d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,\
+        &obj.acoustic_p,&obj.mpar_1,jc1,&obj);
+    //useThread[1]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,&obj.tyy,&obj.mpar_1_dec_ro_pdy_jc1,jc1,&obj);
+    useThread[2]=thread(calz_3d_pseudo2d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,\
+        &obj.acoustic_p,&obj.mpar_1,jc1,&obj);
+    for(k=0;k<3;k++){
+        if(useThread[k].joinable())
+            useThread[k].join();
+    }
+    obj.vx=obj.vx_pdx_t1;
+    //obj.vy=obj.vy_pdy_t1;
+    obj.vz=obj.vz_pdz_t1;
+
+    //obj.ompThreadNum=int(obj.maxThreadNum/9);
+    obj.ompThreadNum=int(obj.maxThreadNum/2);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
+    useThread[3]=thread(calz_3d_pseudo2d,&obj.acoustic_p_pdz_t2,\
+        &obj.acoustic_p_pdz_t1,&obj.vz,&obj.mpar_vp2_square,jc0,&obj);
+    useThread[4]=thread(calx_3d_pseudo2d,&obj.acoustic_p_pdx_t2,\
+        &obj.acoustic_p_pdx_t1,&obj.vx,&obj.mpar_vp2_square,jc0,&obj);
+    //useThread[11]=thread(caly_3d,&obj.tzz_pdy_t2,&obj.tzz_pdy_t1,&obj.vy,&obj.mpar_lmd,jc0,&obj);
+    for(k=3;k<6;k++){
+        if(useThread[k].joinable())
+            useThread[k].join();
+    }
+    obj.acoustic_p=obj.acoustic_p_pdz_t1+obj.acoustic_p_pdx_t1;
+
+    delete [] useThread;
+}
+
+void TimeSliceCal_acoustic3D_MultiThread(class elastic3D_ARMA & obj)
+{
+    int k,jc0(0),jc1(1);
+    thread *useThread;
+    useThread=new thread[6];
+
+    obj.ompThreadNum=int(obj.maxThreadNum/3);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
+    useThread[0]=thread(calx_3d,&obj.vx_pdx_t2,&obj.vx_pdx_t1,\
+        &obj.acoustic_p,&obj.mpar_1,jc1,&obj);
+    useThread[1]=thread(caly_3d,&obj.vy_pdy_t2,&obj.vy_pdy_t1,\
+        &obj.acoustic_p,&obj.mpar_1,jc1,&obj);
+    useThread[2]=thread(calz_3d,&obj.vz_pdz_t2,&obj.vz_pdz_t1,\
+        &obj.acoustic_p,&obj.mpar_1,jc1,&obj);
+    for(k=0;k<3;k++){
+        if(useThread[k].joinable())
+            useThread[k].join();
+    }
+    obj.vx=obj.vx_pdx_t1;
+    obj.vy=obj.vy_pdy_t1;
+    obj.vz=obj.vz_pdz_t1;
+
+    //obj.ompThreadNum=int(obj.maxThreadNum/9);
+    obj.ompThreadNum=int(obj.maxThreadNum/3);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nz);
+    obj.ompThreadNum=min(obj.ompThreadNum,obj.nx);
+    obj.ompThreadNum=max(obj.ompThreadNum,1);
+    useThread[3]=thread(calz_3d,&obj.acoustic_p_pdz_t2,\
+        &obj.acoustic_p_pdz_t1,&obj.vz,&obj.mpar_vp2_square,jc0,&obj);
+    useThread[4]=thread(calx_3d,&obj.acoustic_p_pdx_t2,\
+        &obj.acoustic_p_pdx_t1,&obj.vx,&obj.mpar_vp2_square,jc0,&obj);
+    useThread[5]=thread(caly_3d,&obj.acoustic_p_pdy_t2,\
+        &obj.acoustic_p_pdy_t1,&obj.vy,&obj.mpar_vp2_square,jc0,&obj);
+    for(k=3;k<6;k++){
+        if(useThread[k].joinable())
+            useThread[k].join();
+    }
+    obj.acoustic_p=obj.acoustic_p_pdz_t1+obj.acoustic_p_pdx_t1\
+        +obj.acoustic_p_pdy_t1;
 
     delete [] useThread;
 }
