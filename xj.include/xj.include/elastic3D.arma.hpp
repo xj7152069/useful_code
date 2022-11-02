@@ -856,7 +856,7 @@ void TimeSliceCal_elastic3D_PurePwave_MultiThread(class elastic3D_ARMA & obj)
     delete [] useThread;
 }
 
-void TimeSliceCal_elastic_pseudo2D_MultiThread(class elastic3D_ARMA & obj)
+void TimeSliceCal_elastic2D_MultiThread(class elastic3D_ARMA & obj)
 {
     int k,jc0(0),jc1(1);
     thread *useThread;
@@ -937,7 +937,7 @@ void TimeSliceCal_elastic_pseudo2D_MultiThread(class elastic3D_ARMA & obj)
     delete [] useThread;
 }
 
-void TimeSliceCal_elastic_pseudo2D_PurePwave_MultiThread(class elastic3D_ARMA & obj)
+void TimeSliceCal_elastic2D_PurePwave_MultiThread(class elastic3D_ARMA & obj)
 {
     int k,jc0(0),jc1(1);
     thread *useThread;
