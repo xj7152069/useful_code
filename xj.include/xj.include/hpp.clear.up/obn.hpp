@@ -828,7 +828,7 @@ void RedatumRegularByCode3dFrequence(cx_fcube* u2, cx_fcube* u1,fmat* depth,\
         fj=coordy_data[0](i,j);
         offset2=((fi-codeCoordx)*(fi-codeCoordx)\
             +(fj-codeCoordy)*(fj-codeCoordy));
-        l_trace=sqrt(offset2+depth*depth);
+        l_trace=sqrt(offset2+redatum*redatum);
         green(i,j)=l_trace/velocity+wavelet_delay;
     }}
 
