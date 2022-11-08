@@ -249,7 +249,158 @@ inline float getendianchange(T1 a)
     b=float(a);
     return b;
 }
-
+float getSegyHeadKey(segyhead &hdr, const char *key)
+{
+    float p;
+if(hdr.endian=='b'){
+	if(strcmp(key,"tracl"   )==0)       { p=getendianchange(hdr.head2.tracl);}
+    else if (strcmp(key,"tracr"   )==0) { p=getendianchange(hdr.head2.tracr);}
+    else if (strcmp(key,"fldr"    )==0) { p=getendianchange(hdr.head2.fldr) ;}
+    else if (strcmp(key,"tracf"   )==0) { p=getendianchange(hdr.head2.tracf);}
+    else if (strcmp(key,"ep"      )==0) { p=getendianchange(hdr.head2.ep)  ;}
+    else if (strcmp(key,"cdp"     )==0) { p=getendianchange(hdr.head2.cdp) ;}
+    else if (strcmp(key,"cdpt"    )==0) { p=getendianchange(hdr.head2.cdpt);}
+    else if (strcmp(key,"trid"    )==0) { p=getendianchange(hdr.head2.trid);}
+    else if (strcmp(key,"nvs"     )==0) { p=getendianchange(hdr.head2.nvs) ;}
+    else if (strcmp(key,"nhs"     )==0) { p=getendianchange(hdr.head2.nhs   );}
+    else if (strcmp(key,"duse"    )==0) { p=getendianchange(hdr.head2.duse  );}
+    else if (strcmp(key,"offset"  )==0) { p=getendianchange(hdr.head2.offset);}
+    else if (strcmp(key,"gelev"   )==0) { p=getendianchange(hdr.head2.gelev );}
+    else if (strcmp(key,"selev"   )==0) { p=getendianchange(hdr.head2.selev );}
+    else if (strcmp(key,"sdepth"  )==0) { p=getendianchange(hdr.head2.sdepth);}
+    else if (strcmp(key,"gdel"    )==0) { p=getendianchange(hdr.head2.gdel  );}
+    else if (strcmp(key,"sdel"    )==0) { p=getendianchange(hdr.head2.sdel  );}
+    else if (strcmp(key,"swdep"   )==0) { p=getendianchange(hdr.head2.swdep );}
+    else if (strcmp(key,"gwdep"   )==0) { p=getendianchange(hdr.head2.gwdep );}
+    else if (strcmp(key,"scalel"  )==0) { p=getendianchange(hdr.head2.scalel);}
+    else if (strcmp(key,"scalco"  )==0) { p=getendianchange(hdr.head2.scalco);}
+    else if (strcmp(key,"sx"      )==0) { p=getendianchange(hdr.head2.sx    );}
+    else if (strcmp(key,"sy"      )==0) { p=getendianchange(hdr.head2.sy    );}
+    else if (strcmp(key,"gx"      )==0) { p=getendianchange(hdr.head2.gx    );}
+    else if (strcmp(key,"gy"      )==0) { p=getendianchange(hdr.head2.gy    );}
+    else if (strcmp(key,"counit"  )==0) { p=getendianchange(hdr.head2.counit);}
+    else if (strcmp(key,"wevel"   )==0) { p=getendianchange(hdr.head2.wevel );}
+    else if (strcmp(key,"swevel"  )==0) { p=getendianchange(hdr.head2.swevel);}
+    else if (strcmp(key,"sut"     )==0) { p=getendianchange(hdr.head2.sut   );}
+    else if (strcmp(key,"gut"     )==0) { p=getendianchange(hdr.head2.gut   );}
+    else if (strcmp(key,"sstat"   )==0) { p=getendianchange(hdr.head2.sstat );}
+    else if (strcmp(key,"gstat"   )==0) { p=getendianchange(hdr.head2.gstat );}
+    else if (strcmp(key,"tstat"   )==0) { p=getendianchange(hdr.head2.tstat );}
+    else if (strcmp(key,"laga"    )==0) { p=getendianchange(hdr.head2.laga  );}
+    else if (strcmp(key,"lagb"    )==0) { p=getendianchange(hdr.head2.lagb  );}
+    else if (strcmp(key,"delrt"   )==0) { p=getendianchange(hdr.head2.delrt );}
+    else if (strcmp(key,"muts"    )==0) { p=getendianchange(hdr.head2.muts  );}
+    else if (strcmp(key,"mute"    )==0) { p=getendianchange(hdr.head2.mute  );}
+    else if (strcmp(key,"ns"      )==0) { p=getendianchange(hdr.head2.ns    );}
+    else if (strcmp(key,"dt"      )==0) { p=getendianchange(hdr.head2.dt    );}
+    else if (strcmp(key,"gain"    )==0) { p=getendianchange(hdr.head2.gain  );}
+    else if (strcmp(key,"igc"     )==0) { p=getendianchange(hdr.head2.igc   );}
+    else if (strcmp(key,"igi"     )==0) { p=getendianchange(hdr.head2.igi   );}
+    else if (strcmp(key,"corr"    )==0) { p=getendianchange(hdr.head2.corr  );}
+    else if (strcmp(key,"sfs"     )==0) { p=getendianchange(hdr.head2.sfs   );}
+    else if (strcmp(key,"sfe"     )==0) { p=getendianchange(hdr.head2.sfe   );}
+    else if (strcmp(key,"slen"    )==0) { p=getendianchange(hdr.head2.slen  );}
+    else if (strcmp(key,"styp"    )==0) { p=getendianchange(hdr.head2.styp  );}
+    else if (strcmp(key,"stas"    )==0) { p=getendianchange(hdr.head2.stas  );}
+    else if (strcmp(key,"stae"    )==0) { p=getendianchange(hdr.head2.stae  );}
+    else if (strcmp(key,"tatyp"   )==0) { p=getendianchange(hdr.head2.tatyp );}
+    else if (strcmp(key,"afilf"   )==0) { p=getendianchange(hdr.head2.afilf );}
+    else if (strcmp(key,"afils"   )==0) { p=getendianchange(hdr.head2.afils );}
+    else if (strcmp(key,"nofilf"  )==0) { p=getendianchange(hdr.head2.nofilf);}
+    else if (strcmp(key,"nofils"  )==0) { p=getendianchange(hdr.head2.nofils);}
+    else if (strcmp(key,"lcf"     )==0) { p=getendianchange(hdr.head2.lcf   );}
+    else if (strcmp(key,"hcf"     )==0) { p=getendianchange(hdr.head2.hcf   );}
+    else if (strcmp(key,"lcs"     )==0) { p=getendianchange(hdr.head2.lcs   );}
+    else if (strcmp(key,"hcs"     )==0) { p=getendianchange(hdr.head2.hcs   );}
+    else if (strcmp(key,"year"    )==0) { p=getendianchange(hdr.head2.year  );}
+    else if (strcmp(key,"day"     )==0) { p=getendianchange(hdr.head2.day   );}
+    else if (strcmp(key,"hour"    )==0) { p=getendianchange(hdr.head2.hour  );}
+    else if (strcmp(key,"minute"  )==0) { p=getendianchange(hdr.head2.minute);}
+    else if (strcmp(key,"sec"     )==0) { p=getendianchange(hdr.head2.sec   );}
+    else if (strcmp(key,"timbas"  )==0) { p=getendianchange(hdr.head2.timbas);}
+    else if (strcmp(key,"trwf"    )==0) { p=getendianchange(hdr.head2.trwf  );}
+    else if (strcmp(key,"grnors"  )==0) { p=getendianchange(hdr.head2.grnors);}
+    else if (strcmp(key,"grnofr"  )==0) { p=getendianchange(hdr.head2.grnofr);}
+    else if (strcmp(key,"grnlof"  )==0) { p=getendianchange(hdr.head2.grnlof);}
+    else if (strcmp(key,"gaps"    )==0) { p=getendianchange(hdr.head2.gaps  );}
+    else if (strcmp(key,"otrav"   )==0) { p=getendianchange(hdr.head2.otrav );}
+    else{p=0;std::cout<<"Error: Not find su key number!!";}
+}else{
+    if(strcmp(key,"tracl"   )==0)       { p = (hdr.head2.tracl);}
+    else if (strcmp(key,"tracr"   )==0) { p = (hdr.head2.tracr);}
+    else if (strcmp(key,"fldr"    )==0) { p = (hdr.head2.fldr) ;}
+    else if (strcmp(key,"tracf"   )==0) { p = (hdr.head2.tracf);}
+    else if (strcmp(key,"ep"      )==0) { p = (hdr.head2.ep)  ;}
+    else if (strcmp(key,"cdp"     )==0) { p = (hdr.head2.cdp) ;}
+    else if (strcmp(key,"cdpt"    )==0) { p = (hdr.head2.cdpt);}
+    else if (strcmp(key,"trid"    )==0) { p = (hdr.head2.trid);}
+    else if (strcmp(key,"nvs"     )==0) { p = (hdr.head2.nvs) ;}
+    else if (strcmp(key,"nhs"     )==0) { p = hdr.head2.nhs   ;}
+    else if (strcmp(key,"duse"    )==0) { p = hdr.head2.duse  ;}
+    else if (strcmp(key,"offset"  )==0) { p = hdr.head2.offset;}
+    else if (strcmp(key,"gelev"   )==0) { p = hdr.head2.gelev ;}
+    else if (strcmp(key,"selev"   )==0) { p = hdr.head2.selev ;}
+    else if (strcmp(key,"sdepth"  )==0) { p = hdr.head2.sdepth;}
+    else if (strcmp(key,"gdel"    )==0) { p = hdr.head2.gdel  ;}
+    else if (strcmp(key,"sdel"    )==0) { p = hdr.head2.sdel  ;}
+    else if (strcmp(key,"swdep"   )==0) { p = hdr.head2.swdep ;}
+    else if (strcmp(key,"gwdep"   )==0) { p = hdr.head2.gwdep ;}
+    else if (strcmp(key,"scalel"  )==0) { p = hdr.head2.scalel;}
+    else if (strcmp(key,"scalco"  )==0) { p = hdr.head2.scalco;}
+    else if (strcmp(key,"sx"      )==0) { p = hdr.head2.sx    ;}
+    else if (strcmp(key,"sy"      )==0) { p = hdr.head2.sy    ;}
+    else if (strcmp(key,"gx"      )==0) { p = hdr.head2.gx    ;}
+    else if (strcmp(key,"gy"      )==0) { p = hdr.head2.gy    ;}
+    else if (strcmp(key,"counit"  )==0) { p = hdr.head2.counit;}
+    else if (strcmp(key,"wevel"   )==0) { p = hdr.head2.wevel ;}
+    else if (strcmp(key,"swevel"  )==0) { p = hdr.head2.swevel;}
+    else if (strcmp(key,"sut"     )==0) { p = hdr.head2.sut   ;}
+    else if (strcmp(key,"gut"     )==0) { p = hdr.head2.gut   ;}
+    else if (strcmp(key,"sstat"   )==0) { p = hdr.head2.sstat ;}
+    else if (strcmp(key,"gstat"   )==0) { p = hdr.head2.gstat ;}
+    else if (strcmp(key,"tstat"   )==0) { p = hdr.head2.tstat ;}
+    else if (strcmp(key,"laga"    )==0) { p = hdr.head2.laga  ;}
+    else if (strcmp(key,"lagb"    )==0) { p = hdr.head2.lagb  ;}
+    else if (strcmp(key,"delrt"   )==0) { p = hdr.head2.delrt ;}
+    else if (strcmp(key,"muts"    )==0) { p = hdr.head2.muts  ;}
+    else if (strcmp(key,"mute"    )==0) { p = hdr.head2.mute  ;}
+    else if (strcmp(key,"ns"      )==0) { p = hdr.head2.ns    ;}
+    else if (strcmp(key,"dt"      )==0) { p = hdr.head2.dt    ;}
+    else if (strcmp(key,"gain"    )==0) { p = hdr.head2.gain  ;}
+    else if (strcmp(key,"igc"     )==0) { p = hdr.head2.igc   ;}
+    else if (strcmp(key,"igi"     )==0) { p = hdr.head2.igi   ;}
+    else if (strcmp(key,"corr"    )==0) { p = hdr.head2.corr  ;}
+    else if (strcmp(key,"sfs"     )==0) { p = hdr.head2.sfs   ;}
+    else if (strcmp(key,"sfe"     )==0) { p = hdr.head2.sfe   ;}
+    else if (strcmp(key,"slen"    )==0) { p = hdr.head2.slen  ;}
+    else if (strcmp(key,"styp"    )==0) { p = hdr.head2.styp  ;}
+    else if (strcmp(key,"stas"    )==0) { p = hdr.head2.stas  ;}
+    else if (strcmp(key,"stae"    )==0) { p = hdr.head2.stae  ;}
+    else if (strcmp(key,"tatyp"   )==0) { p = hdr.head2.tatyp ;}
+    else if (strcmp(key,"afilf"   )==0) { p = hdr.head2.afilf ;}
+    else if (strcmp(key,"afils"   )==0) { p = hdr.head2.afils ;}
+    else if (strcmp(key,"nofilf"  )==0) { p = hdr.head2.nofilf;}
+    else if (strcmp(key,"nofils"  )==0) { p = hdr.head2.nofils;}
+    else if (strcmp(key,"lcf"     )==0) { p = hdr.head2.lcf   ;}
+    else if (strcmp(key,"hcf"     )==0) { p = hdr.head2.hcf   ;}
+    else if (strcmp(key,"lcs"     )==0) { p = hdr.head2.lcs   ;}
+    else if (strcmp(key,"hcs"     )==0) { p = hdr.head2.hcs   ;}
+    else if (strcmp(key,"year"    )==0) { p = hdr.head2.year  ;}
+    else if (strcmp(key,"day"     )==0) { p = hdr.head2.day   ;}
+    else if (strcmp(key,"hour"    )==0) { p = hdr.head2.hour  ;}
+    else if (strcmp(key,"minute"  )==0) { p = hdr.head2.minute;}
+    else if (strcmp(key,"sec"     )==0) { p = hdr.head2.sec   ;}
+    else if (strcmp(key,"timbas"  )==0) { p = hdr.head2.timbas;}
+    else if (strcmp(key,"trwf"    )==0) { p = hdr.head2.trwf  ;}
+    else if (strcmp(key,"grnors"  )==0) { p = hdr.head2.grnors;}
+    else if (strcmp(key,"grnofr"  )==0) { p = hdr.head2.grnofr;}
+    else if (strcmp(key,"grnlof"  )==0) { p = hdr.head2.grnlof;}
+    else if (strcmp(key,"gaps"    )==0) { p = hdr.head2.gaps  ;}
+    else if (strcmp(key,"otrav"   )==0) { p = hdr.head2.otrav ;}
+    else{p=0;std::cout<<"Error: Not find su key number!!";}
+}
+    return p;
+}
 /***********************************************************************
 ibm_to_float - convert between 32 bit IBM and IEEE floating numbers
 ************************************************************************

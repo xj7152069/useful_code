@@ -1218,12 +1218,11 @@ void getPointIndex2d(int& sxindex,int& syindex,\
     }}}
 }
 fmat readSuDataSortByCoord(segyhead2 **suHeadArray2dSort, fcube &data3dSort,\
-    int n1, int n2, int nt, float d1, float d2, const char *filein)
+    int n1, int n2, int nt, float d1, float d2, segyhead &headp)
 {
     int nx0(n1),ny0(n2),\
         nx(nx0),ny(ny0),i,j,k,nt0(nt);
     float dx(d1),dy(d2);
-    bool sufile(true);
     fmat coordx(nx,ny,fill::zeros),coordy(nx,ny,fill::zeros);
     fmat coordxSort(nx,ny,fill::zeros),coordySort(nx,ny,fill::zeros);
     fmat foldSort(nx,ny,fill::zeros);
@@ -1238,12 +1237,6 @@ fmat readSuDataSortByCoord(segyhead2 **suHeadArray2dSort, fcube &data3dSort,\
         suHeadArray2d[i]=new segyhead2[ny0];
     }
 ////////////////Read su-data and sort by sx-sy/////////////////
-    segyhead headp;
-    headp.filename[0]='\0';
-    strcat(headp.filename,filein);
-    segyhead_open(headp,sufile);
-    headp.endian='l';
-    headp.isibm=false;
     for(j=0;j<ny;j++){
     for(i=0;i<nx;i++){
         headp.dataraw=segyhead_readonetrace_tofmat(headp,headp.data);
@@ -1323,7 +1316,23 @@ fmat readSuDataSortByCoord(segyhead2 **suHeadArray2dSort, fcube &data3dSort,\
     delete [] suHeadArray2d;
     return foldSort;
 }
+fmat readSuDataSortByCoord(segyhead2 **suHeadArray2dSort, fcube &data3dSort,\
+    int n1, int n2, int nt, float d1, float d2, const char *filein)
+{
+    bool sufile(true);
+    segyhead headp;
+    headp.filename[0]='\0';
+    strcat(headp.filename,filein);
+    segyhead_open(headp,sufile);
+    headp.endian='l';
+    headp.isibm=false;
+    fmat foldSort;
+    fcube *pdata=&(data3dSort);
+foldSort=readSuDataSortByCoord(suHeadArray2dSort, pdata[0],\
+    n1,n2,nt,d1,d2,headp);
 
+    return foldSort;
+}
 /******* Non-functional function *******/
 bool*** newboolmat(int x1, int x2, int x3)
 {

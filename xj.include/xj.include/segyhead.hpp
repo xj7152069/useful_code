@@ -889,6 +889,7 @@ float getSuHeadKey(segyhead2&hdr, const char *key)
     else{p=0;std::cout<<"Error: Not find su key number!!";}
     return p;
 }
+
 void* getPointSuHeadKey(segyhead2&hdr, const char *key, int& bitnum)
 {
     void* p;
