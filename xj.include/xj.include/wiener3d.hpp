@@ -42,7 +42,7 @@ struct wiener3d
 void wiener3d_parset(int nx, int ny, int nz,\
     struct wiener3d & par)
 {
-    par.agcwx=2,par.agcwy=2,par.agcwz=5;
+    par.agcwx=2,par.agcwy=2,par.agcwz=20;
     par.normal_bool=false,par.normal_con=1.0;
     par.use_way=1;
     par.nx=nx,par.ny=ny,par.nz=nz;
@@ -53,7 +53,7 @@ void wiener3d_parset(int nx, int ny, int nz,\
     if(par.nwx>21){par.nwx=21;}
     if(par.nwy>21){par.nwy=21;}
     if(par.narx>5){par.narx=5;}
-    if(par.nary>3){par.nary=3;}
+    if(par.nary>5){par.nary=5;}
     par.nmovex=par.nwx;par.nmovey=par.nwy;
     par.covermax=1;
     par.ncpu=1;par.nf=1;
@@ -1081,7 +1081,7 @@ void wiener3d_mid_thread(struct wiener3d & par,int midnumcpu, int numi=25, int m
     struct wiener3d * ppar;
     struct wienerCG3d cg;
     ppar=&par;
-    //getagc_wiener3d(ppar[0]);
+    getagc_wiener3d(ppar[0]);
     tx_to_fx3d_wiener3d_thread(ppar[0]);
     int ncpuout=par.ncpu;
     par.ncpu=midnumcpu;
