@@ -1649,7 +1649,8 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
  cx_fcube& trace, fmat coordx,fmat coordy, int ns, int ntrace,int nline,float dt,\
  int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
  float fmax=150,float frule=50,int ncpu=1, float factor_L2=0.1,float factor_L1=1,\
- int iterations_num=45, float residual_ratio=0.1, bool dorecover=false)
+ int iterations_num=45, float residual_ratio=0.1, bool dorecover=false,\
+ bool doCGinv=true)
 {
     struct linerradon3d par;
     int i,j,k;
@@ -1693,8 +1694,9 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
     tauppanel.set_size(1,1,1);
 //////////////////////////////////////////////////
     linerradon(par,false); 
-
-    beamformingCG3d(par,iterations_num,residual_ratio);
+    if(doCGinv){
+        beamformingCG3d(par,iterations_num,residual_ratio);
+    }
     //beamforminginv3d(par);
     tauppanel=par.realdataTP;
 
