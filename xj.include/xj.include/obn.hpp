@@ -725,7 +725,8 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
     int ix,jy;
-    
+    u2.copy_size(u1);
+    u2.fill(0.0);
     cx_fcube *pu2(&u2);
     cx_fcube *pu1(&u1);
     fmat *pcoordx_data(&coordx_data);
