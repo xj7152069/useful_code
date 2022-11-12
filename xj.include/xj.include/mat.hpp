@@ -381,30 +381,6 @@ float*** newfmat(int x1, int x2, int x3)
     return p2;
 }
 
-template<typename T1>
-void newArray(T1 **array,int n1, int n2)
-{
-    int j;
-    T1 *array1d;
-    array1d=new T1[n1*n2];      
-    array=new T1*[n1];      
-    for(j=0;j<n1;j++){  
-        array[j]=&(array1d[n2*j]);
-    }
-}
-template<typename T1>
-void newArray(T1 ***array, int n1, int n2, int n3)
-{
-    int j,k;
-    T1 *array1d;
-    array1d=new T1[n1*n2*n3];      
-    array=new T1**[n1];      
-    for(j=0;j<n1;j++){  
-        array[j]=new T1*[n2];
-        for(k=0;k<n2;k++){  
-            array[j][k]=&(array1d[j*n2*n3+k*n3]);
-    }}
-}
 //�����ͷ��ڴ棬���޷���ԭ�����е�ָ����ã�
 template<typename T1>
 void matdelete(T1 **mat, int x1)
@@ -437,14 +413,38 @@ void matdelete(T1 ***mat, int x1, int x2)
     mat=NULL;
 }
 template<typename T1>
-void deleteArray(T1 **array, int n1)
+void newArray(T1 ** &array,int n1, int n2)
 {
-    delete [] array;
+    int j,k;
+    T1 *array1d;
+    array1d=new T1[n1*n2];      
+    array=new T1*[n1];      
+    for(j=0;j<n1;j++){  
+        array[j]=&(array1d[j*n2]);
+    }
 }
 template<typename T1>
-void deleteArray(T1 ***array, int n1, int n2)
+void newArray(T1 *** &array, int n1, int n2, int n3)
 {
-    delete [] array;
+    int j,k;
+    T1 *array1d;
+    array1d=new T1[n1*n2*n3];      
+    array=new T1**[n1];      
+    for(j=0;j<n1;j++){  
+        array[j]=new T1*[n2];
+        for(k=0;k<n2;k++){  
+            array[j][k]=&(array1d[j*n2*n3+k*n3]);
+    }}
+}
+template<typename T1>
+void deleteArray(T1 ** &array, int n1)
+{
+    delete []array;
+}
+template<typename T1>
+void deleteArray(T1 *** &array, int n1, int n2)
+{
+    delete []array;
 }
 
 template <typename T1, typename T2>
