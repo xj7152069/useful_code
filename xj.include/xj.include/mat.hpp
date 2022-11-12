@@ -385,20 +385,24 @@ template<typename T1>
 void newArray(T1 **array,int n1, int n2)
 {
     int j;
+    T1 *array1d;
+    array1d=new T1[n1*n2];      
     array=new T1*[n1];      
     for(j=0;j<n1;j++){  
-        array[j]=new T1[n2];
+        array[j]=&(array1d[n2*j]);
     }
 }
 template<typename T1>
 void newArray(T1 ***array, int n1, int n2, int n3)
 {
     int j,k;
+    T1 *array1d;
+    array1d=new T1[n1*n2*n3];      
     array=new T1**[n1];      
     for(j=0;j<n1;j++){  
         array[j]=new T1*[n2];
         for(k=0;k<n2;k++){  
-            array[j][k]=new T1[n3];
+            array[j][k]=&(array1d[j*n2*n3+k*n3]);
     }}
 }
 //�����ͷ��ڴ棬���޷���ԭ�����е�ָ����ã�
@@ -435,12 +439,12 @@ void matdelete(T1 ***mat, int x1, int x2)
 template<typename T1>
 void deleteArray(T1 **array, int n1)
 {
-    matdelete(array,n1);
+    delete [] array;
 }
 template<typename T1>
 void deleteArray(T1 ***array, int n1, int n2)
 {
-    matdelete(array,n1,n2);
+    delete [] array;
 }
 
 template <typename T1, typename T2>
