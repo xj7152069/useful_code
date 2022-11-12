@@ -307,7 +307,7 @@ void dataread3d_bycol_transpose(fcube & data3d, const char * filename)
     ifstream infile;
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices); 
-    fmat datacol_transpose(n3,n1);
+    fmat datacol_transpose(n3,n1,fill::zeros);
     fmat datacol(n1,n3);
     float read_data;
 
@@ -329,7 +329,7 @@ void dataread3d_bycol_transpose(fcube & data3d, ifstream &inf)
 {
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices); 
-    fmat datacol_transpose(n3,n1);
+    fmat datacol_transpose(n3,n1,fill::zeros);
     fmat datacol(n1,n3);
     float read_data;
 
@@ -351,7 +351,7 @@ void dataread3d_bycol_transpose(fcube & data3d, int nz,int nx,const char * filen
     ifstream infile;
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices); 
-    fmat datacol_transpose(n3,n1);
+    fmat datacol_transpose(n3,n1,fill::zeros);
     fmat datacol(n1,n3);
     float read_data;
 
@@ -373,7 +373,7 @@ void dataread3d_bycol_transpose(fcube & data3d, int nz,int nx,ifstream &inf)
 {
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices); 
-    fmat datacol_transpose(n3,n1);
+    fmat datacol_transpose(n3,n1,fill::zeros);
     fmat datacol(n1,n3);
     float read_data;
 
