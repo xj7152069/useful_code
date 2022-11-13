@@ -1248,7 +1248,6 @@ fmat readSuDataSortByCoord(segyhead2 **suHeadArray2dSort, fcube &data3dSort,\
         coordx(i,j)=getSuHeadKey(suHeadArray2d[i][j],"gx");
         coordy(i,j)=getSuHeadKey(suHeadArray2d[i][j],"gy");
     }}
-    headp.infile.close();
     float sxCoordmin=sum(sum(coordx,1))/1.0/nx/ny-dx*(nx-1)/2.0;
     float sxCoordmax=sxCoordmin+dx*(nx-1.0);
     float syCoordmin=sum(sum(coordy,1))/1.0/nx/ny-dy*(ny-1)/2.0;
