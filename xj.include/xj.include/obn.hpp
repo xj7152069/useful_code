@@ -581,7 +581,7 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
  int fn1, int fn2, int minspacewin,int maxspacewin,float water_velocity,\
  float code_pattern, int ncpu,float wavelet_delay,bool *end_of_thread)
 {
-    if(docode<0.5){
+    if(docode<0.6){
         end_of_thread[0]=true;
     }else{
     int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
@@ -1331,8 +1331,36 @@ fmat readSuDataSortByCoord(segyhead2 **suHeadArray2dSort, fcube &data3dSort,\
     fcube *pdata=&(data3dSort);
 foldSort=readSuDataSortByCoord(suHeadArray2dSort, pdata[0],\
     n1,n2,nt,d1,d2,headp);
-
+    headp.infile.close();
     return foldSort;
+}
+fmat cutDataBySlope(fcube &data3d, fmat &coordx, fmat &coordy,\
+    float dt, float cutSlopeMin, float cutSlopeMax)
+{
+    int i,j,k,nx(data3d.n_rows),ny(data3d.n_cols),nt(data3d.n_slices);
+    fmat coordfold(nx,ny);
+    coordfold.fill(1.0);
+    for(j=0;j<ny;j++){
+    for(i=0;i<nx;i++){
+        float offset=sqrt(coordx(i,j)*coordx(i,j)\
+            +coordy(i,j)*coordy(i,j));
+        int nCutMin(floor(offset/dt/cutSlopeMax)+1);
+        int nCutMax(floor(offset/dt/cutSlopeMin)+1);
+        for(k=max(nCutMin,0);k<min(nCutMax,nt);k++){
+            //data3dCut(i,j,k)=data3dOrig(i,j,k);
+            float nslope=(float(k)/offset)*dt;
+            nslope=1.0/nslope;
+            float w_black=Blackman(cutSlopeMax-nslope,\
+                cutSlopeMax-cutSlopeMin);
+            data3d(i,j,k)*=w_black;
+        }
+        for(k=0;k<min(nt,nCutMin);k++){
+            data3d(i,j,k)=0;
+        }
+        if(nCutMin>=nt)
+            coordfold(i,j)=0;
+    }}
+    return coordfold;
 }
 /******* Non-functional function *******/
 bool*** newboolmat(int x1, int x2, int x3)
