@@ -205,6 +205,7 @@ void AdaptiveRemoveMultiple2d(fmat & dataResult, fmat & dataRemoved,\
     fmat* pdataphd=(&dataphd);
     thread* pcal;bool* end_of_thread;
     ncpu=min(ncpu,nx);
+    ncpu=max(ncpu,1);
     pcal=new thread[ncpu];
     end_of_thread=new bool[ncpu];
 
@@ -665,43 +666,45 @@ void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
 
     cx_float a;
     float blackmanfilter_ibeg,blackmanfilter_iend;
-    float blackmanfilter_ibegwide(std::min(minspacewin,isx-iloopbeg)),\
+    int blackmanfilter_ibegwide(std::min(minspacewin,isx-iloopbeg)),\
         blackmanfilter_iendwide(std::min(minspacewin,iloopend-isx));
     float blackmanfilter_jbeg,blackmanfilter_jend;
-    float blackmanfilter_jbegwide(std::min(minspacewin,jsy-jloopbeg)),\
+    int blackmanfilter_jbegwide(std::min(minspacewin,jsy-jloopbeg)),\
         blackmanfilter_jendwide(std::min(minspacewin,jloopend-jsy));
+    fmat blackmanWinibeg(blackmanfilter_ibegwide+1,1),\
+        blackmanWiniend(blackmanfilter_iendwide+1,1),\
+        blackmanWinjbeg(blackmanfilter_jbegwide+1,1),\
+        blackmanWinjend(blackmanfilter_jendwide+1,1);
+    blackmanWinibeg.fill(1.0);blackmanWiniend.fill(1.0);
+    blackmanWinjbeg.fill(1.0);blackmanWinjend.fill(1.0);
+    for(k=0;k<blackmanfilter_ibegwide;k++){
+        blackmanWinibeg(k,0)=Blackman(k,blackmanfilter_ibegwide);
+    }
+    for(k=0;k<blackmanfilter_iendwide;k++){
+        blackmanWiniend(k,0)=Blackman(k,blackmanfilter_iendwide);
+    }
+    for(k=0;k<blackmanfilter_jbegwide;k++){
+        blackmanWinjbeg(k,0)=Blackman(k,blackmanfilter_jbegwide);
+    }
+    for(k=0;k<blackmanfilter_jendwide;k++){
+        blackmanWinjend(k,0)=Blackman(k,blackmanfilter_jendwide);
+    }
+
     for(k=fn1;k<fn2;k++){
         w=-2.0*pi*df*k;
-        float li(0.0),widei(0.0);
+        int li(0);
         for(i=iloopbeg;i<iloopend;i++){
-            if(i-iloopbeg<blackmanfilter_ibegwide){
-                blackmanfilter_ibeg=Blackman(i-iloopbeg,blackmanfilter_ibegwide);
-            }
-            else{
-                blackmanfilter_ibeg=1;
-            }
-            if(iloopend-i<blackmanfilter_iendwide){
-                blackmanfilter_iend=Blackman(iloopend-i,blackmanfilter_iendwide);
-            }
-            else{
-                blackmanfilter_iend=1;
-            }
+            li=min(i-iloopbeg,blackmanfilter_ibegwide);
+            blackmanfilter_ibeg=blackmanWinibeg(li,0);
+            li=min(iloopend-i,blackmanfilter_iendwide);
+            blackmanfilter_iend=blackmanWiniend(li,0);
             blackmanfilter_ibeg*=blackmanfilter_iend;
+            int lj(0);
             for(j=jloopbeg;j<jloopend;j++){
-                float lj(0.0),widej(0.0);
-                float l_blackman;
-                if(j-jloopbeg<blackmanfilter_jbegwide){
-                    blackmanfilter_jbeg=Blackman(j-jloopbeg,blackmanfilter_jbegwide);
-                }
-                else{
-                    blackmanfilter_jbeg=1;
-                }
-                if(jloopend-j<blackmanfilter_jendwide){
-                    blackmanfilter_jend=Blackman(jloopend-j,blackmanfilter_jendwide);
-                }
-                else{
-                    blackmanfilter_jend=1;
-                }
+                lj=min(j-jloopbeg,blackmanfilter_jbegwide);
+                blackmanfilter_jbeg=blackmanWinjbeg(lj,0);
+                lj=min(jloopend-j,blackmanfilter_jendwide);
+                blackmanfilter_jend=blackmanWinjend(lj,0);
                 blackmanfilter_jbeg*=blackmanfilter_jend;
                 blackmanfilter_jbeg*=blackmanfilter_ibeg;
 
@@ -724,6 +727,8 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
  float code_pattern, int ncpu, float wavelet_delay=0.0)
 {
     int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
+    ncpu=max(ncpu,1);
+    ncpu=min(ncpu,n1);
     int ix,jy;
     u2.copy_size(u1);
     u2.fill(0.0);
@@ -771,6 +776,330 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
         if(pcal[kcpu].joinable()){
         pcal[kcpu].join();}
     }
+    delete[] pcal;
+    delete[] end_of_thread;
+}
+void getGreenForMWDOnePoint(cx_fcube* u2, cx_fcube* u1, fmat* green,\
+ fmat* seabase_depth,fmat *coordx_data,fmat *coordy_data,float docode,\
+ int isx, int jsy, int system_source_ix, int system_source_jy, float df,\
+ int fn1, int fn2, int minspacewin,int maxspacewin,float water_velocity,\
+ float code_pattern, int ncpu,float wavelet_delay,bool *end_of_thread)
+{
+    if(docode<0.6){
+        end_of_thread[0]=true;
+    }else{
+    int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
+    int i,j,k,i1,j1,i2,j2,sx,sy,iloopbeg,iloopend,jloopbeg,jloopend;
+    float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
+    float l_min(0.0001),l_sum(0.0),l_trace;
+    float w,pi(3.1415926),t;
+    code_pattern=1.0-code_pattern;
+    code_pattern=std::min(code_pattern,float(1.0));
+    code_pattern=std::max(code_pattern,float(0.0));
+
+    if(isx>=system_source_ix){
+        iloopbeg=system_source_ix-minspacewin;
+        iloopend=isx+minspacewin;
+        int wideadd(floor(abs(isx-system_source_ix)*code_pattern));
+        wideadd=std::max(wideadd,int(isx-system_source_ix-maxspacewin));
+        iloopbeg=iloopbeg+wideadd;
+    }else{
+        iloopend=system_source_ix+minspacewin;
+        iloopbeg=isx-minspacewin;
+        int wideadd(floor(abs(system_source_ix-isx)*code_pattern));
+        wideadd=std::max(wideadd,int(system_source_ix-isx-maxspacewin));
+        iloopend=iloopend-wideadd;
+    }
+    if(jsy>=system_source_jy){
+        jloopbeg=system_source_jy-minspacewin;
+        jloopend=jsy+minspacewin;
+        int wideadd(floor(abs(jsy-system_source_jy)*code_pattern));
+        wideadd=std::max(wideadd,int(jsy-system_source_jy-maxspacewin));
+        jloopbeg=jloopbeg+wideadd;
+    }else{
+        jloopend=system_source_jy+minspacewin;
+        jloopbeg=jsy-minspacewin;
+        int wideadd(floor(abs(system_source_jy-jsy)*code_pattern));
+        wideadd=std::max(wideadd,int(system_source_jy-jsy-maxspacewin));
+        jloopend=jloopend-wideadd;
+    }
+    iloopbeg=max(iloopbeg,0);iloopend=min(iloopend,n1);
+    jloopbeg=max(jloopbeg,0);jloopend=min(jloopend,n2);
+    //iloopbeg=0;iloopend=n1;
+    //jloopbeg=0;jloopend=n2;
+    sy=jsy;sx=isx;
+    float source_x=coordx_data[0](isx,jsy);
+    float source_y=coordy_data[0](isx,jsy);
+    green[0].zeros(iloopend-iloopbeg,jloopend-jloopbeg);
+    for(i=iloopbeg;i<iloopend;i++){      
+        i1=floor((sx+i)/2);
+        i2=1+i1;
+        i1=max(iloopbeg,0);
+        i2=min(i2,iloopend-1);
+        for(j=jloopbeg;j<jloopend;j++){
+            fi=(float(source_x)+coordx_data[0](i,j))/2.0;
+            fj=(float(source_y)+coordy_data[0](i,j))/2.0;
+            j1=floor((sy+j)/2);
+            j2=1+j1;
+            j1=max(j1,jloopbeg);
+            j2=min(j2,jloopend-1);
+            l11=(fi-coordx_data[0](i1,j1))*(fi-coordx_data[0](i1,j1))\
+                +(fj-coordy_data[0](i1,j1))*(fj-coordy_data[0](i1,j1))+l_min;
+            l12=(fi-coordx_data[0](i1,j2))*(fi-coordx_data[0](i1,j2))\
+                +(fj-coordy_data[0](i1,j2))*(fj-coordy_data[0](i1,j2))+l_min;
+            l21=(fi-coordx_data[0](i2,j1))*(fi-coordx_data[0](i2,j1))\
+                +(fj-coordy_data[0](i2,j1))*(fj-coordy_data[0](i2,j1))+l_min;
+            l22=(fi-coordx_data[0](i2,j2))*(fi-coordx_data[0](i2,j2))\
+                +(fj-coordy_data[0](i2,j2))*(fj-coordy_data[0](i2,j2))+l_min;
+            l11=1/l11;l12=1/l12;l21=1/l21;l22=1/l22;
+            l_sum=l11+l12+l21+l22;
+            l11/=l_sum;l12/=l_sum;l21/=l_sum;l22/=l_sum;
+
+            d11=seabase_depth[0](i1,j1);
+            d12=seabase_depth[0](i1,j2);
+            d21=seabase_depth[0](i2,j1);
+            d22=seabase_depth[0](i2,j2);
+            depth=l11*d11+l21*d21+l12*d12+l22*d22;
+            half_offset=(fi-source_x)*(fi-source_x)\
+                +(fj-source_y)*(fj-source_y);
+            l_trace=2.0*sqrt(half_offset+depth*depth);
+            green[0](i-iloopbeg,j-jloopbeg)\
+                =l_trace/water_velocity+wavelet_delay;
+        }
+    }
+    end_of_thread[0]=true;
+    }
+}
+void multipleCode3dMWDOnePointAllFrequence(cx_fcube* u2, cx_fcube* u1,\
+ fmat* green ,fmat *coordx_data,fmat *coordy_data,float docode,\
+ int isx, int jsy, int system_source_ix, int system_source_jy, float df,\
+ int fn1, int fn2, int minspacewin,int maxspacewin,float water_velocity,\
+ float code_pattern, int ncpu,float wavelet_delay,bool *end_of_thread)
+{
+    if(docode<0.6){
+        end_of_thread[0]=true;
+    }else{
+    int n1(u1[0].n_rows),n2(u1[0].n_cols),n3(u1[0].n_slices);
+    int i,j,k,i1,j1,i2,j2,iloopbeg,iloopend,jloopbeg,jloopend;
+    float depth, half_offset, d11,d12,d21,d22, l11,l12,l21,l22,fi,fj;
+    float l_min(0.0001),l_sum(0.0),l_trace;
+    float w,pi(3.1415926),t;
+    code_pattern=1.0-code_pattern;
+    code_pattern=std::min(code_pattern,float(1.0));
+    code_pattern=std::max(code_pattern,float(0.0));
+
+    if(isx>=system_source_ix){
+        iloopbeg=system_source_ix-minspacewin;
+        iloopend=isx+minspacewin;
+        int wideadd(floor(abs(isx-system_source_ix)*code_pattern));
+        wideadd=std::max(wideadd,int(isx-system_source_ix-maxspacewin));
+        iloopbeg=iloopbeg+wideadd;
+    }else{
+        iloopend=system_source_ix+minspacewin;
+        iloopbeg=isx-minspacewin;
+        int wideadd(floor(abs(system_source_ix-isx)*code_pattern));
+        wideadd=std::max(wideadd,int(system_source_ix-isx-maxspacewin));
+        iloopend=iloopend-wideadd;
+    }
+    if(jsy>=system_source_jy){
+        jloopbeg=system_source_jy-minspacewin;
+        jloopend=jsy+minspacewin;
+        int wideadd(floor(abs(jsy-system_source_jy)*code_pattern));
+        wideadd=std::max(wideadd,int(jsy-system_source_jy-maxspacewin));
+        jloopbeg=jloopbeg+wideadd;
+    }else{
+        jloopend=system_source_jy+minspacewin;
+        jloopbeg=jsy-minspacewin;
+        int wideadd(floor(abs(system_source_jy-jsy)*code_pattern));
+        wideadd=std::max(wideadd,int(system_source_jy-jsy-maxspacewin));
+        jloopend=jloopend-wideadd;
+    }
+    iloopbeg=max(iloopbeg,0);iloopend=min(iloopend,n1);
+    jloopbeg=max(jloopbeg,0);jloopend=min(jloopend,n2);
+    //iloopbeg=0;iloopend=n1;
+    //jloopbeg=0;jloopend=n2;
+
+    cx_float a;
+    float blackmanfilter_ibeg,blackmanfilter_iend;
+    int blackmanfilter_ibegwide(std::min(minspacewin,isx-iloopbeg)),\
+        blackmanfilter_iendwide(std::min(minspacewin,iloopend-isx));
+    float blackmanfilter_jbeg,blackmanfilter_jend;
+    int blackmanfilter_jbegwide(std::min(minspacewin,jsy-jloopbeg)),\
+        blackmanfilter_jendwide(std::min(minspacewin,jloopend-jsy));
+    fmat blackmanWinibeg(blackmanfilter_ibegwide+1,1),\
+        blackmanWiniend(blackmanfilter_iendwide+1,1),\
+        blackmanWinjbeg(blackmanfilter_jbegwide+1,1),\
+        blackmanWinjend(blackmanfilter_jendwide+1,1);
+    blackmanWinibeg.fill(1.0);blackmanWiniend.fill(1.0);
+    blackmanWinjbeg.fill(1.0);blackmanWinjend.fill(1.0);
+    for(k=0;k<blackmanfilter_ibegwide;k++){
+        blackmanWinibeg(k,0)=Blackman(k,blackmanfilter_ibegwide);
+    }
+    for(k=0;k<blackmanfilter_iendwide;k++){
+        blackmanWiniend(k,0)=Blackman(k,blackmanfilter_iendwide);
+    }
+    for(k=0;k<blackmanfilter_jbegwide;k++){
+        blackmanWinjbeg(k,0)=Blackman(k,blackmanfilter_jbegwide);
+    }
+    for(k=0;k<blackmanfilter_jendwide;k++){
+        blackmanWinjend(k,0)=Blackman(k,blackmanfilter_jendwide);
+    }
+
+    for(k=fn1;k<fn2;k++){
+        w=-2.0*pi*df*k;
+        int li(0);
+        for(i=iloopbeg;i<iloopend;i++){
+            li=min(i-iloopbeg,blackmanfilter_ibegwide);
+            blackmanfilter_ibeg=blackmanWinibeg(li,0);
+            li=min(iloopend-i,blackmanfilter_iendwide);
+            blackmanfilter_iend=blackmanWiniend(li,0);
+            blackmanfilter_ibeg*=blackmanfilter_iend;
+            int lj(0);
+            for(j=jloopbeg;j<jloopend;j++){
+                lj=min(j-jloopbeg,blackmanfilter_jbegwide);
+                blackmanfilter_jbeg=blackmanWinjbeg(lj,0);
+                lj=min(jloopend-j,blackmanfilter_jendwide);
+                blackmanfilter_jend=blackmanWinjend(lj,0);
+                blackmanfilter_jbeg*=blackmanfilter_jend;
+                blackmanfilter_jbeg*=blackmanfilter_ibeg;
+
+                t=green[0](i-iloopbeg,j-jloopbeg);
+                a.real(0.0);
+                a.imag(w*t);
+                a=exp(a);
+                a.real(real(a)*blackmanfilter_jbeg);
+                a.imag(imag(a)*blackmanfilter_jbeg);
+                u2[0](isx,jsy,k)+=a*u1[0](i,j,k);
+        }}}
+    end_of_thread[0]=true;
+    }
+}
+void multipleCode3dMWD(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
+ fmat& coordx_data, fmat& coordy_data, fmat& docode, fmat ** &green,\
+ int system_source_ix, int system_source_jy,float water_velocity, \
+ float df, int fn1, int fn2,int minspacewin,int maxspacewin,\
+ float code_pattern, int ncpu, bool & haveGreen, float wavelet_delay=0.0)
+{
+    int n1(u1.n_rows),n2(u1.n_cols),n3(u1.n_slices);
+    ncpu=max(ncpu,1);
+    ncpu=min(ncpu,n1);
+    int ix,jy;
+    u2.copy_size(u1);
+    u2.fill(0.0);
+    cx_fcube *pu2(&u2);
+    cx_fcube *pu1(&u1);
+    fmat *pcoordx_data(&coordx_data);
+    fmat *pcoordy_data(&coordy_data);
+    fmat *pseabase(&seabase_depth);
+    thread *pcal;
+    int kcpu,js;
+    bool *end_of_thread;
+    end_of_thread=new bool[ncpu];
+    pcal=new thread[ncpu];
+if(haveGreen){
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        jy=0;ix=kcpu;
+        end_of_thread[kcpu]=false;
+        pcal[kcpu]=thread(multipleCode3dMWDOnePointAllFrequence,pu2,pu1,\
+            &(green[ix][jy]),pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
+            system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
+            maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
+            &(end_of_thread[kcpu]));
+    }
+    js=ncpu;
+    while(js<n1*n2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+        if(!end_of_thread[kcpu])continue;
+        else if(end_of_thread[kcpu]){
+            if(pcal[kcpu].joinable()&&js<n1*n2){
+                pcal[kcpu].join();
+                end_of_thread[kcpu]=false;
+                jy=int(js/n1);ix=js-jy*n1;
+                if(js%n1==0)
+                    cout<<jy<<",";
+                pcal[kcpu]=thread(multipleCode3dMWDOnePointAllFrequence,pu2,pu1,\
+                    &(green[ix][jy]),pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
+                    system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
+                    maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
+                    &(end_of_thread[kcpu]));
+                js++;
+            }
+        }}
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
+    }
+}else{
+    cout<<"Now is calculating Green function."<<endl;
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        jy=0;ix=kcpu;
+        end_of_thread[kcpu]=false;
+        pcal[kcpu]=thread(getGreenForMWDOnePoint, pu2,pu1,&(green[ix][jy]),\
+            pseabase,pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
+            system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
+            maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
+            &(end_of_thread[kcpu]));
+    }
+    js=ncpu;
+    while(js<n1*n2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+        if(!end_of_thread[kcpu])continue;
+        else if(end_of_thread[kcpu]){
+            if(pcal[kcpu].joinable()&&js<n1*n2){
+                pcal[kcpu].join();
+                end_of_thread[kcpu]=false;
+                jy=int(js/n1);ix=js-jy*n1;
+                if(js%n1==0)
+                    cout<<jy<<",";
+                pcal[kcpu]=thread(getGreenForMWDOnePoint,pu2,pu1,&(green[ix][jy]),\
+                    pseabase,pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
+                    system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
+                    maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
+                    &(end_of_thread[kcpu]));
+                js++;
+            }
+        }}
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
+    }
+    haveGreen=true;
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        jy=0;ix=kcpu;
+        end_of_thread[kcpu]=false;
+        pcal[kcpu]=thread(multipleCode3dMWDOnePointAllFrequence,pu2,pu1,\
+            &(green[ix][jy]),pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
+            system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
+            maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
+            &(end_of_thread[kcpu]));
+    }
+    js=ncpu;
+    while(js<n1*n2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+        if(!end_of_thread[kcpu])continue;
+        else if(end_of_thread[kcpu]){
+            if(pcal[kcpu].joinable()&&js<n1*n2){
+                pcal[kcpu].join();
+                end_of_thread[kcpu]=false;
+                jy=int(js/n1);ix=js-jy*n1;
+                if(js%n1==0)
+                    cout<<jy<<",";
+                pcal[kcpu]=thread(multipleCode3dMWDOnePointAllFrequence,pu2,pu1,\
+                    &(green[ix][jy]),pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
+                    system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
+                    maxspacewin,water_velocity, code_pattern,ncpu,wavelet_delay,\
+                    &(end_of_thread[kcpu]));
+                js++;
+            }
+        }}
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
+    }
+}
     delete[] pcal;
     delete[] end_of_thread;
 }
