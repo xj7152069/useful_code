@@ -582,6 +582,7 @@ void linerradon(struct linerradon3d & par, bool dotx2fxTransform=true)
     float dnf;
     bool* finish_thread;
     ncpu=min(ncpu,par.nf2-par.nf1);
+    ncpu=max(ncpu,1);
     finish_thread=new bool[ncpu];
     thread *pcal;
     pcal=new thread[ncpu];
@@ -715,6 +716,7 @@ void rebuildsignal(struct linerradon3d & par)
 
     int ncpu(par.numthread),pnf1,pnf2,k,kf,kcpu;
     ncpu=min(ncpu,par.nf2-par.nf1);
+    ncpu=max(ncpu,1);
     float dnf;
     bool* finish_thread;
     finish_thread=new bool[ncpu];
@@ -1209,6 +1211,7 @@ bool regularization=true)
 {
     int ncpu(par.numthread);
     ncpu=min(ncpu,par.nf2-par.nf1);
+    ncpu=max(ncpu,1);
     regularization=par.regularization;
     int kcpu,kf,k,i,j;//cout<<"ok"<<endl;
 

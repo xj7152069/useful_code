@@ -689,6 +689,7 @@ void tx2fx_3d_thread(cx_fcube &data3d_out,fcube &data3d, int ncpu)
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices);
     ncpu=min(ncpu,n1);
+    ncpu=max(ncpu,1);
     cx_fcube *pdata3d_out=&data3d_out;
     fcube *pdata3d=&data3d;
     thread *pcal;
@@ -731,6 +732,7 @@ void fx2tx_3d_thread(fcube &data3d_out,cx_fcube &data3d, int ncpu)
     int i,j,k;
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices);
     ncpu=min(ncpu,n1);
+    ncpu=max(ncpu,1);
     fcube *pdata3d_out=&data3d_out;
     cx_fcube *pdata3d=&data3d;
     thread *pcal;
