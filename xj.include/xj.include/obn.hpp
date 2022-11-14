@@ -757,7 +757,7 @@ void multiple_code3d(cx_fcube& u2, cx_fcube& u1, fmat& seabase_depth,\
                 end_of_thread[kcpu]=false;
                 jy=int(js/n1);ix=js-jy*n1;
                 if(js%n1==0)
-                    cout<<jy<<endl;
+                    cout<<jy<<",";
                 pcal[kcpu]=thread(multiple_code3d_onepoint_allfrequence,\
                     pu2,pu1,pseabase,pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
                     system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
