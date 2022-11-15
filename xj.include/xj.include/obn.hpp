@@ -797,34 +797,8 @@ void getGreenForMWDOnePoint(cx_fcube* u2, cx_fcube* u1, fmat* green,\
     code_pattern=std::min(code_pattern,float(1.0));
     code_pattern=std::max(code_pattern,float(0.0));
 
-    if(isx>=system_source_ix){
-        iloopbeg=system_source_ix-minspacewin;
-        iloopend=isx+minspacewin;
-        int wideadd(floor(abs(isx-system_source_ix)*code_pattern));
-        wideadd=std::max(wideadd,int(isx-system_source_ix-maxspacewin));
-        iloopbeg=iloopbeg+wideadd;
-    }else{
-        iloopend=system_source_ix+minspacewin;
-        iloopbeg=isx-minspacewin;
-        int wideadd(floor(abs(system_source_ix-isx)*code_pattern));
-        wideadd=std::max(wideadd,int(system_source_ix-isx-maxspacewin));
-        iloopend=iloopend-wideadd;
-    }
-    if(jsy>=system_source_jy){
-        jloopbeg=system_source_jy-minspacewin;
-        jloopend=jsy+minspacewin;
-        int wideadd(floor(abs(jsy-system_source_jy)*code_pattern));
-        wideadd=std::max(wideadd,int(jsy-system_source_jy-maxspacewin));
-        jloopbeg=jloopbeg+wideadd;
-    }else{
-        jloopend=system_source_jy+minspacewin;
-        jloopbeg=jsy-minspacewin;
-        int wideadd(floor(abs(system_source_jy-jsy)*code_pattern));
-        wideadd=std::max(wideadd,int(system_source_jy-jsy-maxspacewin));
-        jloopend=jloopend-wideadd;
-    }
-    iloopbeg=max(iloopbeg,0);iloopend=min(iloopend,n1);
-    jloopbeg=max(jloopbeg,0);jloopend=min(jloopend,n2);
+    iloopbeg=0;iloopend=n1;
+    jloopbeg=0;jloopend=n2;
     //iloopbeg=0;iloopend=n1;
     //jloopbeg=0;jloopend=n2;
     sy=jsy;sx=isx;
@@ -962,8 +936,7 @@ void multipleCode3dMWDOnePointAllFrequence(cx_fcube* u2, cx_fcube* u1,\
                 blackmanfilter_jend=blackmanWinjend(lj,0);
                 blackmanfilter_jbeg*=blackmanfilter_jend;
                 blackmanfilter_jbeg*=blackmanfilter_ibeg;
-
-                t=green[0](i-iloopbeg,j-jloopbeg);
+                t=green[0](i,j);
                 a.real(0.0);
                 a.imag(w*t);
                 a=exp(a);
@@ -1000,6 +973,7 @@ if(haveGreen){
     for(kcpu=0;kcpu<ncpu;kcpu++){
         jy=0;ix=kcpu;
         end_of_thread[kcpu]=false;
+//cout<<green[ix][jy].n_rows<<","<<green[ix][jy].n_cols<<","<<docode(ix,jy)<<endl;
         pcal[kcpu]=thread(multipleCode3dMWDOnePointAllFrequence,pu2,pu1,\
             &(green[ix][jy]),pcoordx_data,pcoordy_data,docode(ix,jy),ix,jy,\
             system_source_ix,system_source_jy,df,fn1,fn2,minspacewin,\
