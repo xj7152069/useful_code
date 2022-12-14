@@ -57,6 +57,7 @@ MPI_Comm_size(MPI_COMM_WORLD,&mpiNumProc);
         sxCoordmax(-sxCoordmin),syCoordmax(-syCoordmin);
     bool sufile(true);
     int interTimesByRow(2),interTimesByCol(1);
+    float dtUnitTrans(1000000.0);
 
     ifstream inf1,inf2;
     ofstream outf1,outf2;
@@ -108,12 +109,13 @@ while(!head.infile.eof() && begIndex<dataGroupEndIndex){
     syCoordmin=sum(sum(coordy,1)/nx)/ny-dy*(ny-1)/2.0;
     syCoordmax=syCoordmin+dy*(ny-1);
 
-    float dtHead=getSuHeadKey(suHeadArray2dOrig[0][0],"dt")/1000000.0;
+    float dtHead=getSuHeadKey(suHeadArray2dOrig[0][0],"dt")/dtUnitTrans;
     if(abs(dtHead-dt)>0.0001){
         cout<<"Warning: Time-Sample Gep in Head Not Equal the Input Information?"<<endl;
         cout<<"Warning: The Time-Unit is sec. Please Check it!"<<endl;
         cout<<"Warning: Time-Sample Gep Residual is: "<<abs(dtHead-dt)<<endl;
     }
+    //dt=dtHead;
     float sxCoord=getSuHeadKey(suHeadArray2dOrig[0][0],"sx");
     float syCoord=getSuHeadKey(suHeadArray2dOrig[0][0],"sy");
     coordx=coordx-sxCoord;
@@ -175,12 +177,13 @@ if(1){
 
     cout<<"  sub-step - <predicts multiple> is running."<<endl;
     getSourceIndes(sxIndex,syIndex,coordx,coordy);
-    cout<<"  check for Source-Coord: "<<sxIndex<<"|"<<syIndex<<"|"<<dt<<endl;
+    cout<<"  check for Source-Coord: "\
+        <<sxIndex<<"|"<<syIndex<<"|"<<dt<<endl;
     multiple_code3d(data3dFx2, data3dFx1, seabaseDepth,\
         coordx, coordy, coordfold, sxIndex,syIndex,\
         waterVelocity, df, fmin/df, fmax/df, 50, 200, 0.25, ncpu);
     data3dFx1.zeros(1,1,1);
-    //Four times Anti-Linear-interpolation in the spatial dimension
+
     cout<<"  sub-step - <AntiLinearInterpolation> is running."<<endl;
     for(k=0;k<interTimesByRow;k++){
         cxfcubeAntiLinearInterpolation3dByRow(data3dFx2);
@@ -188,6 +191,7 @@ if(1){
     for(k=0;k<interTimesByCol;k++){
         cxfcubeAntiLinearInterpolation3dByCol(data3dFx2);
     }
+    
     cout<<"  sub-step - <data fx2tx> is running."<<endl;
     data3dMultiple.copy_size(data3dFx2);
     fx2tx_3d_thread(data3dMultiple,data3dFx2, ncpu);
@@ -195,7 +199,6 @@ if(1){
     fmat fold;
     fold=cutDataBySlope(data3dMultiple,coordxOrig,coordyOrig,\
         dt, cutSlopeMin, cutSlopeMax);
-    cout<<"  sub-step - <datawrite3d_bycol_transpose> is running."<<endl;
 }
 
 ////////////////High-slope filter for multiple model////////////////
