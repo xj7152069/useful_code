@@ -1278,6 +1278,29 @@ void cxfcubeLinearInterpolation3dByCol(cx_fcube& data3d)
     }
     data3d=data3dInter;
 }
+void cxfcubeLinearInterpolation3dByCol(cx_fcube& data3d, int ncpu)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
+    cx_fcube data3dInter;
+    int nInter(n2*2-1);
+    data3dInter.zeros(n1,nInter,n3);
+    data3dInter.col(0)=data3d.col(0);
+    for(i=1;i<n2;i++){
+        int kinter=2*i;
+        data3dInter.col(kinter)=data3d.col(i);
+    }
+    ncpu=min(ncpu,n2-1);
+    ncpu=max(ncpu,1);
+omp_set_num_threads(ncpu);
+#pragma omp parallel for
+    for(i=1;i<n2;i++){
+        int kinter=2*i;
+        data3dInter.col(kinter-1)=(data3dInter.col(kinter)\
+            +data3dInter.col(kinter-2));
+        data3dInter.col(kinter-1)=data3dInter.col(kinter-1)/2.0;
+    }
+    data3d=data3dInter;
+}
 void cxfcubeLinearInterpolation3dByRow(cx_fcube& data3d)
 {
     int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
@@ -1289,6 +1312,30 @@ void cxfcubeLinearInterpolation3dByRow(cx_fcube& data3d)
     for(i=1;i<n1;i++){
         int kinter=2*i;
         data3dInter.row(kinter)=data3d.row(i);
+        data3dInter.row(kinter-1)=(data3dInter.row(kinter)\
+            +data3dInter.row(kinter-2));
+        data3dInter.row(kinter-1)=data3dInter.row(kinter-1)/2.0;
+    }
+    data3d=data3dInter;
+}
+
+void cxfcubeLinearInterpolation3dByRow(cx_fcube& data3d, int ncpu)
+{
+    int n1(data3d.n_rows),n2(data3d.n_cols),n3(data3d.n_slices),i;
+    cx_fcube data3dInter;
+    int nInter(n1*2-1);
+    data3dInter.zeros(nInter,n2,n3);
+    data3dInter.row(0)=data3d.row(0);
+    for(i=1;i<n1;i++){
+        int kinter=2*i;
+        data3dInter.row(kinter)=data3d.row(i);
+    }
+    ncpu=min(ncpu,n1-1);
+    ncpu=max(ncpu,1);
+omp_set_num_threads(ncpu);
+#pragma omp parallel for
+    for(i=1;i<n1;i++){
+        int kinter=2*i;
         data3dInter.row(kinter-1)=(data3dInter.row(kinter)\
             +data3dInter.row(kinter-2));
         data3dInter.row(kinter-1)=data3dInter.row(kinter-1)/2.0;
@@ -1520,6 +1567,22 @@ void getPointIndex2d(int& sxindex,int& syindex,\
             sxindex=i;
             syindex=j;
     }}}
+}
+void readSuDataDirect(segyhead2 **suHeadArray2d, fcube &data3d,\
+    int n1, int n2, int nt, segyhead &headp)
+{
+    int nx0(n1),ny0(n2),\
+        nx(nx0),ny(ny0),i,j,k,nt0(nt);
+
+////////////////Read su-data and sort by sx-sy/////////////////
+    for(j=0;j<ny;j++){
+    for(i=0;i<nx;i++){
+        headp.dataraw=segyhead_readonetrace_tofmat(headp,headp.data);
+        suHeadArray2d[i][j]=headp.head2;
+        for(k=0;k<min(nt,headp.nz);k++){
+            data3d(i,j,k)=headp.data(k,0);
+        }
+    }}
 }
 fmat readSuDataSortByCoord(segyhead2 **suHeadArray2dSort, fcube &data3dSort,\
     int n1, int n2, int nt, float d1, float d2, segyhead &headp)
