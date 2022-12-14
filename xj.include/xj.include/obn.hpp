@@ -575,6 +575,45 @@ void single_trace_dewave_withdatawin(struct demultiple2d & par, int ncpu=1)
     par.lmd,ncpu);
 }
 
+fmat AdaptiveRemoveMultiple2d(fmat& data, fmat& multiple, float dt,\
+ int wienerLength, float wienerTikhonov,\
+ int dataLength, int slideLength, int ncpu){
+    
+    demultiple2d par;
+    par.nt=data.n_rows,par.nx=data.n_cols;
+    par.dt=dt;
+    par.data_remove_wave.zeros(par.nt,par.nx);
+    par.data_antiremove_wave.zeros(par.nt,par.nx);
+    par.data2d.copy_size(par.data_remove_wave);
+    par.datadict.copy_size(par.data_remove_wave);
+    par.datad.copy_size(par.data_remove_wave);
+    par.datah.copy_size(par.data_remove_wave);
+    par.datahd.copy_size(par.data_remove_wave);
+    par.nwp=(wienerLength),par.nwph=(wienerLength),\
+    par.nwpd=(wienerLength),par.nwphd=(wienerLength),\
+    par.n1w=(dataLength),par.d1w=(slideLength),\
+    par.lmd=(wienerTikhonov);
+    par.datawinbeg.zeros(par.nx,1);
+    par.datawinend.copy_size(par.datawinbeg);
+
+/***Pseudo multi-channel matching***/
+omp_set_num_threads(ncpu);
+#pragma omp parallel for
+    for(int k=0;k<par.nx;k++){
+        fmat datal(par.nt,1);
+        par.datah.col(k)=hilbert1D(datal=multiple.col(k),par.nt,dt);
+        par.datad.col(k)=diff1D(datal=multiple.col(k),par.nt,dt);
+        par.datahd.col(k)=diff1D(datal=par.datah.col(k),par.nt,dt);
+    }
+
+    par.data2d=data, par.datadict=multiple;
+    int nw(par.nwp+par.nwpd+par.nwph+par.nwphd);
+    fmat demultiple;
+    AdaptiveRemoveMultiple2d(par,1,ncpu);
+    demultiple=par.data_remove_wave;
+    return demultiple;
+} 
+
 /******* Coding predicts multiple waves, 3D *******/
 void multiple_code3d_onepoint_allfrequence(cx_fcube* u2, cx_fcube* u1,\
  fmat* seabase_depth,fmat *coordx_data,fmat *coordy_data,float docode,\
@@ -1727,6 +1766,16 @@ fmat cutDataBySlope(fcube &data3d, fmat &coordx, fmat &coordy,\
     }}
     return coordfold;
 }
+
+bool ifstreamFloatEndOfFile(ifstream & infile){
+    float readtest;
+    bool endOfFile(false);
+    infile.read((char *)(&readtest), sizeof(readtest));
+    if(infile.eof()){endOfFile=true;}
+    infile.seekg(-sizeof(readtest),ios::cur);
+    return endOfFile;
+}
+
 /******* Non-functional function *******/
 bool*** newboolmat(int x1, int x2, int x3)
 {
