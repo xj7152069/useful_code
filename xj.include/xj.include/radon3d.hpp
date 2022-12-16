@@ -68,7 +68,8 @@ inline cx_dmat cx_hessianelement1d(float w,\
 cx_fmat cx_hessianelement2d(float w,\
  int nx, float kx1, float dx, float dpx,\
  int ny, float ky1, float dy, float dpy);
-
+cx_fmat beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
+ cx_fmat &hessiancg_cxfmat_p1ncpu_2npx2npy_small, int pnf);
 /*beamforming/liner_radon变换 传递的参数：
 nz（处理数据体Z/T方向采样点）、nx（处理数据体X方向采样点）、
 ny（3D数据体测线数）、
@@ -99,9 +100,12 @@ struct linerradon3d
     char allAreal[99],allAimag[99];
     float dig_n1,dig_n2,kerpar1;
     float coordx0,coordy0;
-    bool regularization;
+    bool regularization, base5dexist;
+    cx_fcube **base5dnpxnpynxnynf;
+    cx_fmat *hessianf2npx2npy;
     //cx_fmat Acol1,Arow1;
 };
+
 //设置一组常用的初始化参数
 void beamforming_parset(int nx, int ny, int nz,\
     struct linerradon3d & par)
@@ -128,7 +132,8 @@ void beamforming_parset(int nx, int ny, int nz,\
     
     par.dig_n1=0.0;  //L1
     par.kerpar1=0.0;     //kernel function par
-    par.regularization=true;
+    par.regularization=false;
+    par.base5dexist=false;
 } 
 
 void beamforming_parupdate(struct linerradon3d & par)
@@ -182,7 +187,48 @@ void beamforming_cleardata(struct linerradon3d & par)
 {
 
 }
+void beamforming_getbase5d(struct linerradon3d & par)
+{
+    float memoryGB,pi(3.1415926),w;
+    int ix,iy,ipx,ipy,ikf;
 
+    memoryGB=(par.nf2-par.nf1)*par.npx*par.npy\
+        *par.nx*par.ny*2*sizeof(memoryGB)/1024.0/1024.0/1024.0;
+    cout<<"Warning: memory GB will be used: "<<memoryGB<<endl;
+    newArray(par.base5dnpxnpynxnynf,par.npx,par.npy);
+    for(ipx=0;ipx<par.npx;ipx++){
+    for(ipy=0;ipy<par.npy;ipy++){
+        par.base5dnpxnpynxnynf[ipx][ipy]\
+            .zeros(par.nx,par.ny,par.nf2-par.nf1);
+        for(ikf=par.nf1;ikf<par.nf2;ikf++){
+            w=2.0*pi*par.df*ikf; 
+        for(ix=0;ix<par.nx;ix++){
+        for(iy=0;iy<par.ny;iy++){
+            cx_float a;
+            a.real(0.0);
+            a.imag(w*par.coordx3d(ix,iy)*par.coordy3d(ix,iy)\
+                *par.px_coord(ipx,0)*par.py_coord(ipy,0));
+            par.base5dnpxnpynxnynf[ipx][ipy](ix,iy,ikf-par.nf1)=\
+                exp(a);
+        }}
+        }
+    }}
+
+    par.hessianf2npx2npy=new cx_fmat[par.nf2-par.nf1];
+    cx_fmat hess_A(par.npx*2-1,par.npy*2-1);
+    for(ikf=par.nf1;ikf<par.nf2;ikf++){
+        par.hessianf2npx2npy[ikf-par.nf1]=\
+            beamforminginv3d_CG_hessianget_thread(&par,hess_A,ikf);
+    }
+    par.base5dexist=true;
+}
+void beamforming_clearbase5d(struct linerradon3d & par)
+{
+    delete [] par.base5dnpxnpynxnynf;
+    delete [] par.hessianf2npx2npy;
+    par.base5dexist=false;
+    cout<<"Basis and Hessian has bean clear."<<endl;
+}
 ////////////beamforminginv3d use c++ thread/////////////////
 struct beamforminginv3d
 {
@@ -508,6 +554,16 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
                 }
             }
         }
+        else if(par->base5dexist){
+            for(kpx=0;kpx<npx;kpx++){
+            for(kpy=0;kpy<npy;kpy++){
+                A=par->base5dnpxnpynxnynf[kpx][kpy]\
+                    .slice(kf-par->nf1);
+                B=par->datafx.slice(kf); 
+                a=cx_fmatmul(A,B);
+                par->datafP(kpx,kpy,kf)=a(0,0);
+            }}
+        }
         else{
             basey3d.set_size(nx,ny,npy+1);
             basepy0.zeros(nx,ny);basepx0.zeros(nx,ny);
@@ -572,6 +628,51 @@ void linerradon_fthread(struct linerradon3d * par,int pnf1, int pnf2,\
 }
 
 void linerradon(struct linerradon3d & par, bool dotx2fxTransform=true)
+{
+    if(dotx2fxTransform){
+        par.datafx.set_size(par.nx,par.ny,par.nf);
+        tx2fx_3d_thread(par.datafx,par.data,par.numthread);
+    }
+    
+    int ncpu(par.numthread),pnf1,pnf2,k,kcpu,kf;
+    float dnf;
+    bool* finish_thread;
+    ncpu=min(ncpu,par.nf2-par.nf1);
+    ncpu=max(ncpu,1);
+    finish_thread=new bool[ncpu];
+    thread *pcal;
+    pcal=new thread[ncpu];
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        finish_thread[kcpu]=false;
+        pcal[kcpu]=thread(linerradon_fthread,\
+            &par,kcpu+par.nf1,kcpu+par.nf1+1,&(finish_thread[kcpu]));
+    }
+    kf=ncpu+par.nf1;
+    while(kf<par.nf2){
+        for(kcpu=0;kcpu<ncpu;kcpu++){
+            if(pcal[kcpu].joinable() && kf<par.nf2 && finish_thread[kcpu]){
+                pcal[kcpu].join();
+                finish_thread[kcpu]=false;
+                pcal[kcpu]=thread(linerradon_fthread,\
+                    &par,kf,kf+1,&(finish_thread[kcpu]));
+                kf++;
+        }}
+    }
+    for(kcpu=0;kcpu<ncpu;kcpu++){
+        if(pcal[kcpu].joinable()){
+        pcal[kcpu].join();}
+    }
+    
+    //fp_to_tp3d_linerradon3d(par);
+    fx2tx_3d_thread(par.realdataTP,par.datafP,par.numthread);
+    par.datafx.set_size(1,1,1);
+
+    delete[] pcal;
+    delete[] finish_thread;
+}
+
+void linerradonFast(struct linerradon3d & par,\
+ bool dotx2fxTransform=true)
 {
     if(dotx2fxTransform){
         par.datafx.set_size(par.nx,par.ny,par.nf);
@@ -845,7 +946,7 @@ int getfftnum(int num){
     return n;
 }
 cx_fmat beamforminginv3d_CG_hessianget_thread(struct linerradon3d * par,\
- cx_fmat &hessiancg_cxfmat_p1ncpu_2npx2npy_small, int pncpu, int pnf)
+ cx_fmat &hessiancg_cxfmat_p1ncpu_2npx2npy_small, int pnf)
 {
     int kf,kpx,kpy,kpx2,kpy2,kx,ky,i,j;//cout<<"ok"<<endl;
     float w,pi(3.1415926);
@@ -1011,9 +1112,14 @@ void beamformingCG3d_fthread(struct linerradon3d * par,\
  bool *convergence,int kcpu, int kf,bool regularization,\
  int iterations_num, float residual_ratio,bool *finish_thread)
 {
-    cx_fmat hess_A(par[0].npx*2-1,par[0].npy*2-1),hessfft;
-    hessfft=beamforminginv3d_CG_hessianget_thread(par,hess_A,kcpu,kf);
 
+    cx_fmat hessfft;
+    if(par[0].base5dexist){
+        hessfft=par[0].hessianf2npx2npy[kf-par[0].nf1];
+    }else{
+        cx_fmat hess_A(par[0].npx*2-1,par[0].npy*2-1);
+        hessfft=beamforminginv3d_CG_hessianget_thread(par,hess_A,kf);
+    }
     int ip,jp,in,jn,k,iter(0);
     int np1(par->datafP.n_rows),np2(par->datafP.n_cols);
     cx_fmat gradient_rk,gradient_rk_1,\
@@ -1115,7 +1221,7 @@ void beamformingCG3d_redo_fthread(struct linerradon3d * par,\
     }
     else{
     cx_fmat hess_A(par[0].npx*2-1,par[0].npy*2-1),hessfft;
-    hessfft=beamforminginv3d_CG_hessianget_thread(par,hess_A,kcpu,kf);
+    hessfft=beamforminginv3d_CG_hessianget_thread(par,hess_A,kf);
 
     int ip,jp,in,jn,k,iter(0);
     int np1(par->datafP.n_rows),np2(par->datafP.n_cols);
@@ -1248,7 +1354,7 @@ bool regularization=true)
         if(pcal[kcpu].joinable()){
         pcal[kcpu].join();}
     }
-cout<<"==========cg has finished=========="<<endl;
+//cout<<"==========cg has finished=========="<<endl;
     cx_fmat s1,s2;
     bool *convergence2;
     convergence2=new bool[par.nf2];
@@ -1304,9 +1410,13 @@ for(kk=0;kk<iterations_num;kk++){
         if(pcal[kcpu].joinable()){
         pcal[kcpu].join();}
     }
-    cout<<"==========cg redo "<<kk<<" finished=========="<<endl;
+    cout<<"===Warning: cg redo "<<kk<<" finished===="<<endl;
 }
-
+    kf=kf=par.nf1;
+    if(!convergence[kf]){
+        par.datafP.slice(kf).fill(0.0);
+        convergence[kf]=true;
+    }
     for(kf=par.nf1+1;kf<par.nf2-1;kf++){
         if(!convergence[kf]&&convergence[kf-1]&&convergence[kf+1]){
             s1=par.datafP.slice(kf-1);
@@ -1580,7 +1690,7 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
     par.rulef1=1;
 
     par.data=trace;
-    trace.set_size(1,1,1);
+    //trace.set_size(1,1,1);
     tauppanel.set_size(1,1,1);
 //////////////////////////////////////////////////
     linerradon(par,true); 
@@ -1588,7 +1698,7 @@ int Beamforming_CG_3D(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
         beamformingCG3d(par,iterations_num,residual_ratio);
     }
     tauppanel=par.realdataTP;
-    trace=par.data;
+    //trace=par.data;
 
     if(dorecover){
         //recover data
@@ -1776,4 +1886,60 @@ int LinerRadon3d(fcube &tauppanel,fcube &recoverdata,fcube &recovererr,\
     
     return 0;
 }
+
+void BeamformingCG3d_withInitial(struct linerradon3d& par,\
+ fcube& data3d, int iterations_num=45, float residual_ratio=0.1)
+{
+    par.data=data3d;
+//////////////////////////////////////////////////
+    linerradon(par,true); 
+    beamformingCG3d(par,iterations_num,residual_ratio);
+    par.datafx.fill(0.0);
+    par.datafP.fill(0.0);
+}
+
+void BeamformingCG3dInitialBase5d(struct linerradon3d& par,
+ fmat coordx,fmat coordy, int ns,int ntrace,int nline, float dt,\
+ int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
+ float fmax=150,float frule=50, int ncpu=1, float factor_L2=0.1,\
+ float factor_L1=0.0)
+{
+    int i,j,k;
+    int nz(ns),nx(ntrace),ny(nline),nf(ns);
+//////////////////////////radon par-set////////////////////////////
+    beamforming_parset(nx,ny,nz,par);
+    par.dpx=dpx;
+    par.dpy=dpy;
+    par.dz=dt;
+
+//The default px of central channel is zero
+    par.npx=npx;
+    par.p0x=pxmin;
+    par.npy=npy;
+    par.p0y=pymin;  
+
+//ncpu
+    par.numthread=ncpu;
+
+//regularization parameter
+    par.dig_n2=nx*ny*factor_L2;  //L2, Tikhonov 
+    par.dig_n1=nx*ny*factor_L1;  //L1,
+//Seismic trace coordinates
+    for(i=0;i<nx;i++){
+        for(j=0;j<ny;j++){
+            par.coordx3d(i,j)=coordx(i,j);
+            par.coordy3d(i,j)=coordy(i,j);
+        }}
+    par.regularization=false;
+//Parameters updated
+    beamforming_parupdate(par);
+//Frequency calculation range (number)
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
+    par.nf1=1; 
+//Low frequency constraint range (number)
+    par.rulef2=min(int(frule/par.df),nz/2-1);
+    par.rulef1=1;
+    beamforming_getbase5d(par);
+}
+
 #endif
