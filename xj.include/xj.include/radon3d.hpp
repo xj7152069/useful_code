@@ -189,25 +189,27 @@ void beamforming_cleardata(struct linerradon3d & par)
 }
 void beamforming_getbase5d(struct linerradon3d & par)
 {
-    float memoryGB,pi(3.1415926),w;
-    int ix,iy,ipx,ipy,ikf;
+    float memoryGB;
 
     memoryGB=(par.nf2-par.nf1)*par.npx*par.npy\
         *par.nx*par.ny*2*sizeof(memoryGB)/1024.0/1024.0/1024.0;
     cout<<"Warning: memory GB will be used: "<<memoryGB<<endl;
     newArray(par.base5dnpxnpynxnynf,par.npx,par.npy);
-    for(ipx=0;ipx<par.npx;ipx++){
-    for(ipy=0;ipy<par.npy;ipy++){
+omp_set_num_threads(par.numthread);
+#pragma omp parallel for
+    for(int ipx=0;ipx<par.npx;ipx++){
+    for(int ipy=0;ipy<par.npy;ipy++){
         par.base5dnpxnpynxnynf[ipx][ipy]\
             .zeros(par.nx,par.ny,par.nf2-par.nf1);
-        for(ikf=par.nf1;ikf<par.nf2;ikf++){
-            w=2.0*pi*par.df*ikf; 
-        for(ix=0;ix<par.nx;ix++){
-        for(iy=0;iy<par.ny;iy++){
+        for(int ikf=par.nf1;ikf<par.nf2;ikf++){
+            float pi(3.1415926);
+            float w=2.0*pi*par.df*ikf; 
+        for(int ix=0;ix<par.nx;ix++){
+        for(int iy=0;iy<par.ny;iy++){
             cx_float a;
             a.real(0.0);
-            a.imag(w*par.coordx3d(ix,iy)*par.coordy3d(ix,iy)\
-                *par.px_coord(ipx,0)*par.py_coord(ipy,0));
+            a.imag(w*(par.coordx3d(ix,iy)*par.px_coord(ipx,0)\
+                +par.coordy3d(ix,iy)*par.py_coord(ipy,0)));
             par.base5dnpxnpynxnynf[ipx][ipy](ix,iy,ikf-par.nf1)=\
                 exp(a);
         }}
@@ -215,19 +217,55 @@ void beamforming_getbase5d(struct linerradon3d & par)
     }}
 
     par.hessianf2npx2npy=new cx_fmat[par.nf2-par.nf1];
-    cx_fmat hess_A(par.npx*2-1,par.npy*2-1);
-    for(ikf=par.nf1;ikf<par.nf2;ikf++){
+omp_set_num_threads(par.numthread);
+#pragma omp parallel for
+    for(int ikf=par.nf1;ikf<par.nf2;ikf++){
+        cx_fmat hess_A(par.npx*2-1,par.npy*2-1);
         par.hessianf2npx2npy[ikf-par.nf1]=\
             beamforminginv3d_CG_hessianget_thread(&par,hess_A,ikf);
     }
     par.base5dexist=true;
 }
+void beamforming_copybase5d(struct linerradon3d * par,\
+    struct linerradon3d * par2,int x1,int x2,int y1,int y2)
+{
+    float memoryGB;
+    memoryGB=(par[0].nf2-par[0].nf1)*par[0].npx*par[0].npy\
+        *par[0].nx*par[0].ny*2*sizeof(memoryGB)/1024.0/1024.0/1024.0;
+    cout<<"Warning: memory GB will be Changed: "<<memoryGB<<endl;
+omp_set_num_threads(par[0].numthread);
+#pragma omp parallel for
+    for(int ipx=0;ipx<par[0].npx;ipx++){
+    for(int ipy=0;ipy<par[0].npy;ipy++){
+        par[0].base5dnpxnpynxnynf[ipx][ipy]=\
+            par2[0].base5dnpxnpynxnynf[ipx][ipy]\
+            (span(x1,x2),span(y1,y2),span::all);
+    }}
+
+    par[0].hessianf2npx2npy=new cx_fmat[par[0].nf2-par[0].nf1];
+omp_set_num_threads(par[0].numthread);
+#pragma omp parallel for
+    for(int ikf=par[0].nf1;ikf<par[0].nf2;ikf++){
+        cx_fmat hess_A(par[0].npx*2-1,par[0].npy*2-1);
+        par[0].hessianf2npx2npy[ikf-par[0].nf1]=\
+            beamforminginv3d_CG_hessianget_thread(par,hess_A,ikf);
+    }
+    par[0].base5dexist=true;
+}
 void beamforming_clearbase5d(struct linerradon3d & par)
 {
+    for(int ipx=0;ipx<par.npx;ipx++){
+    for(int ipy=0;ipy<par.npy;ipy++){
+        par.base5dnpxnpynxnynf[ipx][ipy]\
+            .clear();
+    }}
+    for(int ikf=par.nf1;ikf<par.nf2;ikf++){
+        par.hessianf2npx2npy[ikf-par.nf1].clear();
+    }
     delete [] par.base5dnpxnpynxnynf;
     delete [] par.hessianf2npx2npy;
     par.base5dexist=false;
-    cout<<"Basis and Hessian has bean clear."<<endl;
+    cout<<"Basis and Hessian Memory has bean clear up."<<endl;
 }
 ////////////beamforminginv3d use c++ thread/////////////////
 struct beamforminginv3d
@@ -300,7 +338,7 @@ void beamforminginv3d_getdigfmat(struct linerradon3d & par,\
         par.p_power+=par.kerpar1;
         for(k=0;k<par.npy;k++){
             for(i=0;i<par.npx;i++){
-                par.p_power(i,k)=1.0/(1.0+exp(10*(0.5-par.p_power(i,k))));
+                par.p_power(i,k)=1.0/(1.0+exp(100*(0.5-par.p_power(i,k))));
             }
             //datawrite(digline=par.p_power.col(k),par.npx,1,"dig.bin");
         }
@@ -1940,6 +1978,51 @@ void BeamformingCG3dInitialBase5d(struct linerradon3d& par,
     par.rulef2=min(int(frule/par.df),nz/2-1);
     par.rulef1=1;
     beamforming_getbase5d(par);
+}
+
+void BeamformingCG3dChangeBase5d(struct linerradon3d& par,\
+ fmat coordx,fmat coordy, int ns,int ntrace,int nline, float dt,\
+ int npx,float pxmin, float dpx,int npy,float pymin, float dpy,\
+ float fmax,float frule, int ncpu, float factor_L2,\
+ float factor_L1, struct linerradon3d& par2,\
+ int x1, int x2, int y1, int y2)
+{
+    int i,j,k;
+    int nz(ns),nx(ntrace),ny(nline),nf(ns);
+//////////////////////////radon par-set////////////////////////////
+    beamforming_parset(nx,ny,nz,par);
+    par.dpx=dpx;
+    par.dpy=dpy;
+    par.dz=dt;
+
+//The default px of central channel is zero
+    par.npx=npx;
+    par.p0x=pxmin;
+    par.npy=npy;
+    par.p0y=pymin;  
+
+//ncpu
+    par.numthread=ncpu;
+
+//regularization parameter
+    par.dig_n2=nx*ny*factor_L2;  //L2, Tikhonov 
+    par.dig_n1=nx*ny*factor_L1;  //L1,
+//Seismic trace coordinates
+    for(i=0;i<nx;i++){
+        for(j=0;j<ny;j++){
+            par.coordx3d(i,j)=coordx(i,j);
+            par.coordy3d(i,j)=coordy(i,j);
+        }}
+    par.regularization=false;
+//Parameters updated
+    beamforming_parupdate(par);
+//Frequency calculation range (number)
+    par.nf2=min(int(fmax/par.df),nz/2-1); 
+    par.nf1=1; 
+//Low frequency constraint range (number)
+    par.rulef2=min(int(frule/par.df),nz/2-1);
+    par.rulef1=1;
+    beamforming_copybase5d(&par,&par2,x1,x2,y1,y2);
 }
 
 #endif
