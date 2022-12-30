@@ -507,8 +507,9 @@ void single_trace_dewave_withdatawin_pthread(fmat* dataup, fmat* datadown,\
         dnwt=nwt-nw-5;
         kwt=0;
         
-        mat1.fill(0.0);
-        mat0.fill(0.0);
+        mat1.zeros(nwt,nw);
+        mat0.zeros(nwt,nw);
+        matd.zeros(nwt,1);
         for(i=kwt;i<kwt+nwt;i++){
             for(j=kwt;j<kwt+nwp;j++){
                 if((i-j)>=0)
