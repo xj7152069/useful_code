@@ -505,6 +505,125 @@ void datawrite(fmat & data_mat, char const *filename)
       }
     outf.close(); 
 }
+inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat & mat2)
+{
+//Subfunctions use for solveCG()
+    int nz,nx;
+    nz=mat1.n_rows;
+    nx=mat1.n_cols;
+
+    cx_fmat a(1,1,fill::zeros);
+    int i,j;
+    for(i=0;i<nz;i++){
+        a+=mat1.row(i)*mat2.row(i).t();
+    }
+    return a;
+}
+
+bool solveCG(cx_fmat a, cx_fmat& x, cx_fmat b, cx_fmat W,\
+    float residual_ratio, int num)
+{
+/*
+The conjugate gradient method solves the normal equation:
+input: 
+cx_fmat: a*x=b; The 'x' must be initialized and cannot be zero;
+    The 'x' will be updated in subfunctions;
+cx_fmat: W; Diagonal matrix I, used for regularization;
+float residual_ratio: Iterative residual of the CG-method;
+int num: The number of iterations of the CG-method;
+    Iterations times is related to the matrix dimension,
+    Generally not more than the Dimension of x;
+*/
+    int ip,jp,in,jn,k,iter(0);
+    int np1(x.n_rows),np2(x.n_cols);
+    int iterations_num=num;
+
+//This method solve matrix equation: (aH*a+W)*x=aH*b
+    b=(a.t()*b);
+    a=(a.t()*a+W);
+
+    cx_fmat gradient_rk,gradient_rk_1,\
+        gradient_cg_pk,gradient_cg_pk_1,\
+        datatp_k,datatp_k_1,\
+        recoverdatatx_uk,A_gradient_cg_pk,A_datatp_k;
+    fmat sum_num(1,1),residual_pow(1,1),residual_k(1,1);
+    cx_fmat beta_k(1,1),alpha_k(1,1);
+    datatp_k.zeros(np1,np2);
+    datatp_k_1.copy_size(datatp_k);
+    gradient_rk.copy_size(datatp_k);
+    gradient_rk_1.copy_size(datatp_k);
+    gradient_cg_pk.copy_size(datatp_k);
+    gradient_cg_pk_1.copy_size(datatp_k); 
+    A_gradient_cg_pk.copy_size(datatp_k);
+    A_datatp_k.copy_size(datatp_k);
+
+    iter=0;
+    datatp_k=x;
+//Residuals level adaptive to matrix scale;
+    sum_num=sum(sum(abs(datatp_k)),1)/x.n_rows/x.n_cols;
+    residual_pow=sum_num(0,0);
+    residual_pow*=residual_ratio;
+
+    //Initial gradient
+    A_datatp_k=a*datatp_k;
+    gradient_rk=b-A_datatp_k;
+    gradient_cg_pk=gradient_rk;
+    A_gradient_cg_pk=a*gradient_cg_pk;
+        
+    alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
+    alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
+    //get new solution
+    datatp_k_1=datatp_k+alpha_k(0,0)*gradient_cg_pk;
+    gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
+
+    beta_k=cx_fmatmul_CG(gradient_rk_1,gradient_rk_1);
+    beta_k=beta_k/cx_fmatmul_CG(gradient_rk,gradient_rk);
+    gradient_cg_pk_1=gradient_rk_1+beta_k(0,0)*gradient_cg_pk;
+    //updata
+    datatp_k=datatp_k_1;
+    gradient_rk=gradient_rk_1;
+    gradient_cg_pk=gradient_cg_pk_1;
+    //cal residual_pow
+    sum_num=sum(sum(abs(gradient_rk)),1);
+    residual_k=sum_num;
+
+    while(iter<iterations_num && residual_k(0,0)>residual_pow(0,0)){
+        iter++;
+        //std::cout<<iter<<"|"<<residual_k(0,0)<<std::endl;
+        A_gradient_cg_pk=a*gradient_cg_pk;
+        
+        alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
+        alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
+        //get new solution
+        datatp_k_1=datatp_k+alpha_k(0,0)*gradient_cg_pk;
+        gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
+
+        beta_k=cx_fmatmul_CG(gradient_rk_1,gradient_rk_1);
+        beta_k=beta_k/cx_fmatmul_CG(gradient_rk,gradient_rk);
+        gradient_cg_pk_1=gradient_rk_1+real(beta_k(0,0))*gradient_cg_pk;
+        //updata
+        datatp_k=datatp_k_1;
+        gradient_rk=gradient_rk_1;
+        gradient_cg_pk=gradient_cg_pk_1;
+        //cal residual_pow
+        sum_num=sum(sum(abs(gradient_rk)),1);
+        residual_k=sum_num;
+    }
+    //output result: x
+    x=datatp_k;
+
+//Determine if the CG-method converges;
+//If it does not converge, it needs to 
+// change the initial value to solve again;
+    bool convergence;
+    if((residual_k(0,0)/residual_pow(0,0))>(1.0)\
+        ||isnan(residual_k(0,0))){
+            convergence=false;
+        }else{
+            convergence=true;
+        }
+    return convergence;
+}
 fmat fmatsmooth(fmat mat2, int x1, int x2, int k)
 {
     int i,j,n;
