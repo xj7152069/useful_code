@@ -505,14 +505,16 @@ void datawrite(fmat & data_mat, char const *filename)
       }
     outf.close(); 
 }
-inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat & mat2)
+
+template <typename T>
+inline T matMulCG(T & mat1, T & mat2)
 {
 //Subfunctions use for solveCG()
     int nz,nx;
     nz=mat1.n_rows;
     nx=mat1.n_cols;
 
-    cx_fmat a(1,1,fill::zeros);
+    T a(1,1,fill::zeros);
     int i,j;
     for(i=0;i<nz;i++){
         a+=mat1.row(i)*mat2.row(i).t();
@@ -520,15 +522,16 @@ inline cx_fmat cx_fmatmul_CG(cx_fmat & mat1, cx_fmat & mat2)
     return a;
 }
 
-bool solveCG(cx_fmat a, cx_fmat& x, cx_fmat b, cx_fmat W,\
-    float residual_ratio, int num)
+template <typename T>
+bool solveCG(T a, T& x, T b, T W,\
+    double residual_ratio, int num)
 {
 /*
 The conjugate gradient method solves the normal equation:
 input: 
 cx_fmat: a*x=b; The 'x' must be initialized and cannot be zero;
     The 'x' will be updated in subfunctions;
-cx_fmat: W; Diagonal matrix I, used for regularization;
+cx_fmat: W; Diagonal matrix W, used for regularization;
 float residual_ratio: Iterative residual of the CG-method;
 int num: The number of iterations of the CG-method;
     Iterations times is related to the matrix dimension,
@@ -542,12 +545,14 @@ int num: The number of iterations of the CG-method;
     b=(a.t()*b);
     a=(a.t()*a+W);
 
-    cx_fmat gradient_rk,gradient_rk_1,\
+    T gradient_rk,gradient_rk_1,\
         gradient_cg_pk,gradient_cg_pk_1,\
         datatp_k,datatp_k_1,\
-        recoverdatatx_uk,A_gradient_cg_pk,A_datatp_k;
-    fmat sum_num(1,1),residual_pow(1,1),residual_k(1,1);
-    cx_fmat beta_k(1,1),alpha_k(1,1);
+        recoverdatatx_uk,A_gradient_cg_pk;
+    T sum_num(1,1,fill::zeros),\
+        residual_pow(1,1,fill::zeros),\
+        residual_k(1,1,fill::zeros);
+    T beta_k(1,1),alpha_k(1,1);
     datatp_k.zeros(np1,np2);
     datatp_k_1.copy_size(datatp_k);
     gradient_rk.copy_size(datatp_k);
@@ -555,75 +560,145 @@ int num: The number of iterations of the CG-method;
     gradient_cg_pk.copy_size(datatp_k);
     gradient_cg_pk_1.copy_size(datatp_k); 
     A_gradient_cg_pk.copy_size(datatp_k);
-    A_datatp_k.copy_size(datatp_k);
 
     iter=0;
     datatp_k=x;
-//Residuals level adaptive to matrix scale;
-    sum_num=sum(sum(abs(datatp_k)),1)/x.n_rows/x.n_cols;
-    residual_pow=sum_num(0,0);
-    residual_pow*=residual_ratio;
-
     //Initial gradient
-    A_datatp_k=a*datatp_k;
-    gradient_rk=b-A_datatp_k;
+    gradient_rk=b-a*datatp_k;
     gradient_cg_pk=gradient_rk;
     A_gradient_cg_pk=a*gradient_cg_pk;
+    residual_pow(0,0)=(residual_ratio*gradient_rk.n_elem);
         
-    alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
-    alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
+    alpha_k=matMulCG<T>(gradient_rk,gradient_rk);
+    alpha_k=alpha_k/(matMulCG<T>(gradient_cg_pk,A_gradient_cg_pk));
     //get new solution
     datatp_k_1=datatp_k+alpha_k(0,0)*gradient_cg_pk;
-    gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
+    //gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
+    gradient_rk_1=b-a*datatp_k_1;
 
-    beta_k=cx_fmatmul_CG(gradient_rk_1,gradient_rk_1);
-    beta_k=beta_k/cx_fmatmul_CG(gradient_rk,gradient_rk);
+    beta_k=matMulCG<T>(gradient_rk_1,gradient_rk_1);
+    beta_k=beta_k/(matMulCG<T>(gradient_rk,gradient_rk));
     gradient_cg_pk_1=gradient_rk_1+beta_k(0,0)*gradient_cg_pk;
     //updata
     datatp_k=datatp_k_1;
     gradient_rk=gradient_rk_1;
     gradient_cg_pk=gradient_cg_pk_1;
     //cal residual_pow
-    sum_num=sum(sum(abs(gradient_rk)),1);
+    sum_num.set_real(sum(sum(abs(gradient_rk)),1));
     residual_k=sum_num;
 
-    while(iter<iterations_num && residual_k(0,0)>residual_pow(0,0)){
+    while(iter<iterations_num && abs(residual_k(0,0))\
+        >abs(residual_pow(0,0))){
         iter++;
         //std::cout<<iter<<"|"<<residual_k(0,0)<<std::endl;
         A_gradient_cg_pk=a*gradient_cg_pk;
         
-        alpha_k=cx_fmatmul_CG(gradient_rk,gradient_rk);
-        alpha_k=alpha_k/cx_fmatmul_CG(gradient_cg_pk,A_gradient_cg_pk);
+        alpha_k=matMulCG<T>(gradient_cg_pk,A_gradient_cg_pk);
+        if(abs(alpha_k(0,0))<=residual_ratio)break;
+        alpha_k=matMulCG<T>(gradient_rk,gradient_rk)/alpha_k;
         //get new solution
         datatp_k_1=datatp_k+alpha_k(0,0)*gradient_cg_pk;
-        gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
+        //gradient_rk_1=gradient_rk-alpha_k(0,0)*A_gradient_cg_pk;
+        gradient_rk_1=b-a*datatp_k_1;
 
-        beta_k=cx_fmatmul_CG(gradient_rk_1,gradient_rk_1);
-        beta_k=beta_k/cx_fmatmul_CG(gradient_rk,gradient_rk);
-        gradient_cg_pk_1=gradient_rk_1+real(beta_k(0,0))*gradient_cg_pk;
+        beta_k=matMulCG<T>(gradient_rk,gradient_rk);
+        if(abs(beta_k(0,0))<=residual_ratio)break;
+        beta_k=matMulCG<T>(gradient_rk_1,gradient_rk_1)/beta_k;
+        gradient_cg_pk_1=gradient_rk_1+(beta_k(0,0))*gradient_cg_pk;
         //updata
         datatp_k=datatp_k_1;
         gradient_rk=gradient_rk_1;
         gradient_cg_pk=gradient_cg_pk_1;
         //cal residual_pow
-        sum_num=sum(sum(abs(gradient_rk)),1);
+        sum_num.set_real(sum(sum(abs(gradient_rk)),1));
         residual_k=sum_num;
     }
     //output result: x
     x=datatp_k;
+    std::cout<<iter<<"|"<<abs(residual_k(0,0))<<std::endl;
 
 //Determine if the CG-method converges;
 //If it does not converge, it needs to 
 // change the initial value to solve again;
     bool convergence;
-    if((residual_k(0,0)/residual_pow(0,0))>(1.0)\
-        ||isnan(residual_k(0,0))){
+    if(isnan(abs(residual_k(0,0)))){
             convergence=false;
         }else{
             convergence=true;
         }
     return convergence;
 }
+
+template <typename T, typename T1, typename T2,\
+     typename T3, typename T4>
+T solveCG_real(T1 &a, T2 &x, T3 &b, T4 &W,\
+    double residual_ratio, int num)
+{
+    T xResult,a2,b2,w2;
+    xResult.copy_size(x);
+    for(int i=0;i<x.n_rows;i++){
+    for(int j=0;j<x.n_cols;j++){
+        xResult(i,j)=x(i,j);
+    }}
+
+    a2.copy_size(a);
+    for(int i=0;i<a.n_rows;i++){
+    for(int j=0;j<a.n_cols;j++){
+        a2(i,j)=a(i,j);
+    }}
+
+    b2.copy_size(b);
+    for(int i=0;i<b.n_rows;i++){
+    for(int j=0;j<b.n_cols;j++){
+        b2(i,j)=b(i,j);
+    }}
+
+    w2.copy_size(W);
+    for(int i=0;i<W.n_rows;i++){
+    for(int j=0;j<W.n_cols;j++){
+        w2(i,j)=W(i,j);
+    }}
+    solveCG(a2, xResult, b2, w2, residual_ratio, num);
+    return xResult;
+}
+
+template <typename T, typename T1, typename T2,\
+     typename T3, typename T4>
+T solveCG_complex(T1 &a, T2 &x, T3 &b, T4 &W,\
+    double residual_ratio, int num)
+{
+    T xResult,a2,b2,w2;
+    xResult.copy_size(x);
+    for(int i=0;i<x.n_rows;i++){
+    for(int j=0;j<x.n_cols;j++){
+        xResult(i,j).real(real(x(i,j)));
+        xResult(i,j).imag(imag(x(i,j)));
+    }}
+
+    a2.copy_size(a);
+    for(int i=0;i<a.n_rows;i++){
+    for(int j=0;j<a.n_cols;j++){
+        a2(i,j).real(real(a(i,j)));
+        a2(i,j).imag(imag(a(i,j)));
+    }}
+
+    b2.copy_size(b);
+    for(int i=0;i<b.n_rows;i++){
+    for(int j=0;j<b.n_cols;j++){
+        b2(i,j).real(real(b(i,j)));
+        b2(i,j).imag(imag(b(i,j)));
+    }}
+
+    w2.copy_size(W);
+    for(int i=0;i<W.n_rows;i++){
+    for(int j=0;j<W.n_cols;j++){
+        w2(i,j).real(real(W(i,j)));
+        w2(i,j).imag(imag(W(i,j)));
+    }}
+    solveCG(a2, xResult, b2, w2, residual_ratio, num);
+    return xResult;
+}
+
 fmat fmatsmooth(fmat mat2, int x1, int x2, int k)
 {
     int i,j,n;
