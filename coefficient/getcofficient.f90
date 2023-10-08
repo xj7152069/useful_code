@@ -20,7 +20,7 @@
 
     PROGRAM test				
 		USE INTERP_GLOBAL
-         integer::order_even=5
+         integer::order_even=4
         ! real::coefficients(order_even/2)
          real,allocatable::coefficients(:)
          
